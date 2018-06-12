@@ -8,6 +8,8 @@
 *.a
 *.sty
 *.scan
+*.o
+*.csv
 core
 .deps
 *.out
