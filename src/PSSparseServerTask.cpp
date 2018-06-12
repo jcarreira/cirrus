@@ -109,6 +109,9 @@ bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vecto
   if (task_config.get_use_adagrad()) {
     lr_model->sgd_update_adagrad(
         task_config.get_learning_rate(), &gradient);
+  } else if (task_config.get_use_momentum() or task_config.get_use_nesterov()) {
+    lr_model->sgd_update_momentum(
+        task_config.get_learning_rate(), &gradient);
   } else {
     lr_model->sgd_update(
         task_config.get_learning_rate(), &gradient);
@@ -192,9 +195,15 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 #endif
   for (uint32_t i = 0; i < num_entries; ++i) {
     uint32_t entry_index = load_value<uint32_t>(data);
-    store_value<FEATURE_TYPE>(
-        data_to_send_ptr,
-        lr_model->get_nth_weight(entry_index));
+    if (task_config.get_use_nesterov()) {
+    	store_value<FEATURE_TYPE>(
+        	data_to_send_ptr,
+        	lr_model->get_nth_weight_nesterov(entry_index));
+    } else {
+        store_value<FEATURE_TYPE>(
+                data_to_send_ptr,
+                lr_model->get_nth_weight(entry_index)); 
+    }
   }
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;

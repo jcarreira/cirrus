@@ -431,7 +431,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/ec2-user/cirrus'
+ac_pwd='/home/ec2-user/cirrus_ryan'
 srcdir='.'
 INSTALL='/usr/bin/install -c'
 MKDIR_P='/usr/bin/mkdir -p'
@@ -642,12 +642,12 @@ S["mkdir_p"]="$(MKDIR_P)"
 S["MKDIR_P"]="/usr/bin/mkdir -p"
 S["INSTALL_STRIP_PROGRAM"]="$(install_sh) -c -s"
 S["STRIP"]=""
-S["install_sh"]="${SHELL} /home/ec2-user/cirrus/install-sh"
-S["MAKEINFO"]="${SHELL} /home/ec2-user/cirrus/missing makeinfo"
-S["AUTOHEADER"]="${SHELL} /home/ec2-user/cirrus/missing autoheader"
-S["AUTOMAKE"]="${SHELL} /home/ec2-user/cirrus/missing automake-1.13"
-S["AUTOCONF"]="${SHELL} /home/ec2-user/cirrus/missing autoconf"
-S["ACLOCAL"]="${SHELL} /home/ec2-user/cirrus/missing aclocal-1.13"
+S["install_sh"]="${SHELL} /home/ec2-user/cirrus_ryan/install-sh"
+S["MAKEINFO"]="${SHELL} /home/ec2-user/cirrus_ryan/missing makeinfo"
+S["AUTOHEADER"]="${SHELL} /home/ec2-user/cirrus_ryan/missing autoheader"
+S["AUTOMAKE"]="${SHELL} /home/ec2-user/cirrus_ryan/missing automake-1.13"
+S["AUTOCONF"]="${SHELL} /home/ec2-user/cirrus_ryan/missing autoconf"
+S["ACLOCAL"]="${SHELL} /home/ec2-user/cirrus_ryan/missing aclocal-1.13"
 S["VERSION"]="0.1"
 S["PACKAGE"]="cirrus"
 S["CYGPATH_W"]="echo"

@@ -56,6 +56,8 @@ void Configuration::print() const {
     std::cout << "use_bias: " << use_bias << std::endl;
     std::cout << "use_grad_threshold: " << use_grad_threshold << std::endl;
     std::cout << "use_adagrad: " << use_adagrad << std::endl;
+    std::cout << "use_momentum: " << use_momentum << std::endl;
+    std::cout << "use_nesterov: " << use_nesterov << std::endl;
     std::cout << "grad_threshold: " << grad_threshold << std::endl;
     std::cout << "model_bits: " << model_bits << std::endl;
     std::cout << "train_set: "
@@ -138,6 +140,10 @@ void Configuration::parse_line(const std::string& line) {
         iss >> nitems;
     } else if (s == "use_adagrad:") {
         iss >> use_adagrad;
+    } else if (s == "use_momentum:") {
+	iss >> use_momentum;
+    } else if (s == "use_nesterov:") {
+	iss >> use_nesterov;
     } else if (s == "model_bits:") {
         iss >> model_bits;
     } else if (s == "normalize:") {
@@ -193,6 +199,9 @@ void Configuration::parse_line(const std::string& line) {
 
     if (iss.fail()) {
         throw std::runtime_error("Error parsing configuration file");
+    }
+    if ((use_adagrad and use_momentum) or (use_adagrad and use_nesterov) or (use_momentum and use_nesterov)) {
+        throw std::runtime_error("You may only choose one update rule");
     }
 }
 
@@ -340,6 +349,14 @@ uint64_t Configuration::get_model_bits() const {
 
 bool Configuration::get_use_adagrad() const {
   return use_adagrad;
+}
+
+bool Configuration::get_use_momentum() const {
+  return use_momentum;
+}
+
+bool Configuration::get_use_nesterov() const {
+  return use_nesterov;
 }
 
 } // namespace cirrus

@@ -4,6 +4,9 @@
 git submodule init
 git submodule update
 
+#get ltmain.sh
+libtoolize
+
 # install eigen, keyutils, kerberos, sparsehash, gflags, glog
 cd third_party
 
@@ -53,7 +56,10 @@ cd ../glog
 cmake ../glog
 make -j 10
 
-cd ../curl
+#compile curl
+cd ..
+tar -xvzf curl-7.57.0.tar.gz --directory curl 
+cd curl
 ./buildconf
 ./configure --disable-shared --enable-static  --disable-ldap --disable-sspi --without-librtmp --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-rtsp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-smb --without-libidn
 make -j 10

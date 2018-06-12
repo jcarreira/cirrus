@@ -127,6 +127,8 @@ class Configuration {
     int get_items() const;
 
     bool get_use_adagrad() const;
+    bool get_use_momentum() const;
+    bool get_use_nesterov() const;
 
  public:
     /**
@@ -176,9 +178,11 @@ class Configuration {
     bool use_grad_threshold = false;
     double grad_threshold = 0;
 
-    bool use_adagrad = true;
+    bool use_adagrad = false;
 
     uint64_t model_bits = 20;
+    bool use_momentum = false;
+    bool use_nesterov = false;
 };
 
 } // namespace cirrus
