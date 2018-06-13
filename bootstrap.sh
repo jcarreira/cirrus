@@ -62,7 +62,7 @@ tar -xvzf $CURL_TAR
 mv curl-7.60.0 curl
 cd curl
 ./buildconf
-./configure --disable-shared --enable-static  --disable-sspi --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-rtsp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-smb
+./configure --disable-shared --enable-static
 make -j 10
 cd ../
 
