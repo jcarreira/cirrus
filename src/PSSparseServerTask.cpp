@@ -658,11 +658,6 @@ void PSSparseServerTask::run(const Configuration& config) {
 }
 
 void PSSparseServerTask::checkpoint_model_loop() {
-    if (task_config.get_checkpoint_frequency() == 0) {
-        // checkpoint disabled
-        return;
-    }
-
     while (true) {
         sleep(task_config.get_checkpoint_frequency());
         // checkpoint to s3
