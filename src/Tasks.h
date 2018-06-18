@@ -9,6 +9,7 @@
 #include "SparseLRModel.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
+#include "Tensor.h"
 
 #include <string>
 #include <vector>
@@ -264,6 +265,8 @@ class PSSparseServerTask : public MLTask {
     bool process_send_mf_gradient(const Request& req, std::vector<char>& thread_buffer);
     bool process_get_mf_full_model(const Request& req, std::vector<char>& thread_buffer);
 
+    bool process_create_tensor_msg(const Request& req, std::vector<char>&);
+
     /**
       * Attributes
       */
@@ -272,7 +275,6 @@ class PSSparseServerTask : public MLTask {
 #if 0
     uint64_t server_clock = 0;  // minimum of all worker clocks
 #endif
-    //std::unique_ptr<std::thread> thread; // worker threads
     std::vector<std::unique_ptr<std::thread>> server_threads;
     std::vector<std::unique_ptr<std::thread>> gradient_thread;
     std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
@@ -306,6 +308,8 @@ class PSSparseServerTask : public MLTask {
 
     char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
     std::atomic<int> thread_count;
+
+    std::map<std::string, Tensor> name_to_tensor;
 };
 
 class MFNetflixTask : public MLTask {

@@ -9,13 +9,15 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <memory>
-#include "ModelGradient.h"
-#include "Utils.h"
-#include "SparseLRModel.h"
-#include "SparseMFModel.h"
-#include "Model.h"
+#include <ModelGradient.h>
+#include <Utils.h>
+#include <SparseLRModel.h>
+#include <SparseMFModel.h>
+#include <Model.h>
+#include <Tensor.h>
 
 namespace cirrus {
 
@@ -23,6 +25,49 @@ class PSSparseServerInterface {
  public:
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
+
+  /**
+    * Create a multidimensional tensor
+    * @param tensor_name Name of the new tensor
+    */
+  bool create_tensor(const std::string& tensor_name, const std::vector<uint32_t>& tensor_dims);
+
+  /**
+    * Updates a parameter server tensor with
+    * given update_tensor
+    * @param tensor_name Name of the tensor to be update
+    * @param update_tensor Name of the tensor gradient
+    */
+  bool update_tensor(
+          const std::string& tensor_name,
+          const SparseTensor& update_tensor);
+
+  /** gets a full tensor
+    * @param tensor_name name of the tensor 
+    */
+  Tensor get_tensor(const std::string& tensor_name);
+
+  /** Gets a sparse tensor (1d tensor)
+    * @param tensor_name name of the tensor 
+    */
+  SparseTensor get_sparse_tensor(
+          const std::string& tensor_name,
+          const std::vector<uint32_t>& indexes);
+  
+  /** Gets a sparse tensor (2d tensor)
+    * @param tensor_name name of the tensor 
+    */
+  SparseTensor get_sparse_tensor(
+          const std::string& tensor_name,
+          const std::vector<std::tuple<uint32_t, uint32_t>>& indexes);
+  
+  /** Gets a sparse tensor (3d tensor)
+    * @param tensor_name name of the tensor 
+    */
+  SparseTensor get_sparse_tensor(
+          const std::string& tensor_name,
+          const std::vector<
+               std::tuple<uint32_t, uint32_t, uint32_t>>& indexes);
 
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);

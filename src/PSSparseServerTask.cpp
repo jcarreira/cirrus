@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include "Constants.h"
 #include "Checksum.h"
+#include "CreateTensorMessage.h"
+
 #include <signal.h>
 
 #undef DEBUG
@@ -22,23 +24,29 @@ PSSparseServerTask::PSSparseServerTask(
   MLTask(model_size,
       batch_size, samples_per_batch, features_per_sample,
       nworkers, worker_id, ps_ip, ps_port) {
-    std::cout << "PSSparseServerTask is built" << std::endl;
+  std::cout << "PSSparseServerTask is built" << std::endl;
 
-    std::atomic_init(&thread_count, 0);
+  std::atomic_init(&thread_count, 0);
 
-    operation_to_name[0] = "SEND_LR_GRADIENT";
-    operation_to_name[1] = "SEND_MF_GRADIENT";
-    operation_to_name[2] = "GET_LR_FULL_MODEL";
-    operation_to_name[3] = "GET_MF_FULL_MODEL";
-    operation_to_name[4] = "GET_LR_SPARSE_MODEL";
-    operation_to_name[5] = "GET_MF_SPARSE_MODEL";
-    operation_to_name[6] = "SET_TASK_STATUS";
-    operation_to_name[7] = "GET_TASK_STATUS";
+  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT";
+  operation_to_name[SEND_MF_GRADIENT] = "SEND_MF_GRADIENT";
+  operation_to_name[GET_LR_FULL_MODEL] = "GET_LR_FULL_MODEL";
+  operation_to_name[GET_MF_FULL_MODEL] = "GET_MF_FULL_MODEL";
+  operation_to_name[GET_LR_SPARSE_MODEL] = "GET_LR_SPARSE_MODEL";
+  operation_to_name[GET_MF_SPARSE_MODEL] = "GET_MF_SPARSE_MODEL";
+  operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
+  operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
+  
+  operation_to_name[CREATE_TENSOR_MSG] = "CREATE_TENSOR_MSG";
+  operation_to_name[UPDATE_TENSOR_MSG] = "UPDATE_TENSOR_MSG";
+  operation_to_name[GET_TENSOR_MSG] = "GET_TENSOR_MSG";
+  operation_to_name[GET_SPARSE_TENSOR_MSG] = "GET_SPARSE_TENSOR_MSG";
 
-    for (int i = 0; i < NUM_PS_WORK_THREADS; i++)
-      thread_msg_buffer[i] =
-          new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
+  for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
+    thread_msg_buffer[i] =
+        new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
   }
+}
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
     const SparseLRModel& lr_model, uint64_t* model_size) const {
@@ -98,7 +106,7 @@ bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vecto
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  //buffer.resize(incoming_size);
+
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -121,7 +129,9 @@ bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vecto
   } else if (opt_method == "adagrad") {
     lr_model->sgd_update_adagrad(
         task_config.get_learning_rate(), &gradient);
-  } else assert(0);
+  } else {
+    throw std::runtime_error("Unknown optimization method");
+  }
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -269,6 +279,30 @@ bool PSSparseServerTask::process_get_lr_full_model(
   return true;
 }
 
+bool PSSparseServerTask::process_create_tensor_msg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  CreateTensorMessage create_tensor_msg(thread_buffer.data());
+
+  // XXX random initialize (?)
+  name_to_tensor[create_tensor_msg.get_name()] = Tensor(create_tensor_msg.get_tensor_dims());
+
+  return true;
+}
+
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
   thread_buffer.resize(120 * 1024 * 1024); // 120 MB
@@ -296,6 +330,7 @@ void PSSparseServerTask::gradient_f() {
       continue;
     }
 
+    // read the incoming_size value from the client
     req.req_id = operation;
     if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
         operation == GET_LR_SPARSE_MODEL || operation == GET_MF_SPARSE_MODEL) {
@@ -311,7 +346,22 @@ void PSSparseServerTask::gradient_f() {
         continue;
       }
       req.incoming_size = incoming_size;
-
+    } else if (operation == CREATE_TENSOR_MSG || operation == UPDATE_TENSOR_MSG ||
+        GET_TENSOR_MSG || operation == GET_SPARSE_TENSOR_MSG) {
+      uint32_t incoming_size = 0;
+      if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+        if (close(req.poll_fd.fd) != 0) {
+          std::cout << "Error closing socket. errno: " << errno << std::endl;
+        }
+        num_connections--;
+        std::cout << "PS closing connection after process(): " << num_connections << std::endl;
+        req.poll_fd.fd = -1;
+        req.poll_fd.revents = 0;
+        continue;
+      }
+      req.incoming_size = incoming_size;
+    } else {
+      throw std::runtime_error("Unknown operation");
     }
 
 #ifdef DEBUG
@@ -376,7 +426,11 @@ void PSSparseServerTask::gradient_f() {
       std::cout << "Set status task id: " << data[0] << " status: " << data[1] << std::endl;
 #endif
       task_to_status[data[0]] = data[1];
-    
+    } else if (req.req_id = CREATE_TENSOR_MSG) {
+      process_create_tensor_msg(req, thread_buffer);
+    } else if (req.req_id = UPDATE_TENSOR_MSG) { 
+    } else if (req.req_id = GET_TENSOR_MSG) { 
+    } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
@@ -406,9 +460,6 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 #endif
 
   uint32_t operation = 0;
-  //if (read_all(sock, &operation, sizeof(uint32_t)) == 0) { // read operation
-  //  return false;
-  //}
 #ifdef DEBUG 
   std::cout << "Operation: " << operation << " - "
       << operation_to_name[operation] << std::endl;

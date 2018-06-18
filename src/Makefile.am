@@ -23,6 +23,7 @@ LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
 
 CPPFLAGS = -static -static-libgcc -static-libstdc++ \
            -I$(TOP_DIR) \
+           -Imessages \
            -I$(TOP_DIR)/third_party/flatbuffers/include \
            -I$(TOP_DIR)/third_party/eigen_source \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
@@ -44,7 +45,10 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
 	      PerformanceLambdaTask.cpp \
 	      S3.cpp SparseDataset.cpp \
-	      PSSparseServerTask.cpp PSSparseServerInterface.cpp
+	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
+	      Tensor.cpp messages/CreateTensorMessage.cpp \
+	      messages/GetTensorMessage.cpp messages/UpdateTensorMessage.cpp \
+	      messages/GetSparseTensorMessage.cpp
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp Model.cpp LRModel.cpp \
