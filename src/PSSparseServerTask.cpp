@@ -279,6 +279,58 @@ bool PSSparseServerTask::process_get_lr_full_model(
   return true;
 }
 
+bool PSSparseServerTask::process_update_tensor_msg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  UpdateTensorMessage update_tensor_msg(thread_buffer.data());
+
+  // XXX implement here
+
+  try {
+    bool t = true;
+    if (send_all(req.sock, &t, sizeof(t)) == -1) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  return true;
+}
+
+bool PSSparseServerTask::process_get_tensor_msg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+}
+
+bool PSSparseServerTask::process_get_sparse_tensor_msg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+}
+
 bool PSSparseServerTask::process_create_tensor_msg(
     const Request& req,
     std::vector<char>& thread_buffer) {
@@ -299,6 +351,15 @@ bool PSSparseServerTask::process_create_tensor_msg(
 
   // XXX random initialize (?)
   name_to_tensor[create_tensor_msg.get_name()] = Tensor(create_tensor_msg.get_tensor_dims());
+  
+  try {
+    bool t = true;
+    if (send_all(req.sock, &t, sizeof(t)) == -1) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
 
   return true;
 }
@@ -429,8 +490,11 @@ void PSSparseServerTask::gradient_f() {
     } else if (req.req_id = CREATE_TENSOR_MSG) {
       process_create_tensor_msg(req, thread_buffer);
     } else if (req.req_id = UPDATE_TENSOR_MSG) { 
+      process_update_tensor_msg(req, thread_buffer);
     } else if (req.req_id = GET_TENSOR_MSG) { 
+      process_get_tensor_msg(req, thread_buffer);
     } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 
+      process_get_sparse_tensor_msg(req, thread_buffer);
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
