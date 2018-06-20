@@ -17,6 +17,7 @@
 #include "SparseMFModel.h"
 #include "Model.h"
 
+
 namespace cirrus {
 
 class PSSparseServerInterface {
@@ -24,6 +25,13 @@ class PSSparseServerInterface {
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
 
+  // we only support LR with EFS for now
+#ifdef USE_EFS
+  void send_lr_gradient(const LRSparseGradient&);
+  SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
+  void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
+  std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
+#else
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
   
@@ -35,6 +43,7 @@ class PSSparseServerInterface {
 
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
+#endif
 
  private:
   std::string ip;

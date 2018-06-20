@@ -47,6 +47,40 @@ PSSparseServerInterface::~PSSparseServerInterface() {
   }
 }
 
+#ifdef USE_EFS
+void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
+  uint32_t operation = SEND_LR_GRADIENT;
+#ifdef DEBUG
+  std::cout << "Sending gradient" << std::endl;
+#endif
+  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending operation");
+  }
+
+  uint32_t size = gradient.getSerializedSize();
+#ifdef DEBUG
+  std::cout << "Sending gradient with size: " << size << std::endl;
+#endif
+  ret = send(sock, &size, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending grad size");
+  }
+  
+  char data[size];
+  gradient.serialize(data);
+  ret = send_all(sock, data, size);
+  if (ret == 0) {
+    throw std::runtime_error("Error sending grad");
+  }
+}
+
+void PSSparseServerInterface::get_lr_sparse_model_inplace(
+    const SparseDataset& ds, SparseLRModel& lr_model,
+    const Configuration& config);
+SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
+std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(bool isCollaborative);
+#else
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   uint32_t operation = SEND_LR_GRADIENT;
 #ifdef DEBUG
@@ -196,6 +230,10 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     return model;
   }
 }
+#endif
+
+#ifdef USE_EFS
+#else
 
 // Collaborative filtering
 
@@ -292,6 +330,7 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   }
   delete[] data;
 }
+#endif
   
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
   std::cout << "Setting status id: " << id << " status: " << status << std::endl;
