@@ -6,6 +6,8 @@
 class NFSFile {
   public:
     NFSFile(const std::string& filename);
+    virtual ~NFSFile();
+
     bool write(uint32_t offset, const char* data, uint32_t data_size);
 
   private:

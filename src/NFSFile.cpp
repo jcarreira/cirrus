@@ -41,3 +41,11 @@ bool NFSFile::write(uint32_t offset, const char* data, uint32_t data_size) {
   }
 }
 
+NFSFile::~NFSFile() {
+  free(client.server);
+  free(client.path);
+  if (nfs != NULL) {
+    nfs_destroy_context(nfs);
+  }
+}
+

@@ -10,6 +10,7 @@
 class NFSls {
  public:
     NFSls(const std::string& path);
+    virtual ~NFSls();
 
     std::vector<std::string> do_ls();
  private:
@@ -76,6 +77,14 @@ std::vector<std::string> NFSls::do_ls() {
     printf(" %s\n", nfsdirent->name);
   }
   nfs_closedir(nfs, nfsdir);
+}
+
+NFSls::~NFSls() {
+  free(client.server);
+  free(client.path);
+  if (nfs != NULL) {
+    nfs_destroy_context(nfs);
+  }
 }
 
 #endif  // _NFSLS_H_

@@ -57,7 +57,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   static int num_grads = 0; // number of gradients already concatenated
   static uint32_t cum_size_grads = 0; // cumulative size of gradients written to file
   std::string filename = "gradient." + std::to_string(worker_id);
-  NFSFile file("/" + filename); //open nfs file
+  NFSFile file("/efs_experiment/" + filename); //open nfs file
 
   uint32_t size = gradient.getSerializedSize();
   if (size > (1024 * 1024)) {
@@ -82,6 +82,9 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
     const Configuration& config) {
   // here we do an ls of the directory
   // and get the latest model
+
+  NFSls ls("/efs_experiment/");
+  std::vector<std::string> result = ls.do_ls();
 }
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(bool isCollaborative) {
