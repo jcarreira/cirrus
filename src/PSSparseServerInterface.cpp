@@ -48,7 +48,19 @@ PSSparseServerInterface::~PSSparseServerInterface() {
 }
 
 #ifdef USE_EFS
+/**
+  * Sending gradient means concatenating the gradient to a file in efs
+  */
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
+
+  uint32_t worker_id = 1337;
+  static int num_grads = 0; // number of gradients already concatenated
+  static uint32_t cum_size_grads = 0; // cumulative size of gradients written to file
+  std::string filename = "gradient." + std::to_string(worker_id);
+  NFSFile file("/" + filename); //open nfs file
+  file.write
+
+#if 0
   uint32_t operation = SEND_LR_GRADIENT;
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
@@ -57,30 +69,37 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   if (ret == -1) {
     throw std::runtime_error("Error sending operation");
   }
+#endif
 
   uint32_t size = gradient.getSerializedSize();
-#ifdef DEBUG
-  std::cout << "Sending gradient with size: " << size << std::endl;
-#endif
-  ret = send(sock, &size, sizeof(uint32_t), 0);
-  if (ret == -1) {
-    throw std::runtime_error("Error sending grad size");
+  if (size > (1024 * 1024)) {
+    throw std::runtime_error("Too large to store in the stack"); // just be cautious
   }
-  
   char data[size];
   gradient.serialize(data);
-  ret = send_all(sock, data, size);
-  if (ret == 0) {
-    throw std::runtime_error("Error sending grad");
-  }
+
+  cum_size_grads += size;
+  // write this gradient to the file with the right offset
+  file.write(cum_size_grads, data);
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(
     const SparseDataset& ds, SparseLRModel& lr_model,
-    const Configuration& config);
-SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
-std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(bool isCollaborative);
-#else
+    const Configuration& config) {
+  // here we do an ls of the directory
+  // and get the latest model
+}
+
+std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(bool isCollaborative) {
+  throw "not supported";
+  std::unique_ptr<CirrusModel> model = std::make_unique<SparseLRModel>(0);
+  return model;
+}
+
+/**
+ * USE_EFS
+ */
+#else 
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   uint32_t operation = SEND_LR_GRADIENT;
 #ifdef DEBUG

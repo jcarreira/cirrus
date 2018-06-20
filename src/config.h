@@ -1,12 +1,6 @@
-#define USE_REDIS_CHANNEL
+#define USE_EFS
 
-// #define USE_CIRRUS
-#define DATASET_IN_S3
 #define USE_REDIS
-// #define USE_PREFETCH
-// #define USE_S3
-
-// #define PRELOAD_DATA
 
 #ifdef USE_REDIS
 #define PS_IP "172.31.0.197"
@@ -30,8 +24,6 @@ using FEATURE_TYPE = float;
 #define RCV1_HASH_BITS 19
 
 #define LIMIT_NUMBER_PASSES 3
-
-#define SYNC_N_STEPS (100)
 
 // number of factors for neflix workload
 #define NUM_FACTORS 10
