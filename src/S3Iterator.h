@@ -4,7 +4,7 @@
 #include "S3.h"
 #include <Synchronization.h>
 #include "Configuration.h"
-#include "config.h"
+#include "cirrus-config.h"
 
 #include <CircularBuffer.h>
 #include <thread>

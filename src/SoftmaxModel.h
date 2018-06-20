@@ -4,7 +4,7 @@
 #include <Model.h>
 #include <utility>
 #include <vector>
-#include <config.h>
+#include <cirrus-config.h>
 
 namespace cirrus {
 

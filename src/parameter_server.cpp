@@ -1,7 +1,7 @@
 #include <Utils.h>
 #include <Configuration.h>
 #include <Tasks.h>
-#include <config.h>
+#include <cirrus-config.h>
 
 #include <stdlib.h>
 #include <cstdint>
@@ -34,7 +34,7 @@ void run_tasks(int rank, int nworkers,
     lt.run(config);
     cirrus::sleep_forever();
   } else if (rank == PS_SPARSE_SERVER_TASK_RANK) {
-    cirrus::PSSparseServerTask st((1 << config.get_model_bits()) + 1,
+    cirrus::PSSparseServerTaskEFS st((1 << config.get_model_bits()) + 1,
         batch_size, samples_per_batch, features_per_sample,
         nworkers, rank, ps_ip, ps_port);
     st.run(config);

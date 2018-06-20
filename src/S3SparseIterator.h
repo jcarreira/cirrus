@@ -3,7 +3,7 @@
 
 #include "S3.h"
 #include "Configuration.h"
-#include "config.h"
+#include "cirrus-config.h"
 
 #include <thread>
 #include <list>

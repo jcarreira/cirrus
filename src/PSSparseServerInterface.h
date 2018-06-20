@@ -21,6 +21,7 @@ namespace cirrus {
 
 class PSSparseServerInterface {
  public:
+
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
 
@@ -29,15 +30,15 @@ class PSSparseServerInterface {
   void send_lr_gradient(const LRSparseGradient&);
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config) {
       throw "not supported";
-      return SparseLRModel();
+      return SparseLRModel(0);
   }
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering);
   
   void send_mf_gradient(const MFSparseGradient&) {}
-  SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t) { return SparseMFModel(); }
-  void set_status(uint32_t id, uint32_t status) {throw "not supported"; }
-  uint32_t get_status(uint32_t id) { throw "not supported"; return 0; }
+  SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t) { return SparseMFModel(1,1,1); }
+  void set_status(uint32_t id, uint32_t status);
+  uint32_t get_status(uint32_t id);
 #else
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);

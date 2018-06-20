@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <memory>
-#include <config.h>
+#include <cirrus-config.h>
 
 /**
   * Compute crc32 checksum of data in buf and with size length

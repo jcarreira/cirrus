@@ -37,8 +37,17 @@ NFSFile::NFSFile(const std::string& filename) :
 bool NFSFile::write(uint32_t offset, const char* data, uint32_t data_size) {
   int ret = nfs_pwrite(nfs, file_handle, offset, data_size, data);
   if (ret != 0) {
-    throw std::runtime_error("Error opening nfs file");
+    throw std::runtime_error("Error writing nfs file");
   }
+  return true;
+}
+
+bool NFSFile::read(uint32_t offset, char* data_out, uint32_t data_size) {
+  int ret = nfs_pread(nfs, file_handle, offset, data_size, data_out);
+  if (ret != 0) {
+    throw std::runtime_error("Error reading nfs file");
+  }
+  return true;
 }
 
 NFSFile::~NFSFile() {

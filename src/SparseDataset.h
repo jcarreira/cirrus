@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
-#include <config.h>
+#include <cirrus-config.h>
 
 namespace cirrus {
 

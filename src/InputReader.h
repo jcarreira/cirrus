@@ -11,7 +11,7 @@
 #include <mutex>
 #include <functional>
 #include <map>
-#include <config.h>
+#include <cirrus-config.h>
 #include <MurmurHash3.h>
 
 namespace cirrus {

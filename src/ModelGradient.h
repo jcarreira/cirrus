@@ -6,7 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
-#include <config.h>
+#include <cirrus-config.h>
 
 namespace cirrus {
 

@@ -5,6 +5,8 @@
 #include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
+#include "NFSFile.h"
+#include "NFSls.h"
 
 //#define DEBUG
 
@@ -85,6 +87,35 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 
   NFSls ls("/efs_experiment/");
   std::vector<std::string> result = ls.do_ls();
+
+  uint32_t highest = 0;
+  for (const auto& entry : result) {
+    std::cout << "folder entry: " << entry << std::endl;
+    // if filename starts with "model"
+    if (entry.compare(0, std::string("model").size(), "model") == 0) {
+      std::string num = entry.substr(5);
+      uint32_t number = string_to<uint32_t>(num);
+      highest = std::max(number, highest);
+    }
+  }
+
+  std::cout << "Highest model seen: " << highest << std::endl;
+  // now we get the last model
+
+  std::string filename = "/efs_experiment/model" + std::to_string(highest);
+  NFSFile model_file(filename);
+
+  uint32_t model_size = 0;
+  if (model_size > 10 * 1024 * 1024) {
+    throw std::runtime_error("something is wrong");
+  }
+  char* model_data = new char[model_size]; // 4MB should be enough
+  // first we read the model size
+  model_file.read(0, (char*)&model_size, sizeof(model_size));
+  model_file.read(sizeof(model_size), model_data, model_size);
+
+  std::cout << "Read model" << std::endl;
+  
 }
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(bool isCollaborative) {
@@ -177,7 +208,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
   char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+  read_all(sock, buffer, to_receive_size);
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;

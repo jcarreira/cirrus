@@ -3,7 +3,7 @@
 
 #include <Configuration.h>
 
-#include "config.h"
+#include "cirrus-config.h"
 #include "LRModel.h"
 #include "MFModel.h"
 #include "SparseLRModel.h"
@@ -353,6 +353,42 @@ class MFNetflixTask : public MLTask {
 
     std::unique_ptr<MFModelGet> mf_model_get;
     std::unique_ptr<PSSparseServerInterface> psint;
+};
+
+class PSSparseServerTaskEFS : public MLTask {
+  public:
+    PSSparseServerTaskEFS(
+        uint64_t model_size,
+        uint64_t batch_size, uint64_t samples_per_batch,
+        uint64_t features_per_sample, uint64_t nworkers,
+        uint64_t worker_id, const std::string& ps_ip,
+        uint64_t ps_port);
+
+    void run(const Configuration& config);
+  private:
+    void loop(int id);
+
+    // Model/ML related methods
+    std::shared_ptr<char> serialize_lr_model(const SparseLRModel&, uint64_t* model_size) const;
+
+    /**
+      * Attributes
+      */
+    std::vector<uint64_t> curr_indexes = std::vector<uint64_t>(NUM_POLL_THREADS);
+    std::mutex to_process_lock;
+    sem_t sem_new_req;
+    std::mutex model_lock; // used to coordinate access to the last computed model
+
+    std::vector<char> buffer; // we use this buffer to hold data from workers
+
+    volatile uint64_t gradientUpdatesCount = 0;
+    
+    std::unique_ptr<SparseLRModel> lr_model; // last computed model
+    Configuration task_config;
+
+    std::map<int, bool> task_to_status;
+
+    char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
 };
 
 }

@@ -4,7 +4,7 @@
 #include "InputReader.h"
 #include "S3.h"
 #include "Utils.h"
-#include "config.h"
+#include "cirrus-config.h"
 
 namespace cirrus {
 

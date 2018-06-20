@@ -9,6 +9,7 @@ class NFSFile {
     virtual ~NFSFile();
 
     bool write(uint32_t offset, const char* data, uint32_t data_size);
+    bool read(uint32_t offset, char* data_output, uint32_t data_size);
 
   private:
     std::string filename;

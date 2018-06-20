@@ -3,7 +3,7 @@
 #include "Serializers.h"
 #include "InputReader.h"
 #include "Utils.h"
-#include "config.h"
+#include "cirrus-config.h"
 
 cirrus::SparseDataset read_dataset(
     const cirrus::Configuration& config) {

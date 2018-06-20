@@ -1,7 +1,7 @@
 #include <Tasks.h>
 
 #include "Serializers.h"
-#include "config.h"
+#include "cirrus-config.h"
 #include "S3SparseIterator.h"
 #include "Utils.h"
 #include "SparseLRModel.h"

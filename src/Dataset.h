@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <Matrix.h>
-#include <config.h>
+#include <cirrus-config.h>
 
 namespace cirrus {
 
