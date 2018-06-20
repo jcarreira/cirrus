@@ -58,29 +58,23 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   static uint32_t cum_size_grads = 0; // cumulative size of gradients written to file
   std::string filename = "gradient." + std::to_string(worker_id);
   NFSFile file("/" + filename); //open nfs file
-  file.write
-
-#if 0
-  uint32_t operation = SEND_LR_GRADIENT;
-#ifdef DEBUG
-  std::cout << "Sending gradient" << std::endl;
-#endif
-  int ret = send(sock, &operation, sizeof(uint32_t), 0);
-  if (ret == -1) {
-    throw std::runtime_error("Error sending operation");
-  }
-#endif
 
   uint32_t size = gradient.getSerializedSize();
   if (size > (1024 * 1024)) {
     throw std::runtime_error("Too large to store in the stack"); // just be cautious
   }
-  char data[size];
-  gradient.serialize(data);
+
+  // we write <size of serialized gradient, serialized. gradient>
+  char data[size + sizeof(uint32_t)];
+  char* data_ptr = data;
+
+  // first we write gradient size and then we write the gradient
+  store_value<uint32_t>(data_ptr, size);
+  gradient.serialize(data_ptr);
 
   cum_size_grads += size;
   // write this gradient to the file with the right offset
-  file.write(cum_size_grads, data);
+  file.write(cum_size_grads, data, size + sizeof(uint32_t));
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(
