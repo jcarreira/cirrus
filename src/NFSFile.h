@@ -3,6 +3,10 @@
 
 #include <string>
 
+#include <libnfs.h>
+
+namespace cirrus {
+
 class NFSFile {
   public:
     NFSFile(const std::string& filename);
@@ -24,5 +28,7 @@ class NFSFile {
       int is_finished;
     } client;
 };
+
+}  // namespace cirrus
 
 #endif  // _NFSFILE_H_

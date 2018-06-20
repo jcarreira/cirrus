@@ -5,6 +5,7 @@
 #include "Constants.h"
 #include "Checksum.h"
 #include <signal.h>
+#include <NFSls.h>
 
 #undef DEBUG
 
@@ -34,21 +35,50 @@ std::shared_ptr<char> PSSparseServerTaskEFS::serialize_lr_model(
   return d;
 }
 
-/**
- * This is the task that runs the parameter server
- * This task is responsible for
- * 1) sending the model to the workers
- * 2) receiving the gradient updates from the workers
- *
- */
+void PSSparseServerTaskEFS::apply_to_model(LRSparseGradient& grad) {
+
+}
+
+// for every gradient file we keep track of the offset
+// we are reading at
+std::map<std::string, uint64_t> path_to_offset;
+
+LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
+  NFSls ls("/efs_experiment/");
+  std::vector<std::pair<std::string, uint64_t>> result = ls.do_ls();
+
+  for (const auto& entry : result) {
+    std::string path = entry.first;
+    // if entry starts with "gradient"
+    // we check if we have seen this before
+    if (path.compare(0, std::string("gradient").size(), "gradient") == 0) {
+      if (path_to_offset.find(path) != path_to_offset.end()) {
+        uint64_t off = path_to_offset[path];
+        std::cout << "Reading from off: " << off << std::endl;
+      } else {
+        path_to_offset[path] = 0; // we start reading from the beginning
+      }
+    } else {
+      continue; // otherwise ignore
+    }
+  }
+}
+
 void PSSparseServerTaskEFS::run(const Configuration& config) {
-  lr_model.reset(new SparseLRModel(model_size));
-  lr_model->randomize();
   std::cout
     << "PS task initializing model"
     << std::endl;
+  lr_model.reset(new SparseLRModel(model_size));
+  lr_model->randomize();
 
   task_config = config;
+
+
+  while (1) {
+    // we sit in a loop checking gradients and updating model
+    auto grad = check_gradient();
+    apply_to_model(grad);
+  }
 
 }
 

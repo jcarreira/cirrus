@@ -86,14 +86,15 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   // and get the latest model
 
   NFSls ls("/efs_experiment/");
-  std::vector<std::string> result = ls.do_ls();
+  std::vector<std::pair<std::string, uint64_t>> result = ls.do_ls();
 
   uint32_t highest = 0;
   for (const auto& entry : result) {
-    std::cout << "folder entry: " << entry << std::endl;
+    std::string path = entry.first;
+    std::cout << "file path: " << path << std::endl;
     // if filename starts with "model"
-    if (entry.compare(0, std::string("model").size(), "model") == 0) {
-      std::string num = entry.substr(5);
+    if (path.compare(0, std::string("model").size(), "model") == 0) {
+      std::string num = path.substr(5);
       uint32_t number = string_to<uint32_t>(num);
       highest = std::max(number, highest);
     }

@@ -55,7 +55,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3.cpp SparseDataset.cpp \
 	      PSSparseServerInterface.cpp \
 	      PSSparseServerTaskEFS.cpp \
-	      NFSFile.cpp \
+	      NFSFile.cpp NFSls.cpp \
 	      /home/ec2-user/joao/libnfs/lib/libnfs-sync.c /home/ec2-user/joao/libnfs/nfs4/nfs4.c /home/ec2-user/joao/libnfs/nfs/nfs.c \
 	      /home/ec2-user/joao/libnfs/nfs/libnfs-raw-nfs.c   /home/ec2-user/joao/libnfs/mount/mount.c     /home/ec2-user/joao/libnfs/mount/libnfs-raw-mount.c \
 	      /home/ec2-user/joao/libnfs/nfs4/libnfs-raw-nfs4.c /home/ec2-user/joao/libnfs/portmap/portmap.c /home/ec2-user/joao/libnfs/portmap/libnfs-raw-portmap.c

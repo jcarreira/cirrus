@@ -368,6 +368,9 @@ class PSSparseServerTaskEFS : public MLTask {
   private:
     void loop(int id);
 
+    void apply_to_model(LRSparseGradient& grad);
+    LRSparseGradient check_gradient();
+
     // Model/ML related methods
     std::shared_ptr<char> serialize_lr_model(const SparseLRModel&, uint64_t* model_size) const;
 

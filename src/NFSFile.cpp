@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+namespace cirrus {
+
 NFSFile::NFSFile(const std::string& filename) :
   filename(filename) {
   nfs = nfs_init_context();
@@ -57,4 +59,6 @@ NFSFile::~NFSFile() {
     nfs_destroy_context(nfs);
   }
 }
+
+}  // namespace cirrus
 
