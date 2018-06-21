@@ -15,7 +15,7 @@ class NFSls {
     virtual ~NFSls();
 
     std::vector<std::pair<std::string, uint64_t>> do_ls();
- private:
+ public:
     struct nfs_context *nfs = nullptr;
     struct nfs_url *url = nullptr;
     struct nfsdir *nfsdir = nullptr;

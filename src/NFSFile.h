@@ -9,7 +9,8 @@ namespace cirrus {
 
 class NFSFile {
   public:
-    NFSFile(const std::string& filename);
+    explicit NFSFile(const std::string& filename);
+    NFSFile(struct nfs_context*, const std::string& filename);
     virtual ~NFSFile();
 
     bool write(uint32_t offset, const char* data, uint32_t data_size);
@@ -22,11 +23,13 @@ class NFSFile {
     struct nfsfh* file_handle = nullptr;
     
     struct {
-      char *server;
-      char *path;
+      char *server = nullptr;
+      char *path = nullptr;
       uint32_t mount_port;
       int is_finished;
     } client;
+
+    bool created_nfs = false;
 };
 
 }  // namespace cirrus

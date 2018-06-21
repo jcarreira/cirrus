@@ -368,6 +368,8 @@ class PSSparseServerTaskEFS : public MLTask {
   private:
     void loop(int id);
 
+    void write_model();
+
     void apply_to_model(LRSparseGradient& grad);
     LRSparseGradient check_gradient();
 
