@@ -6,7 +6,7 @@ CXX = g++
 
 #: gcc -D_U_="__attribute__((unused))"  -DHAVE_CONFIG_H -static  -I. -Infs -Iinclude/  -Iinclude/nfsc/ -Imount examples/nfsclient-write.c lib/libnfs-sync.c nfs4/nfs4.c nfs/nfs.c nfs/libnfs-raw-nfs.c mount/mount.c  mount/libnfs-raw-mount.c nfs4/libnfs-raw-nfs4.c portmap/portmap.c portmap/libnfs-raw-portmap.c  -L/home/ec2-user/joao/libnfs/lib/ -lnfs -o nfsclient-writ
 
-bin_PROGRAMS = parameter_server ps_test csv_to_libsvm
+bin_PROGRAMS = parameter_server ps_test csv_to_libsvm test_libnfs
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
@@ -73,3 +73,5 @@ parameter_server_SOURCES  = parameter_server.cpp $(CPP_SOURCES)
 ps_test_SOURCES = PSSparseServerTaskTest.cpp $(CPP_SOURCES)
 
 csv_to_libsvm_SOURCES = CriteoCsvToLibSVM.cpp $(CPP_SOURCES)
+
+test_libnfs_SOURCES = test_libnfs.cpp $(CPP_SOURCES)
