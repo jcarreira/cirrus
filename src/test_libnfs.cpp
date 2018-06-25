@@ -45,7 +45,6 @@ int main() {
 
   for (int i = 100; i < 10 * 1024 * 1024; i += 10000) {
 
-
     for (int j = i - 100; j < i; ++j) {
       dummy_data[j] = 'A';
     }
@@ -55,7 +54,7 @@ int main() {
     ret = nfs_pwrite(nfs, file_handle, 0, i, dummy_data);
     auto time_elapsed_us = cirrus::get_time_us() - before;
     std::cout << "Time elapsed (us): " << time_elapsed_us << std::endl;
-    double mb_sec = 1.0 * (i/1024.0/1024) / time_elapsed_us * 1000.0*1000;
+    double mb_sec = 1.0 * (i / 1024.0 / 1024) / time_elapsed_us * 1000.0 * 1000;
     if (ret <= 0) {
       continue;
       throw std::runtime_error("Error nfs_write " + std::to_string(ret));
