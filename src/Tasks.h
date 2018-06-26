@@ -76,6 +76,11 @@ class LogisticSparseTaskS3 : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
+    void get_latest_model(
+        const SparseDataset& dataset,
+        SparseLRModel& model,
+        const Configuration& config);
+
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);

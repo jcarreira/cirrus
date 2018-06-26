@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
+#include "NFSls.h"
+#include "NFSFile.h"
 
 #include <pthread.h>
 
@@ -12,29 +14,6 @@
 namespace cirrus {
 
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
-#ifdef DEBUG
-  auto before_push_us = get_time_us();
-  std::cout << "Publishing gradients" << std::endl;
-#endif
-  psint->send_lr_gradient(*lrg);
-#ifdef DEBUG
-  std::cout << "Published gradients!" << std::endl;
-  auto elapsed_push_us = get_time_us() - before_push_us;
-  static uint64_t before = 0;
-  if (before == 0)
-    before = get_time_us();
-  auto now = get_time_us();
-  std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " with version: " << lrg->getVersion()
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * lrg->getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
-  before = now;
-#endif
 }
 
 // get samples and labels data
@@ -65,6 +44,69 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
     << "\n";
 #endif
   return true;
+}
+
+class Comparator {
+  public:
+    Comparator(const std::string& str)
+      : str(str) {}
+
+    bool operator()(
+        const std::pair<std::string, uint64_t>& p1,
+        const std::pair<std::string, uint64_t>& p2) const {
+      assert(strncmp(p1.first.c_str(), "model", strlen("model")) == 0);
+      assert(strncmp(p2.first.c_str(), "model", strlen("model")) == 0);
+      uint64_t num1 = string_to<uint64_t>(p1.first.substr(5));
+      uint64_t num2 = string_to<uint64_t>(p1.first.substr(5));
+      return num1 < num2;
+    }
+  private:
+    std::string str;
+};
+
+/**
+  * Find latest model file and read it
+  */
+void LogisticSparseTaskS3::get_latest_model(
+    const SparseDataset& dataset,
+    SparseLRModel& model,
+    const Configuration& config) {
+  
+  NFSls ls("/");
+  std::vector<std::pair<std::string, uint64_t>> all_files = ls.do_ls();
+  std::vector<std::pair<std::string, uint64_t>> model_entries;
+
+  // find all files that start with "model"
+  auto it = std::copy_if (
+      all_files.begin(), all_files.end(), std::back_inserter(model_entries),
+      [](std::pair<std::string, uint64_t> p) {
+        return strncmp(p.first.c_str(), "model", strlen("model")) == 0;
+      });
+
+  if (model_entries.size() == 0) {
+    throw std::runtime_error("No model file found");
+  }
+
+  // sort all entries by model version
+  std::sort(model_entries.begin(), model_entries.end(), Comparator("model"));
+
+  auto first = model_entries.front();
+  std::cout << "Earliest model is in file: " << first.first << std::endl;
+
+  NFSFile file("/" + first.first);
+  // first read model size
+  uint32_t model_size = 0;
+  int ret = file.read(0, (char*)&model_size, sizeof(uint32_t));
+  if (ret != sizeof(uint32_t)) {
+    std::cout << "error reading model size" << std::endl;
+    throw std::runtime_error("Error reading model size");
+  }
+  std::shared_ptr<char[]> latest_model(new char[model_size]);
+  ret = file.read(sizeof(uint32_t), latest_model.get(), model_size);
+  if (ret != model_size) {
+    throw std::runtime_error("Error reading model");
+  }
+  model.loadSerialized(latest_model.get()); // update the model
 }
 
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
@@ -114,7 +156,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     //sparse_model_get->get_new_model_inplace(*dataset, model, config);
-    //get_latest_model(*dataset, model, config);
+    get_latest_model(*dataset, model, config);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
