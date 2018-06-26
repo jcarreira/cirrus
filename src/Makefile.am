@@ -18,7 +18,9 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/keyutils/ \
 	       -L$(TOP_DIR)/third_party/gflags/lib/ \
 	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
-	       -L/home/ec2-user/joao/libnfs/lib/
+	       -L$(TOP_DIR)/third_party/libnfs/lib
+
+#	       L/home/ec2-user/joao/libnfs/lib/
 
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
@@ -33,10 +35,13 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
-	   -I/home/ec2-user/joao/libnfs/include/nfsc \
-	   -I/home/ec2-user/joao/libnfs/              -I/home/ec2-user/joao/libnfs/nfs -I/home/ec2-user/joao/libnfs/include/  \
-	   -I/home/ec2-user/joao/libnfs/include/nfsc/ -I/home/ec2-user/joao/libnfs/mount \
-	   -I/home/ec2-user/joao/libnfs/infs/ \
+	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc \
+	   -I$(TOP_DIR)/third_party/libnfs/ \
+	   -I$(TOP_DIR)/third_party/libnfs/nfs \
+	   -I$(TOP_DIR)/third_party/libnfs/include/  \
+	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc/ \
+	   -I$(TOP_DIR)/third_party/libnfs/mount \
+	   -I$(TOP_DIR)/third_party/libnfs/infs/ \
 	   -ggdb -frecord-gcc-switches -O3
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
@@ -56,9 +61,15 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      PSSparseServerInterface.cpp \
 	      PSSparseServerTaskEFS.cpp \
 	      NFSFile.cpp NFSls.cpp \
-	      /home/ec2-user/joao/libnfs/lib/libnfs-sync.c /home/ec2-user/joao/libnfs/nfs4/nfs4.c /home/ec2-user/joao/libnfs/nfs/nfs.c \
-	      /home/ec2-user/joao/libnfs/nfs/libnfs-raw-nfs.c   /home/ec2-user/joao/libnfs/mount/mount.c     /home/ec2-user/joao/libnfs/mount/libnfs-raw-mount.c \
-	      /home/ec2-user/joao/libnfs/nfs4/libnfs-raw-nfs4.c /home/ec2-user/joao/libnfs/portmap/portmap.c /home/ec2-user/joao/libnfs/portmap/libnfs-raw-portmap.c
+	      $(TOP_DIR)/third_party/libnfs/lib/libnfs-sync.c \
+	      $(TOP_DIR)/third_party/libnfs/nfs4/nfs4.c \
+	      $(TOP_DIR)/third_party/libnfs/nfs/nfs.c \
+	      $(TOP_DIR)/third_party/libnfs/nfs/libnfs-raw-nfs.c \
+	      $(TOP_DIR)/third_party/libnfs/mount/mount.c \
+	      $(TOP_DIR)/third_party/libnfs/mount/libnfs-raw-mount.c \
+	      $(TOP_DIR)/third_party/libnfs/nfs4/libnfs-raw-nfs4.c \
+	      $(TOP_DIR)/third_party/libnfs/portmap/portmap.c \
+	      $(TOP_DIR)/third_party/libnfs/portmap/libnfs-raw-portmap.c
 
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \

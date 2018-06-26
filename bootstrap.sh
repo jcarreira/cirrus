@@ -53,6 +53,11 @@ cd ../glog
 cmake ../glog
 make -j 10
 
+cd ../libnfs
+./boostrap
+cmake .
+make -j 10
+
 #untar and compile curl
 cd ..
 mkdir curl; cd curl

@@ -225,8 +225,6 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
     << (model_size * 4 / 1024.0 / 1024 / elapsed_time_us * 1000 * 1000)
     << std::endl;
 
-  exit(0);
-
   while (1) {
     // we sit in a loop checking gradients and updating model
     auto grad = check_gradient();
