@@ -67,7 +67,7 @@ class LogisticSparseTaskS3 : public MLTask {
         uint64_t ps_port) :
       MLTask(model_size,
           batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
+          nworkers, worker_id, ps_ip, ps_port)
   {}
 
     /**
