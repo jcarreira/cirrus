@@ -85,10 +85,6 @@ class LogisticSparseTaskS3 : public MLTask {
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
-
-    std::mutex redis_lock;
-  
-    PSSparseServerInterface* psint;
 };
 
 class PSSparseTask : public MLTask {

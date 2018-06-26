@@ -3,7 +3,6 @@
 #include "Serializers.h"
 #include "Utils.h"
 #include "S3SparseIterator.h"
-#include "PSSparseServerInterface.h"
 #include "NFSls.h"
 #include "NFSFile.h"
 
@@ -115,8 +114,6 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
-  psint = new PSSparseServerInterface(ps_ip, ps_port);
-  
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
   wait_for_start(worker, nworkers);
