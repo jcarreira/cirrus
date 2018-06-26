@@ -67,6 +67,7 @@ void LRModel::randomize() {
     for (auto& w : weights_) {
         w = 0.001 + get_rand_between_0_1();
     }
+    std::cout << std::endl;
 }
 
 std::unique_ptr<CirrusModel> LRModel::copy() const {
