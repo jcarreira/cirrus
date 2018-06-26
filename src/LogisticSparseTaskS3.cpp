@@ -74,7 +74,6 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
-  sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
   
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
@@ -114,7 +113,8 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(*dataset, model, config);
+    //sparse_model_get->get_new_model_inplace(*dataset, model, config);
+    //get_latest_model(*dataset, model, config);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
