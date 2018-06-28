@@ -5,8 +5,11 @@
 #include "Constants.h"
 #include "Checksum.h"
 #include <signal.h>
+
+#ifdef USE_EFS
 #include <NFSls.h>
 #include <NFSFile.h>
+#endif
 
 #include <iostream>
 #include <algorithm>

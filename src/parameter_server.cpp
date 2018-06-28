@@ -2,6 +2,7 @@
 #include <Configuration.h>
 #include <Tasks.h>
 #include <cirrus-config.h>
+#include <S3.h>
 
 #include <stdlib.h>
 #include <cstdint>
@@ -34,9 +35,15 @@ void run_tasks(int rank, int nworkers,
     lt.run(config);
     cirrus::sleep_forever();
   } else if (rank == PS_SPARSE_SERVER_TASK_RANK) {
+#ifdef USE_EFS
     cirrus::PSSparseServerTaskEFS st((1 << config.get_model_bits()) + 1,
         batch_size, samples_per_batch, features_per_sample,
         nworkers, rank, ps_ip, ps_port);
+#else
+    cirrus::PSSparseServerTask st((1 << config.get_model_bits()) + 1,
+        batch_size, samples_per_batch, features_per_sample,
+        nworkers, rank, ps_ip, ps_port);
+#endif
     st.run(config);
   } else if (rank >= WORKERS_BASE && rank < WORKERS_BASE + nworkers) {
     /**
@@ -121,7 +128,9 @@ void check_arguments() {
 
 int main(int argc, char** argv) {
   std::cout << "Starting parameter server" << std::endl;
-
+ 
+  // We should only do this once and we do it here
+  s3_initialize_aws();
   print_hostname();
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);

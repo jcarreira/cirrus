@@ -37,8 +37,6 @@ S3SparseIterator::S3SparseIterator(
     << " use_label: " << use_label
     << std::endl;
 
-  // initialize s3
-  s3_initialize_aws();
   s3_client.reset(s3_create_client_ptr());
 
   for (uint64_t i = 0; i < read_ahead; ++i) {

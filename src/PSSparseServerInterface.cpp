@@ -5,8 +5,11 @@
 #include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
+
+#ifdef USE_EFS
 #include "NFSFile.h"
 #include "NFSls.h"
+#endif
 
 //#define DEBUG
 

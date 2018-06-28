@@ -3,8 +3,11 @@
 #include "Serializers.h"
 #include "Utils.h"
 #include "S3SparseIterator.h"
+
+#ifdef USE_EFS
 #include "NFSls.h"
 #include "NFSFile.h"
+#endif
 
 #include <pthread.h>
 
@@ -45,6 +48,8 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
+
+#ifdef USE_EFS
 class Comparator {
   public:
     Comparator(const std::string& str)
@@ -107,6 +112,12 @@ void LogisticSparseTaskS3::get_latest_model(
   }
   model.loadSerialized(latest_model.get()); // update the model
 }
+#else
+void LogisticSparseTaskS3::get_latest_model(
+    const SparseDataset& dataset,
+    SparseLRModel& model,
+    const Configuration& config) {}
+#endif
 
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3"

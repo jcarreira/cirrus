@@ -20,8 +20,6 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
 	       -L$(TOP_DIR)/third_party/libnfs/lib
 
-#	       L/home/ec2-user/joao/libnfs/lib/
-
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
 	   -lpthread -Wl,--no-whole-archive
@@ -59,7 +57,6 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      PerformanceLambdaTask.cpp \
 	      S3.cpp SparseDataset.cpp \
 	      PSSparseServerInterface.cpp \
-	      PSSparseServerTaskEFS.cpp \
 	      NFSFile.cpp NFSls.cpp \
 	      $(TOP_DIR)/third_party/libnfs/lib/libnfs-sync.c \
 	      $(TOP_DIR)/third_party/libnfs/nfs4/nfs4.c \
@@ -69,7 +66,9 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      $(TOP_DIR)/third_party/libnfs/mount/libnfs-raw-mount.c \
 	      $(TOP_DIR)/third_party/libnfs/nfs4/libnfs-raw-nfs4.c \
 	      $(TOP_DIR)/third_party/libnfs/portmap/portmap.c \
-	      $(TOP_DIR)/third_party/libnfs/portmap/libnfs-raw-portmap.c
+	      $(TOP_DIR)/third_party/libnfs/portmap/libnfs-raw-portmap.c \
+	      PSSparseServerTask.cpp \
+	      PSSparseServerTaskEFS.cpp
 
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
