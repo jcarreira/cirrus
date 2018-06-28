@@ -17,6 +17,9 @@ class NFSFile {
     int read(uint32_t offset, char* data_output, uint32_t data_size);
 
   private:
+    int write_(uint32_t offset, const char* data, uint32_t data_size);
+    int read_(uint32_t offset, char* data_output, uint32_t data_size);
+
     std::string filename;
     struct nfs_context *nfs = nullptr;
     struct nfs_url *url = nullptr;

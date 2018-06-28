@@ -52,7 +52,23 @@ NFSFile::NFSFile(const std::string& filename) :
   }
 }
 
+/**
+  * We have to write in chunks of ~1M bytes at a time otherwise nfs closes
+  * the connection
+  */
 int NFSFile::write(uint32_t offset, const char* data, uint32_t data_size) {
+  uint32_t chunk_size = 1000000;
+  
+  uint32_t written = 0;
+
+  while (written < data_size) {
+    uint32_t to_write = std::min(chunk_size, data_size - written);
+    int ret = write_(offset + written, data + written, to_write);
+    written += ret;
+  }
+}
+
+int NFSFile::write_(uint32_t offset, const char* data, uint32_t data_size) {
   std::cout << "NFSFile::write(off:"<<offset<<", data..., data_size:"<<data_size<<")"<<std::endl;
   int ret = nfs_pwrite(nfs, file_handle, offset, data_size, data);
   if (ret <= 0) {
@@ -61,10 +77,29 @@ int NFSFile::write(uint32_t offset, const char* data, uint32_t data_size) {
   return ret;
 }
 
-int NFSFile::read(uint32_t offset, char* data_out, uint32_t data_size) {
+/**
+  * We have to read in chunks of ~1M bytes at a time otherwise
+  * we get garbage from NFS
+  */
+int NFSFile::read(uint32_t offset, char* data, uint32_t data_size) {
+  uint32_t chunk_size = 1000000;
+  
+  uint32_t bytes_read = 0;
+
+  while (bytes_read < data_size) {
+    uint32_t to_read = std::min(chunk_size, data_size - bytes_read);
+    int ret = read_(offset + bytes_read, data + bytes_read, to_read);
+    if (ret == 0) { // does this indicate EOF?
+      break;
+    }
+    bytes_read += ret;
+  }
+}
+
+int NFSFile::read_(uint32_t offset, char* data_out, uint32_t data_size) {
   std::cout << "NFSFile::read(off:"<<offset<<", data..., data_size:"<<data_size<<")"<<std::endl;
   int ret = nfs_pread(nfs, file_handle, offset, data_size, data_out);
-  if (ret <= 0) {
+  if (ret < 0) {
     throw std::runtime_error("Error reading nfs file ret: " + std::to_string(ret));
   }
   return ret;
@@ -80,7 +115,6 @@ NFSFile::~NFSFile() {
   if (created_nfs && nfs != NULL) {
     nfs_destroy_context(nfs);
   }
-
 }
 
 }  // namespace cirrus

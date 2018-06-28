@@ -115,7 +115,8 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
   }
 }
 
-int write_(
+#if 1
+int nfs_write_wrapper(
   struct nfs_context *nfs,
   struct nfsfh* file_handle,
   uint64_t off,
@@ -128,7 +129,7 @@ int write_(
 
   while (to_write) {
     uint64_t to_write_now = std::min(to_write, write_block_size);
-    int ret = nfs_pwrite(nfs, file_handle, written, to_write_now, data);
+    int ret = nfs_pwrite(nfs, file_handle, written, to_write_now, data + written);
     if (ret <= 0) {
       throw std::runtime_error("Error in write_ " + std::to_string(ret));
     }
@@ -145,6 +146,7 @@ int write_(
 
   return written;
 }
+#endif
 
 void PSSparseServerTaskEFS::write_model(uint64_t version) {
 
@@ -189,17 +191,10 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
   std::cout << "Writing model with size: " << size
     << " real write size: " << write_size << std::endl;
 
-  ret = write_(nfs, file_handle, 0, write_size, model.get());
-  //ret = nfs_pwrite(nfs, file_handle, 0, write_size, model.get());
-  //ret = nfs_write(nfs, file_handle, write_size, model.get());
-  //ret = nfs_write(nfs, file_handle, size, model.get());
+  ret = nfs_write_wrapper(nfs, file_handle, 0, write_size, model.get());
   if (ret <= 0) {
     throw std::runtime_error("Error nfs_pwrite " + std::to_string(ret));
   }
-  //ret = nfs_pwrite(nfs, file_handle, 0, 10000, model.get());
-  //if (ret != 0) {
-  //  throw std::runtime_error("Error pwrite " + std::to_string(ret));
-  //}
   nfs_close(nfs, file_handle);
   std::cout << "Wrote and closed file" << std::endl;
     
@@ -207,6 +202,34 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
   free(server); 
   free(path); 
   free(url); 
+}
+
+void test_written_model(SparseLRModel& model) {
+    NFSFile file("model0");
+    char* model_data = new char[1024*1024*5];
+    int ret = file.read(0, model_data, 3000000);
+
+    SparseLRModel model2(0);
+    SparseLRModel model3(0);
+
+    FILE* fin = fopen("m0", "r");
+    char* model_disk_data = new char[3*1024*1024];
+    ret = fread(model_disk_data, 3*1024*1024, 1, fin);
+    printf("read %d from disk\n", ret);
+    fclose(fin);
+
+    model3.loadSerialized(model_disk_data);
+
+    model2.loadSerialized(model_data);
+
+    std::cout << model3.checksum() << " " <<  model2.checksum() << " " << model.checksum() << std::endl;
+    model.print();
+    model2.print();
+    model3.print();
+    assert(model2 == model);
+    assert(model3 == model);
+
+    exit(0);
 }
 
 void PSSparseServerTaskEFS::run(const Configuration& config) {
@@ -222,7 +245,10 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
 
   uint64_t model_version = 0;
   auto before = get_time_us();
+  
   write_model(model_version++); // write version 0 of the model to efs
+  test_written_model(*lr_model);
+
   auto elapsed_time_us = get_time_us() - before;
   std::cout << "write_model bw MB/s: "
     << (model_size * 4 / 1024.0 / 1024 / elapsed_time_us * 1000 * 1000)

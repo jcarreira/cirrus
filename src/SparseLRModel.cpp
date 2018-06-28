@@ -7,7 +7,7 @@
 #include <map>
 #include <unordered_map>
 
-//#define DEBUG
+#define DEBUG
 
 namespace cirrus {
 
@@ -20,6 +20,10 @@ SparseLRModel::SparseLRModel(const FEATURE_TYPE* w, uint64_t d) {
     weights_.resize(d);
     weights_hist_.resize(d);
     std::copy(w, w + d, weights_.begin());
+}
+    
+bool SparseLRModel::operator==(const SparseLRModel& model) const {
+  return weights_ == model.weights_;
 }
 
 uint64_t SparseLRModel::size() const {
@@ -56,7 +60,7 @@ SparseLRModel::serialize() const {
 
 void SparseLRModel::serializeTo(void* mem) const {
 #ifdef DEBUG 
-  //std::cout << "Num weights size: " << weights_.size() << std::endl;
+  std::cout << "Num weights size: " << weights_.size() << std::endl;
 #endif
   store_value<int>(mem, weights_.size());
   std::copy(weights_.data(), weights_.data() + weights_.size(),
@@ -181,7 +185,6 @@ double SparseLRModel::dot_product(
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
       std::cout << "res: " << res << std::endl;
-      std::cout << "i: " << i << std::endl;
       std::cout << "index: " << index << " value: " << value << std::endl;
       std::cout << "weights_[index]: " << weights_[index] << std::endl;
       exit(-1);
@@ -359,7 +362,7 @@ double SparseLRModel::checksum() const {
 }
 
 void SparseLRModel::print() const {
-    std::cout << "MODEL: ";
+    std::cout << "MODEL with size " << weights_.size() << " : ";
     for (const auto& w : weights_) {
         std::cout << " " << w;
     }
@@ -423,12 +426,6 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
     for (const auto& feat : dataset.get_row(i)) {
       int index = feat.first;
       FEATURE_TYPE value = feat.second;
-#ifdef DEBUG
-      if (weights_sparse_.find(index) == weights_sparse_.end()) {
-        std::cout << "Needed weight with index: " << index << std::endl;
-        throw std::runtime_error("Weight not found");
-      }
-#endif
       part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
     }
     part2[i] = dataset.labels_[i] - s_1(part1_i);

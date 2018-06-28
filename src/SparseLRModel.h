@@ -30,6 +30,8 @@ class SparseLRModel : public CirrusModel {
       */
     SparseLRModel(const FEATURE_TYPE* w, uint64_t d);
 
+    bool operator==(const SparseLRModel& model) const;
+
     /**
      * Set the model weights to values between 0 and 1
      */
