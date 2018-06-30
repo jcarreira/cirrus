@@ -194,82 +194,135 @@ double SparseLRModel::dot_product(
   return res;
 }
 
+std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
+        const SparseDataset& dataset,
+        const Configuration& config) const {
+  if (!is_sparse_) {
+    throw std::runtime_error("This model is not sparse");
+  }
+
+  ensure_preallocated_vectors(config);
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    double part1_i = 0;
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+      part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
+    }
+    part2[i] = dataset.labels_[i] - s_1(part1_i);
+  }
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+      unique_indices.push_back(index);
+      part3[index] += value * part2[i];
+    }
+  }
+
+  std::vector<std::pair<int, FEATURE_TYPE>> res;
+  res.reserve(unique_indices.size());
+  for (auto& v : unique_indices) {
+    uint64_t index = v;//.first;
+    FEATURE_TYPE value = part3[index];
+    if (value == 0)
+      continue;
+    // we set this to 0 so that next iteration part3 is all 0s
+    else part3[index] = 0;
+    double final_grad = value + weights_sparse_[index] * 2 * config.get_epsilon();
+    if (!config.get_grad_threshold_use()
+        || (config.get_grad_threshold_use()
+          && std::abs(final_grad) > config.get_grad_threshold())) {
+      res.push_back(std::make_pair(index, final_grad));
+    }
+  }
+  std::unique_ptr<LRSparseGradient> ret =
+    std::make_unique<LRSparseGradient>(std::move(res));
+  return ret;
+}
+
 std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
         const SparseDataset& dataset,
         double epsilon) const {
   if (is_sparse_) {
     throw std::runtime_error("This model is sparse");
   }
-#ifdef DEBUG
-    std::cout << "<Minibatch grad" << std::endl;
-    dataset.check();
-    //print();
-    auto start = get_time_us();
-#endif
 
-    // For each sample compute the dot product with the model
-    FEATURE_TYPE part2[dataset.num_samples()];
-    for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-      double part1_i = dot_product(dataset.get_row(i), weights_);
-      part2[i] = dataset.labels_[i] - s_1(part1_i);
-    }
-#ifdef DEBUG
-    auto after_1 = get_time_us();
-#endif
-
-    std::unordered_map<uint64_t, FEATURE_TYPE> part3;
-    for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-      for (const auto& feat : dataset.get_row(i)) {
-        int index = feat.first;
-        FEATURE_TYPE value = feat.second;
-        part3[index] += value * part2[i];
+  std::cout << "dataset samples: " << dataset.num_samples() << std::endl;
 
 #ifdef DEBUG
-        if (std::isnan(part3[index]) || std::isinf(part3[index])) {
-          std::cout << "part3 isnan" << std::endl;
-          std::cout << "part2[i]: " << part2[i] << std::endl;
-          std::cout << "i: " << i << std::endl;
-          std::cout << "value: " << value << std::endl;
-          std::cout << "index: " << index << " value: " << value << std::endl;
-          exit(-1);
-        }
+  std::cout << "<Minibatch grad" << std::endl;
+  dataset.check();
+  //print();
+  auto start = get_time_us();
 #endif
+
+  // For each sample compute the dot product with the model
+  FEATURE_TYPE part2[dataset.num_samples()];
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    double part1_i = dot_product(dataset.get_row(i), weights_);
+    part2[i] = dataset.labels_[i] - s_1(part1_i);
+  }
+#ifdef DEBUG
+  auto after_1 = get_time_us();
+#endif
+
+  std::unordered_map<uint64_t, FEATURE_TYPE> part3;
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+      part3[index] += value * part2[i];
+
+      std::cout << "indxe: " << index << std::endl;
+
+#ifdef DEBUG
+      if (std::isnan(part3[index]) || std::isinf(part3[index])) {
+        std::cout << "part3 isnan" << std::endl;
+        std::cout << "part2[i]: " << part2[i] << std::endl;
+        std::cout << "i: " << i << std::endl;
+        std::cout << "value: " << value << std::endl;
+        std::cout << "index: " << index << " value: " << value << std::endl;
+        exit(-1);
       }
-      part2[i] = 0; // prepare for next call
+#endif
     }
+    part2[i] = 0; // prepare for next call
+  }
 #ifdef DEBUG
-    auto after_2 = get_time_us();
+  auto after_2 = get_time_us();
 #endif
 
-    std::vector<std::pair<int, FEATURE_TYPE>> res;
-    res.reserve(part3.size());
-    //std::vector<FEATURE_TYPE> res(weights_);
-    for (const auto& v : part3) {
-      uint64_t index = v.first;
-      FEATURE_TYPE value = v.second;
-      res.push_back(std::make_pair(index, value + weights_[index] * 2 * epsilon));
-      //res[index] = res[index] * 2 * epsilon + value;
-    }
+  std::vector<std::pair<int, FEATURE_TYPE>> res;
+  res.reserve(part3.size());
+  //std::vector<FEATURE_TYPE> res(weights_);
+  for (const auto& v : part3) {
+    uint64_t index = v.first;
+    FEATURE_TYPE value = v.second;
+    res.push_back(std::make_pair(index, value + weights_[index] * 2 * epsilon));
+  }
 #ifdef DEBUG
-    auto after_3 = get_time_us();
+  auto after_3 = get_time_us();
 #endif
 
-    std::unique_ptr<LRSparseGradient> ret = std::make_unique<LRSparseGradient>(std::move(res));
+  std::unique_ptr<LRSparseGradient> ret = std::make_unique<LRSparseGradient>(std::move(res));
 #ifdef DEBUG
-    auto after_4 = get_time_us();
+  auto after_4 = get_time_us();
 #endif
-    //std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
+  //std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
 
 #ifdef DEBUG
-    ret->check_values();
-    std::cout
-      << " Elapsed1: " << (after_1 - start)
-      << " Elapsed2: " << (after_2 - after_1)
-      << " Elapsed3: " << (after_3 - after_2)
-      << " Elapsed4: " << (after_4 - after_3)
-      << std::endl;
+  ret->check_values();
+  std::cout
+    << " Elapsed1: " << (after_1 - start)
+    << " Elapsed2: " << (after_2 - after_1)
+    << " Elapsed3: " << (after_3 - after_2)
+    << " Elapsed4: " << (after_4 - after_3)
+    << std::endl;
 #endif
-    return ret;
+  return ret;
 }
 
 std::pair<double, double> SparseLRModel::calc_loss(SparseDataset& dataset, uint32_t) const {
@@ -410,53 +463,6 @@ void SparseLRModel::ensure_preallocated_vectors(const Configuration& config) con
   if (part2.capacity() == 0) {
     part2.resize(500);
   }
-}
-
-std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
-        const SparseDataset& dataset,
-        const Configuration& config) const {
-  if (!is_sparse_) {
-    throw std::runtime_error("This model is not sparse");
-  }
-
-  ensure_preallocated_vectors(config);
-
-  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-    double part1_i = 0;
-    for (const auto& feat : dataset.get_row(i)) {
-      int index = feat.first;
-      FEATURE_TYPE value = feat.second;
-      part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
-    }
-    part2[i] = dataset.labels_[i] - s_1(part1_i);
-  }
-
-  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-    for (const auto& feat : dataset.get_row(i)) {
-      int index = feat.first;
-      FEATURE_TYPE value = feat.second;
-      unique_indices.push_back(index);
-      part3[index] += value * part2[i];
-    }
-  }
-
-  std::vector<std::pair<int, FEATURE_TYPE>> res;
-  res.reserve(unique_indices.size());
-  for (auto& v : unique_indices) {
-    uint64_t index = v;//.first;
-    FEATURE_TYPE value = part3[index];
-    if (value == 0)
-      continue;
-    // we set this to 0 so that next iteration part3 is all 0s
-    else part3[index] = 0;
-    double final_grad = value + weights_sparse_[index] * 2 * config.get_epsilon();
-    if (!config.get_grad_threshold_use()
-        || (config.get_grad_threshold_use() && std::abs(final_grad) > config.get_grad_threshold())) {
-      res.push_back(std::make_pair(index, final_grad));
-    }
-  }
-  std::unique_ptr<LRSparseGradient> ret = std::make_unique<LRSparseGradient>(std::move(res));
-  return ret;
 }
 
 } // namespace cirrus

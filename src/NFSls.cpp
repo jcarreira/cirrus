@@ -1,5 +1,6 @@
 #include <NFSls.h>
 
+#include <unistd.h>
 #include <iostream>
 
 namespace cirrus {
@@ -33,9 +34,16 @@ NFSls::NFSls(const std::string& path) :
 
 std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
   std::cout << "Nfs open dir: " << path.c_str() << std::endl;
-  int ret = nfs_opendir(nfs, path.c_str(), &nfsdir);
-  if (ret != 0) {
-    throw std::runtime_error("nfs open dir failed");
+
+  while (1) {
+    int ret = nfs_opendir(nfs, path.c_str(), &nfsdir);
+    if (ret != 0) {
+      std::cout << "Error in nfs_opendir ret: " << ret << std::endl;
+      usleep(100000); // wait 10ms
+      //throw std::runtime_error("nfs open dir failed");
+    } else {
+      break;
+    }
   }
 
   std::vector<std::pair<std::string, uint64_t>> result;
@@ -51,7 +59,7 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
     char dir_file_path[1024];
     sprintf(dir_file_path, "%s/%s", path.c_str(), nfsdirent->name);
     std::cout << "efs path: " << dir_file_path << " nfsdirent->name: " << nfsdirent->name << std::endl;
-    ret = nfs_stat64(nfs, dir_file_path, &st);
+    int ret = nfs_stat64(nfs, dir_file_path, &st);
     if (ret != 0) {
       fprintf(stderr, "Failed to stat(%s) %s\n", dir_file_path, nfs_get_error(nfs));
       continue;

@@ -43,7 +43,10 @@ std::shared_ptr<char> PSSparseServerTaskEFS::serialize_lr_model(
 }
 
 void PSSparseServerTaskEFS::apply_to_model(LRSparseGradient& grad) {
+  std::cout << "Applying gradient to model" << std::endl;
   lr_model->sgd_update(task_config.get_learning_rate(), &grad);
+  std::cout << "print gradient" << std::endl;
+  grad.print();
 }
 
 // for every gradient file we keep track of the offset
@@ -63,7 +66,11 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
 
   while (1) {
     std::cout << "LOOP" << std::endl;
+
+    auto t1 = get_time_us();
     std::vector<std::pair<std::string, uint64_t>> result = ls.do_ls();
+    auto elapsed1 = get_time_us() - t1;
+    std::cout << "do_ls took (us): " << elapsed1 << std::endl;
     std::cout << "LS returned " << result.size() << " entries" << std::endl;
 
     for (const auto& entry : result) {
@@ -86,23 +93,24 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
         int32_t grad_size = -1;
 
         NFSFile file(ls.nfs, "/" + path);
-        int ret = file.read(off, (char*)&grad_size, sizeof(grad_size));
+        int ret = file.read(off, (char*)&grad_size, sizeof(int32_t));
         std::cout << "grad size: " << grad_size << std::endl;
         if (ret != sizeof(grad_size)) {
           std::cout << "Error reading gradient size" << std::endl;
           continue;
         }
-        std::cout << "grad size: " << grad_size << std::endl;
         if (grad_size > 10 * 1024 * 1024) {
           throw std::runtime_error("Gradient is too large");
         }
 
         std::shared_ptr<char[]> grad_data(new char[grad_size]);
-        ret = file.read(off, grad_data.get(), grad_size);
+        ret = file.read(off + sizeof(int32_t), grad_data.get(), grad_size);
         if (ret != grad_size) {
           std::cout << "Error reading gradient" << std::endl;
           continue;
         }
+          
+        path_to_offset[path] += grad_size + sizeof(int32_t);
 
         LRSparseGradient gradient(0);
         gradient.loadSerialized(grad_data.get());
@@ -167,7 +175,8 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
     throw std::runtime_error("Error initing nfs");
   }
   
-  url = nfs_parse_url_dir(nfs, "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
+  url = nfs_parse_url_dir(nfs,
+      "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
   if (url == NULL) {
     throw std::runtime_error("Error parsing nfs url");
   }
@@ -187,11 +196,12 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
     throw std::runtime_error("Error open");
   }
 
-  uint64_t write_size = size;
+  uint32_t write_size = size;
   std::cout << "Writing model with size: " << size
     << " real write size: " << write_size << std::endl;
 
-  ret = nfs_write_wrapper(nfs, file_handle, 0, write_size, model.get());
+  ret = nfs_write_wrapper(
+      nfs, file_handle, sizeof(uint32_t), write_size, model.get());
   if (ret <= 0) {
     throw std::runtime_error("Error nfs_pwrite " + std::to_string(ret));
   }
@@ -204,6 +214,7 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
   free(url); 
 }
 
+#if 0
 void test_written_model(SparseLRModel& model) {
     NFSFile file("model0");
     char* model_data = new char[1024*1024*5];
@@ -231,6 +242,7 @@ void test_written_model(SparseLRModel& model) {
 
     exit(0);
 }
+#endif
 
 void PSSparseServerTaskEFS::run(const Configuration& config) {
   std::cout
@@ -247,7 +259,7 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
   auto before = get_time_us();
   
   write_model(model_version++); // write version 0 of the model to efs
-  test_written_model(*lr_model);
+  //test_written_model(*lr_model);
 
   auto elapsed_time_us = get_time_us() - before;
   std::cout << "write_model bw MB/s: "
@@ -256,11 +268,20 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
 
   while (1) {
     // we sit in a loop checking gradients and updating model
-    auto grad = check_gradient();
-    apply_to_model(grad);
-    write_model(model_version++);
-  }
 
+    auto time1 = get_time_us();
+    auto grad = check_gradient();
+    auto time2 = get_time_us();
+    apply_to_model(grad);
+    auto time3 = get_time_us();
+    write_model(model_version++);
+    auto time4 = get_time_us();
+    std::cout
+      << "Get gradient (us): " << time2 - time1
+      << " Update model (us): " << time3-time2
+      << " Write model (us): " << time4-time3
+      << std::endl;
+  }
 }
 
 } // namespace cirrus

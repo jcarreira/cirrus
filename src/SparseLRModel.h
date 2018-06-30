@@ -118,7 +118,7 @@ class SparseLRModel : public CirrusModel {
      */
     std::unique_ptr<ModelGradient> minibatch_grad(
             const SparseDataset& dataset,
-            double epsilon) const override;
+            double) const override;
 
     std::unique_ptr<ModelGradient> minibatch_grad_sparse(
         const SparseDataset& dataset,

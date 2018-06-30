@@ -11,12 +11,34 @@
 
 #include <pthread.h>
 
-#undef DEBUG
+#define DEBUG
 
 namespace cirrus {
 
+#ifdef USE_EFS
+void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg, uint64_t version, uint64_t& grad_cum_size) {
+  // here we write this gradient to the file gradient<gradient_version>
+  std::string grad_name = "gradient" + std::to_string(version);
+  NFSFile file(grad_name);
+
+  int32_t serialized_size = static_cast<int>(lrg->getSerializedSize());
+  std::shared_ptr<char[]> data(new char[serialized_size]);
+  lrg->serialize(data.get()); // FIXME this should called serializeTo for consistency
+
+  std::cout << "serialized size: " << serialized_size << " at offset " << grad_cum_size << std::endl;
+  int ret = file.write(grad_cum_size,
+      reinterpret_cast<char*>(&serialized_size), sizeof(int32_t));
+  ret = file.write(grad_cum_size + sizeof(int32_t), data.get(), serialized_size);
+  if (ret != serialized_size) {
+    throw std::runtime_error("Error writing gradient: " + grad_name);
+  }
+
+  grad_cum_size += sizeof(int32_t) + serialized_size;
+}
+#else
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
 }
+#endif
 
 // get samples and labels data
 bool LogisticSparseTaskS3::get_dataset_minibatch(
@@ -61,7 +83,10 @@ class Comparator {
       assert(strncmp(p1.first.c_str(), "model", strlen("model")) == 0);
       assert(strncmp(p2.first.c_str(), "model", strlen("model")) == 0);
       uint64_t num1 = string_to<uint64_t>(p1.first.substr(5));
-      uint64_t num2 = string_to<uint64_t>(p1.first.substr(5));
+      uint64_t num2 = string_to<uint64_t>(p2.first.substr(5));
+
+      //std::cout << p1.first << " " << num1 << " -- " << p2.first << " " << num2 << std::endl;
+
       return num1 < num2;
     }
   private:
@@ -94,23 +119,30 @@ void LogisticSparseTaskS3::get_latest_model(
   // sort all entries by model version
   std::sort(model_entries.begin(), model_entries.end(), Comparator("model"));
 
-  auto first = model_entries.front();
-  std::cout << "Earliest model is in file: " << first.first << std::endl;
+  std::cout << "Printing model entries" << std::endl;
+  for (const auto& entry : model_entries) {
+    std::cout << entry.first << " ";
+  }
+  std::cout << std::endl;
+
+  auto first = model_entries.back();
+  std::cout
+    << "Earliest model is in file: " << first.first
+    << " with size: " << first.second
+    << std::endl;
 
   NFSFile file("/" + first.first);
-  // first read model size
-  uint32_t model_size = 0;
-  int ret = file.read(0, (char*)&model_size, sizeof(uint32_t));
-  if (ret != sizeof(uint32_t)) {
-    std::cout << "error reading model size" << std::endl;
-    throw std::runtime_error("Error reading model size");
-  }
-  std::shared_ptr<char[]> latest_model(new char[model_size]);
-  ret = file.read(sizeof(uint32_t), latest_model.get(), model_size);
-  if (ret != model_size) {
-    throw std::runtime_error("Error reading model");
+  int ret = 0;
+  
+  uint32_t max_model_size = 10*1024*1024;
+  std::shared_ptr<char[]> latest_model(new char[max_model_size]);
+  ret = file.read(0, latest_model.get(), max_model_size);
+  if (ret <= 0) { // 0 means we read the whole thing
+    throw std::runtime_error("Error reading model. ret: " + std::to_string(ret));
   }
   model.loadSerialized(latest_model.get()); // update the model
+
+  std::cout << "Latest model checksum: " << model.checksum() << std::endl;
 }
 #else
 void LogisticSparseTaskS3::get_latest_model(
@@ -140,6 +172,9 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   uint64_t version = 1;
   SparseLRModel model(1 << config.get_model_bits());
+
+  uint64_t grad_version = 0;
+  uint64_t grad_cum_size = 0;
 
   bool printed_rate = false;
   int count = 0;
@@ -175,7 +210,12 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
+#ifdef USE_EFS
+      gradient = model.minibatch_grad(*dataset, config.get_epsilon());
+      gradient->print();
+#else
       gradient = model.minibatch_grad_sparse(*dataset, config);
+#endif
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -193,7 +233,15 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
     try {
       LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
+#ifdef USE_EFS
+      auto t1 = get_time_us();
+      push_gradient(lrg, grad_version, grad_cum_size);
+      std::cout
+        << "push gradient time (us): " << (get_time_us() - t1)
+        << std::endl;
+#else
       push_gradient(lrg);
+#endif
     } catch(...) {
       std::cout << "[WORKER] "
         << "Worker task error doing put of gradient" << "\n";
@@ -214,5 +262,5 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   }
 }
 
-} // namespace cirrus
+}  // namespace cirrus
 

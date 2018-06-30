@@ -9,6 +9,8 @@
 #include <Dataset.h>
 #include <SparseDataset.h>
 
+// FIXME refactor this file
+
 namespace cirrus {
 
 /**

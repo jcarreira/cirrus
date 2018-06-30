@@ -84,7 +84,11 @@ class LogisticSparseTaskS3 : public MLTask {
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
+#ifdef USE_EFS
+    void push_gradient(LRSparseGradient*, uint64_t, uint64_t&);
+#else
     void push_gradient(LRSparseGradient*);
+#endif
 };
 
 class PSSparseTask : public MLTask {
