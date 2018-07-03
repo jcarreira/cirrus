@@ -16,6 +16,8 @@
 #include "SparseLRModel.h"
 #include "SparseMFModel.h"
 #include "Model.h"
+#include "LDAModel.h"
+#include "LDAStatistics.h"
 
 namespace cirrus {
 
@@ -26,10 +28,12 @@ class PSSparseServerInterface {
 
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
-  
+  void send_lda_update(const LDAUpdates&);
+
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
+  LDAModel get_lda_model(const LDAStatistics&;)
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
 

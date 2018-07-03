@@ -13,6 +13,7 @@
 #include <map>
 #include <config.h>
 #include <MurmurHash3.h>
+#include <LDADataset.h>
 
 namespace cirrus {
 
@@ -25,7 +26,7 @@ class InputReader {
    */
   Dataset read_input_criteo(const std::string& samples_input_file,
       const std::string& labels_input_file);
-  
+
   /**
    * Read movielens dataset
    * @param input_file Path to csv file with dataset
@@ -33,7 +34,7 @@ class InputReader {
    */
   SparseDataset read_movielens_ratings(const std::string& input_file,
       int *number_users, int* number_movies);
-  
+
   /**
    * Read netflix dataset
    * @param input_file Path to csv file with dataset
@@ -108,10 +109,21 @@ class InputReader {
   SparseDataset read_input_criteo_sparse(const std::string& input_file,
       const std::string& delimiter,
       const Configuration&);
-  
+
   SparseDataset read_input_criteo_kaggle_sparse(const std::string& input_file,
       const std::string& delimiter,
       const Configuration&);
+
+    /**
+     * Reads corpus in libsvm format and vocabulary in txt format
+     * @param input_doc_file Path to corpus which is in libsvm format
+     * @param input_vocab_file Path to the txt file containing all vocabularies
+     * @param delimiter
+     */
+    LDADataset read_lda_input(const std::string& input_doc_file,
+                              const std::string& input_vocab_file,
+                              const std::string& delimiter
+                              const Configuration&);
 
   private:
   /**
@@ -150,11 +162,11 @@ class InputReader {
   /* Computes mean of a sparse list of features
    */
   double compute_mean(std::vector<std::pair<int, FEATURE_TYPE>>&);
-  
+
   /* Computes stddev of a sparse list of features
    */
   double compute_stddev(double, std::vector<std::pair<int, FEATURE_TYPE>>&);
-  
+
   /* Computes standardizes sparse dataset
    */
   void standardize_sparse_dataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&);
@@ -184,7 +196,7 @@ class InputReader {
     uint64_t limit_lines, std::atomic<unsigned int>&,
     std::function<void(const std::string&, const std::string&,
       std::vector<std::pair<int, FEATURE_TYPE>>&, FEATURE_TYPE&)> fun);
-  
+
   void read_input_rcv1_sparse_thread(std::ifstream& fin, std::mutex& lock,
     const std::string& delimiter,
     std::vector<std::vector<std::pair<int,FEATURE_TYPE>>>& samples_res,
@@ -200,6 +212,21 @@ class InputReader {
     const std::string& line, const std::string& delimiter,
     std::vector<std::pair<int, FEATURE_TYPE>>& features,
     FEATURE_TYPE& label);
+
+  void parse_read_lda_input_thread(std::ifstream& fin, std::mutex& fin_lock,
+    std::mutex& out_lock,
+    const std::string& delimiter,
+    std::vector<std::vector<std::pair<int,int> > >& samples_res,
+    uint64_t limit_lines, std::atomic<unsigned int>&,
+    std::function<void(const std::string&, const std::string&,
+      std::vector<std::pair<int, int> >&)> fun);
+
+  void parse_read_lda_input_line(
+    const std::string& line, const std::string& delimiter,
+    std::vector<std::pair<int, int> >& features);//,
+    // const Configuration&);
+
+  void read_lda_vocab_input(std::ifstream& fin, std::vector<std::string>& vocabs);
 };
 
 } // namespace cirrus

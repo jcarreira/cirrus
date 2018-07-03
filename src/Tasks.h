@@ -7,6 +7,9 @@
 #include "LRModel.h"
 #include "MFModel.h"
 #include "SparseLRModel.h"
+#include "LDAModel.h"
+#include "LDAStatistics.h"
+#include "ModelGradient.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
 #include "OptimizationMethod.h"
@@ -103,7 +106,7 @@ class LogisticSparseTaskS3 : public MLTask {
     void push_gradient(LRSparseGradient*);
 
     std::mutex redis_lock;
-  
+
     std::unique_ptr<SparseModelGet> sparse_model_get;
     PSSparseServerInterface* psint;
 };
@@ -302,7 +305,7 @@ class PSSparseServerTask : public MLTask {
     std::vector<char> buffer; // we use this buffer to hold data from workers
 
     volatile uint64_t gradientUpdatesCount = 0;
-    
+
     std::unique_ptr<SparseLRModel> lr_model; // last computed model
     std::unique_ptr<MFModel> mf_model; // last computed model
     Configuration task_config;
@@ -360,6 +363,79 @@ class MFNetflixTask : public MLTask {
 
     std::unique_ptr<MFModelGet> mf_model_get;
     std::unique_ptr<PSSparseServerInterface> psint;
+};
+
+class LDATaskS3 : public MLTask {
+  public:
+    LDATaskS3(
+        uint64_t model_size,
+        uint64_t batch_size, uint64_t samples_per_batch,
+        uint64_t features_per_sample, uint64_t nworkers,
+        uint64_t worker_id,
+        const std::string& ps_ip,
+        uint64_t ps_port) :
+      MLTask(model_size,
+          batch_size, samples_per_batch, features_per_sample,
+          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
+  {}
+
+    /**
+     * Worker here is a value 0..nworkers - 1
+     */
+    void run(const Configuration& config, int worker);
+
+  private:
+    class LDAModelGet {
+      public:
+        LDAModelGet(const std::string& ps_ip, int ps_port) :
+          ps_ip(ps_ip), ps_port(ps_port) {
+            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+          }
+
+        LDAModelGet get_new_model(const LDAStatistics& info, const Configuration& config) {
+          return std::move(psi->get_lda_model(info));
+        }
+
+      private:
+        std::unique_ptr<PSSparseServerInterface> psi;
+        std::string ps_ip;
+        int ps_port;
+    };
+
+    bool get_dataset_minibatch(
+        std::unique_ptr<LDAStatistics>& local_vars,
+        S3SparseIterator& s3_iter);
+    void push_gradient(LDAUpdates*);
+
+    std::mutex redis_lock;
+
+    std::unique_ptr<LDAModelGet> lda_model_get;
+    PSSparseServerInterface* psint;
+};
+
+/**
+ * Read files with InputReader; count all the statistics;
+ * store everything in S3
+ */
+class LoadingLDATaskS3 : public MLTask {
+  public:
+    LoadingLDATaskS3(
+        uint64_t model_size,
+        uint64_t batch_size, uint64_t samples_per_batch,
+        uint64_t features_per_sample, uint64_t nworkers,
+        uint64_t worker_id, const std::string& ps_ip,
+        uint64_t ps_port) :
+      MLTask(model_size,
+          batch_size, samples_per_batch, features_per_sample,
+          nworkers, worker_id, ps_ip, ps_port)
+  {}
+    void run(const Configuration& config);
+    LDADataset read_dataset(const Configuration& config);
+    LDAStatistics count_dataset(const std::vector<std::vector<std::pair<int, int>>>& docs,\
+                        std::vector<int>& nvt,
+                        std::vector<int>& nt, int K);
+
+  private:
 };
 
 }

@@ -189,6 +189,34 @@ class MFSparseGradient : public ModelGradient {
       std::pair<int, std::vector<FEATURE_TYPE>>> items_weights_grad;
 };
 
+class LDAUpdates {
+ public:
+    friend class LDAModel;
+
+    virtual ~LDAUpdates() = default;
+
+    LDAUpdates(LDAUpdates&& data);
+    LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s);
+    LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
+    LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
+
+    LDAUpdates& operator=(LDAUpdates&& other);
+
+    void loadSerialized(const char* mem);
+    char* serialize() const;
+    uint64_t getSerializedSize() const ;
+
+    void setVersion(int v) : version(v) {}
+    int getVersion() const {return version;}
+
+    void print() const;
+    // void check_values() const;
+ protected:
+    std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
+    std::vector<int> slice;
+    uint64_t version = 0;
+};
+
 } // namespace cirrus
 
 #endif  // _MODELGRADIENT_H_

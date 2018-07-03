@@ -10,7 +10,7 @@
 //#define DEBUG
 
 namespace cirrus {
-  
+
 // s3_cad_size nmber of samples times features per sample
 S3SparseIterator::S3SparseIterator(
         uint64_t left_id, uint64_t right_id, // right id is exclusive
@@ -30,7 +30,7 @@ S3SparseIterator::S3SparseIterator(
     re(worker_id),
     random_access(random_access)
 {
-      
+
   std::cout << "S3SparseIterator::Creating S3SparseIterator"
     << " left_id: " << left_id
     << " right_id: " << right_id
@@ -56,6 +56,11 @@ S3SparseIterator::S3SparseIterator(
   } else {
     current = left_id;
   }
+
+  // global variables are stored at SAMPLE_BASE
+  if (config.get_s3_bucket() == "cirrus-lda"){
+    assert(left_id > 0);
+  }
 }
 
 const void* S3SparseIterator::get_next_fast() {
@@ -71,8 +76,8 @@ const void* S3SparseIterator::get_next_fast() {
       << std::endl;
 #endif
   }
- 
-  //std::cout << "sem_wait" << std::endl; 
+
+  //std::cout << "sem_wait" << std::endl;
   sem_wait(&semaphore);
   ring_lock.lock();
 
@@ -144,24 +149,71 @@ void S3SparseIterator::push_samples(std::ostringstream* oss) {
     int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
 
     new_queue->push(std::make_pair(s3_data, is_last));
-  
+
     // advance ptr sample by sample
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
       if (use_label) {
         FEATURE_TYPE label = load_value<FEATURE_TYPE>(s3_data); // read label
         assert(label == 0.0 || label == 1.0);
       }
-      int num_values = load_value<int>(s3_data); 
+      int num_values = load_value<int>(s3_data);
 #ifdef DEBUG
       //std::cout << "num_values: " << num_values << std::endl;
 #endif
       assert(num_values >= 0 && num_values < 1000000);
-    
+
       // advance until the next minibatch
       // every sample has index and value
       advance_ptr(s3_data, num_values * (sizeof(int) + sizeof(FEATURE_TYPE)));
     }
   }
+  ring_lock.lock();
+  minibatches_list.add(new_queue);
+  ring_lock.unlock();
+  for (uint64_t i = 0; i < n_minibatches; ++i) {
+    num_minibatches_ready++;
+    sem_post(&semaphore);
+  }
+  str_version++;
+}
+
+void S3SparseIterator::push_samples_lda(std::ostringstream* oss) {
+
+#ifdef DEBUG
+  auto start = get_time_us();
+#endif
+  // save s3 object into list of string
+  list_strings[str_version] = oss->str();
+  delete oss;
+#ifdef DEBUG
+  uint64_t elapsed_us = (get_time_us() - start);
+  std::cout << "oss->str() time (us): " << elapsed_us << std::endl;
+#endif
+
+  auto str_iter = list_strings.find(str_version);
+  print_progress(str_iter->second);
+  // create a pointer to each minibatch within s3 object and push it
+
+  const char* s3_data = reinterpret_cast<const char*>(str_iter->second.c_str());
+  LDAStatistics s3_lda_stat(s3_data);
+  uint64_t n_minibatches = s3_lda_stat.get_num_docs() / minibatch_rows;
+
+#ifdef DEBUG
+  std::cout
+    << "# of documents covered: " << s3_lda_stat.get_num_docs() << std::endl;
+#endif
+  auto new_queue = new std::queue<std::pair<const void*, int>>;
+  for (uint64_t i = 0; i < n_minibatches; ++i) {
+    // if it's the last minibatch in object we mark it so it can be deleted
+    int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
+
+    // pop partial LDAStatistics according to minibatch_rows
+    char* minibatch_s3_data = s3_lda_stat.pop_partial(minibatch_rows);
+    new_queue->push(std::make_pair(reinterpret_cast<const void*>(minibatch_s3_data), is_last));
+
+    }
+  }
+
   ring_lock.lock();
   minibatches_list.add(new_queue);
   ring_lock.unlock();
@@ -235,7 +287,9 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     if (config.get_s3_bucket() == "cirrus-criteo-kaggle-19b-random" ||
       config.get_s3_bucket() == "cirrus-criteo-kaggle-20b-random") {
       obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-CRITEO";
-    } else {
+    } else if(config.get_s3_bucket() == "cirrus-lda")
+      obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-LDA";
+    else {
       obj_id_str = "CIRRUS" + std::to_string(obj_id);
     }
 
@@ -270,18 +324,20 @@ try_start:
       goto try_start;
       exit(-1);
     }
-    
+
     uint64_t num_passes = (count / (right_id - left_id));
     if (LIMIT_NUMBER_PASSES > 0 && num_passes == LIMIT_NUMBER_PASSES) {
       exit(0);
     }
 
     //auto start = get_time_us();
-    push_samples(s3_obj);
+    if (config.get_s3_bucket() == "cirrus-lda")
+      push_samples_lda(s3_obj);
+    else
+      push_samples(s3_obj);
     //auto elapsed_us = (get_time_us() - start);
     //std::cout << "pushing took (us): " << elapsed_us << " at (us) " << get_time_us() << std::endl;
   }
 }
 
 } // namespace cirrus
-

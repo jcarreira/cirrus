@@ -174,7 +174,7 @@ void LRSparseGradient::check_values() const {
 
 
 
-/** 
+/**
  * SOFTMAX
  *
  */
@@ -242,7 +242,7 @@ void SoftmaxGradient::check_values() const {
   }
 }
 
-/** 
+/**
  * MFGradient
  *
  */
@@ -378,7 +378,7 @@ void MFSparseGradient::loadSerialized(const void* mem) {
   uint32_t items_size = load_value<uint32_t>(mem);
   //users_bias_grad.reserve(users_size);
   //items_bias_grad.reserve(items_size);
-  
+
   for (uint32_t i = 0; i < users_size; ++i) {
     int user_id = load_value<int>(mem);
     FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(mem);
@@ -399,7 +399,7 @@ void MFSparseGradient::loadSerialized(const void* mem) {
     }
     users_weights_grad.push_back(user_weights_grad);
   }
-  
+
   for (uint32_t i = 0; i < items_size; ++i) {
     std::pair<int, std::vector<FEATURE_TYPE>> item_weights_grad;
     item_weights_grad.first = load_value<int>(mem);
@@ -428,5 +428,117 @@ void MFSparseGradient::check_values() const {
   }
 }
 
-} // namespace cirrus
+LDAUpdates::LDAUpdates(LDAUpdates&& other) {
+  change_nvt = std::move(other.change_nvt);
+  change_nt = std::move(other.change_nt);
+  slice = std::move(other.slice);
+  version = other.version;
+}
 
+LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt) :
+  change_nvt(nvt), change_nt(nt){
+    slice.clear();
+  }
+
+LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s) :
+  change_nvt(nvt), change_nt(nt), slice(s) {
+  }
+
+LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
+  change_nvt.resize(nvt_dim);
+  change_nt.resize(nt_dim);
+  slice.resize(slice_size);
+  version = 0;
+}
+
+LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
+  change_nvt = std::move(other.change_nvt);
+  change_nt = std::move(other.change_nt);
+  slice = std::move(other.slice);
+  version = other.version;
+  return *this;
+}
+
+void LDAUpdates::loadSerialized(const char* mem) {
+
+  version = *reinterpret_cast<const uint32_t*>(mem);
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+
+  int len = *reinterpret_cast<const uint32_t*>(mem);
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  const int* nvt = reinterpret_cast<const int*>(mem);
+  std::copy(nvt, nvt + len, change_nvt.begin());
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) +  sizeof(uint32_t) * change_nvt.size()));
+
+  len = *reinterpret_cast<const uint32_t*>(mem);
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  const int* nt = reinterpret_cast<const int*>(mem);
+  std::copy(nt, nt + len, change_nt.begin());
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) +  sizeof(uint32_t) * change_nt.size()));
+
+  len = *reinterpret_cast<const uint32_t*>(mem);
+  mem = reinterpret_cast<const char*>(
+      (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  const int* s = reinterpret_cast<const int*>(mem);
+  std::copy(s, s + len, slice.begin());
+
+}
+
+char* LDAUpdates::serialize() const {
+
+  char* mem = new char[MAX_MSG_SIZE];
+  char* mem_begin = mem;
+
+  *reinterpret_cast<uint32_t*>(mem) = version;
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(uint32_t)));
+
+  store_value<int>(mem, change_nvt.size());
+  int* data = reinterpret_cast<int*>(mem);
+  std::copy(change_nvt.begin(), change_nvt.end(), data);
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(uint32_t) * change_nvt.size()));
+
+  store_value<int>(mem, change_nt.size());
+  data = reinterpret_cast<int*>(mem);
+  std::copy(change_nt.begin(), change_nt.end(), data);
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(uint32_t) * change_nt.size()));
+
+  store_value<int>(mem, slice.size());
+  data = reinterpret_cast<int*>(mem);
+  std::copy(slice.begin(), slice.end(), data);
+
+  return mem_begin;
+
+}
+
+uint64_t LDAUpdates::getSerializedSize() const {
+  return sizeof(uint32_t) * (4 + change_nvt.size() + change_nt.size()  + slice.size());
+}
+
+void LDAUpdates::print() const {
+  std::cout << "Printing LDAUpdates. version: " << version << std::endl;
+  for (const auto &v : change_nvt) {
+    std::cout << v << " ";
+  }
+  std::cout << std::endl;
+
+  for (const auto &v : change_nt) {
+    std::cout << v << " ";
+  }
+  std::cout << std::endl;
+
+  for (const auto &v : slice) {
+    std::cout << v << " ";
+  }
+  std::cout << std::endl;
+}
+
+
+} // namespace cirrus

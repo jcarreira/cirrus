@@ -18,7 +18,7 @@
 #include <map>
 #include <iomanip>
 #include <functional>
- 
+
 #define DEBUG
 
 namespace cirrus {
@@ -27,6 +27,7 @@ static const int REPORT_LINES = 10000;  // how often to report readin progress
 static const int REPORT_THREAD = 100000;  // how often proc. threads report
 static const int STR_SIZE = 10000;        // max size for dataset line
 static const int RCV1_STR_SIZE = 20000;        // max size for dataset line
+static const int LDA_STR_SIZE = 100000;  // max size for LDA dataset line
 
 Dataset InputReader::read_input_criteo(const std::string& samples_input_file,
     const std::string& labels_input_file) {
@@ -103,7 +104,7 @@ void InputReader::process_lines(
     thread_lines.pop_back();
     /*
      * We have the line, now split it into features
-     */ 
+     */
     assert(line.size() < STR_SIZE);
     strncpy(str, line.c_str(), STR_SIZE - 1);
     char* s = str;
@@ -421,7 +422,7 @@ SparseDataset InputReader::read_movielens_ratings(const std::string& input_file,
   sparse_ds.resize(50732);
 
   std::string line;
-  getline(fin, line); // read the header 
+  getline(fin, line); // read the header
   while (getline(fin, line)) {
     char str[STR_SIZE];
     assert(line.size() < STR_SIZE - 1);
@@ -484,8 +485,8 @@ void InputReader::standardize_sparse_dataset(std::vector<std::vector<std::pair<i
       sample.clear();
       continue;
     }
-     
-#ifdef DEBUG 
+
+#ifdef DEBUG
     if (std::isnan(mean) || std::isinf(mean))
       throw std::runtime_error("wrong mean");
     if (std::isnan(stddev) || std::isinf(stddev))
@@ -498,9 +499,9 @@ void InputReader::standardize_sparse_dataset(std::vector<std::vector<std::pair<i
       } else {
         v.second = mean;
       }
-#ifdef DEBUG 
+#ifdef DEBUG
       if (std::isnan(v.second) || std::isinf(v.second)) {
-        std::cout 
+        std::cout
           << "mean: " << mean
           << " stddev: " << stddev
           << std::endl;
@@ -644,7 +645,7 @@ SparseDataset InputReader::read_input_criteo_sparse(const std::string& input_fil
           std::ref(fin), std::ref(fin_lock),
           std::ref(delimiter), std::ref(samples),
           std::ref(labels), config.get_limit_samples(), std::ref(lines_count),
-          std::bind(&InputReader::parse_criteo_sparse_line, this, 
+          std::bind(&InputReader::parse_criteo_sparse_line, this,
             std::placeholders::_1,
             std::placeholders::_2,
             std::placeholders::_3,
@@ -798,7 +799,7 @@ SparseDataset InputReader::read_input_rcv1_sparse(const std::string& input_file,
           std::ref(fin), std::ref(fin_lock),
           std::ref(delimiter), std::ref(samples),
           std::ref(labels), limit_lines, std::ref(lines_count),
-          std::bind(&InputReader::parse_rcv1_vw_sparse_line, this, 
+          std::bind(&InputReader::parse_rcv1_vw_sparse_line, this,
             std::placeholders::_1,
             std::placeholders::_2,
             std::placeholders::_3,
@@ -857,7 +858,7 @@ void InputReader::parse_criteo_kaggle_sparse_line(
     }
     col++;
   }
-  
+
   if (config.get_use_bias()) { // add bias constant
     uint64_t hash = hash_f("bias") % hash_size;
     features[hash]++;
@@ -908,7 +909,7 @@ SparseDataset InputReader::read_input_criteo_kaggle_sparse(
           std::ref(fin), std::ref(fin_lock),
           std::ref(delimiter), std::ref(samples),
           std::ref(labels), config.get_limit_samples(), std::ref(lines_count),
-          std::bind(&InputReader::parse_criteo_kaggle_sparse_line, this, 
+          std::bind(&InputReader::parse_criteo_kaggle_sparse_line, this,
             std::placeholders::_1,
             std::placeholders::_2,
             std::placeholders::_3,
@@ -948,7 +949,7 @@ void InputReader::read_netflix_input_thread(
     int& number_users,
     std::map<int,int>& userid_to_realid,
     int& user_index) {
-  //getline(fin, line); // read the header 
+  //getline(fin, line); // read the header
   std::string line;
   int nummovies_local = 0, numusers_local = 0;
   while (1) {
@@ -992,7 +993,7 @@ void InputReader::read_netflix_input_thread(
     numusers_local = std::max(numusers_local, newuser_id);
     nummovies_local = std::max(nummovies_local, movieId);
   }
-  
+
   fin_lock.lock();
   number_users = std::max(number_users, numusers_local);
   number_movies = std::max(number_movies, nummovies_local);
@@ -1018,11 +1019,11 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
   *number_movies = *number_users = 0;
 
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_ds; // result dataset
-  
+
   // CustomerIDs range from 1 to 2649429, with gaps. There are 480189 users.
   sparse_ds.resize(480189); // we assume we read the whole dataset
   //sparse_ds.resize(2649430); // we assume we read the whole dataset
-  
+
   std::vector<std::shared_ptr<std::thread>> threads; // container for threads
   uint64_t nthreads = 8; //  number of threads to use
   std::mutex fin_lock; // lock to access input file
@@ -1066,5 +1067,142 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
   return ds;
 }
 
-} // namespace cirrus
+LDADataset  InputReader::read_lda_input(const std::string& input_doc_file,
+                            const std::string& input_vocab_file,
+                            const std::string& delimiter
+                            const Configuration& config){
 
+  std::cout << "Reading input file: " << input_doc_file << std::endl;
+  std::cout << "Reading Vocab file: " << input_vocab_file << std::endl;
+  std::cout << "Limit_line: " << config.get_limit_samples() << std::endl;
+
+  std::ifstream fin(input_doc_file, std::ifstream::in);
+  std::ifstream fin_vocab(input_vocab_file, std::ifstream::in);
+  if (!fin || !fin_vocab) {
+    throw std::runtime_error("Error opening input file");
+  }
+  std::mutex fin_lock, out_lock; // one for reading fin, one for writing to samples
+  std::atomic<unsigned int> lines_count(0);
+
+  std::vector<std::vector<std::pair<int, int>>> samples;  // final result
+
+  uint64_t nthreads = 10;
+  std::vector<std::string> vocabs;
+  std::vector<std::shared_ptr<std::thread>> threads;
+
+  for (uint64_t i = 0; i < nthreads - 1; ++i) {
+    threads.push_back(
+        std::make_shared<std::thread>(
+          std::bind(&InputReader::parse_read_lda_input_thread, this,
+            std::placeholders::_1, std::placeholders::_2,
+            std::placeholders::_3, std::placeholders::_4,
+            std::placeholders::_5, std::placeholders::_6,
+            std::placeholders::_7, std::placeholders::_8),
+          std::ref(fin), std::ref(fin_lock), std::ref(out_lock),
+          std::ref(delimiter), std::ref(samples),
+          config.get_limit_samples(), std::ref(lines_count),
+          std::bind(&InputReader::parse_read_lda_input_line, this,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3)
+          ));
+  }
+  threads.push_back(
+    std::make_shared<std::thread>(
+      std::bind(&InputReader::read_lda_vocab_input, this,
+              std::placeholders::_1, std::placeholders::_2),
+      std::ref(fin_vocab), std::ref(vocabs)
+    )
+  );
+
+  for (auto& t : threads) {
+    t->join();
+  }
+
+  std::cout << "Read a total of " << samples.size() << " samples" << std::endl;
+  return LDADataset(std::move(samples), vocabs);
+}
+
+void InputReader::parse_read_lda_input_thread(std::ifstream& fin,
+                  std::mutex& fin_lock,
+                  std::mutex& out_lock,
+                  const std::string& delimiter,
+                  std::vector<std::vector<std::pair<int,int>>>& samples_res,
+                  uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
+                  std::function<void(const std::string&, const std::string&,
+                  std::vector<std::pair<int, int>>&)> fun){
+
+  std::vector<std::vector<std::pair<int, int>>> samples;
+  std::string line;
+  uint64_t lines_count_thread = 0;
+
+  while(1){
+
+      fin_lock.lock();
+      getline(fin, line);
+      fin_lock.unlock();
+
+      if(fin.eof()){
+        break;
+      }
+
+      if (lines_count && lines_count >= limit_lines){
+        break;
+      }
+
+      std::vector<std::pair<int, int>> words;
+      fun(line, delimiter, words);
+      samples.push_back(words);
+
+      ++lines_count;
+      lines_count_thread++;
+  }
+  out_lock.lock();
+  for(const auto& s: samples){
+    samples_res.push_back(s);
+  }
+  out_lock.unlock();
+}
+
+void InputReader::parse_read_lda_input_line(
+                  const std::string& line, const std::string& delimiter,
+                  std::vector<std::pair<int, int>>& output_features){
+
+  if (line.size() > LDA_STR_SIZE){
+    throw std::runtime_error(
+          "Input line is too big: " + std::to_string(line.size()) + " " + std::to_string(LDA_STR_SIZE)) ;
+  }
+
+  char str[LDA_STR_SIZE];
+  strncpy(str, line.c_str(), LDA_STR_SIZE - 1);
+  char* s = str;
+
+  uint64_t col = 0;
+  std::string delim2 = ":";
+
+  // on each line,
+  // the assumed format is vocab1:count1, vocab2:count2 ...
+  while(char* l = strsep(&s, delimiter.c_str())){
+    int d = atoi(strsep(&l, delim2.c_str())); // d is vocab1
+    int c = atoi(l); // c is count
+    output_features.push_back(std::make_pair(d, c));
+  }
+
+}
+
+void InputReader::read_lda_vocab_input(std::ifstream& fin,
+                  std::vector<std::string>& vocabs){
+    std::string line;
+    int i = 0;
+    while(1){
+      getline(fin, line);
+      vocabs.push_back(line);
+
+      if(fin.eof()){
+        break;
+      }
+      i ++;
+    }
+}
+
+} // namespace cirrus

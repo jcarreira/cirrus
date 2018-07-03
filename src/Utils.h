@@ -136,6 +136,17 @@ void store_value(C*& data, T value) {
 }
 
 template<typename T, typename C>
+void store_value(C*& data, T* value, int len = 1) {
+  T* cur = value;
+  for(int i=0; i<len; i++){
+    T* v_ptr = reinterpret_cast<T*>(data);
+    *v_ptr = *cur;
+    cur += 1;
+    advance_ptr(data, sizeof(T));
+  }
+}
+
+template<typename T, typename C>
 T load_value(const C*& data) {
   const T* v_ptr = reinterpret_cast<const T*>(data);
   T ret = *v_ptr;

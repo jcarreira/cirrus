@@ -65,7 +65,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
   }
-  
+
   char data[size];
   gradient.serialize(data);
   ret = send_all(sock, data, size);
@@ -118,7 +118,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   if (send_all(sock, msg_begin, msg_size) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
-  
+
   //4. receive weights from PS
   uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
   //std::cout << "Model sent. Receiving: " << num_weights << " weights" << std::endl;
@@ -135,7 +135,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   // build a truly sparse model and return
   // XXX this copy could be avoided
   lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, (uint32_t*)msg, num_weights, config);
-  
+
   delete[] msg_begin;
   delete[] buffer;
 }
@@ -163,7 +163,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
 
     char* buffer = new char[to_receive_size];
     read_all(sock, buffer, to_receive_size);
-    
+
     std::cout
       << " buffer checksum: " << crc32(buffer, to_receive_size)
       << std::endl;
@@ -212,7 +212,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     const SparseDataset& ds, uint32_t user_base, uint32_t minibatch_size) {
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg; // need to keep this pointer to delete later
- 
+
   uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, 0); // we will write this value later
   store_value<uint32_t>(msg, user_base);
@@ -245,7 +245,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   if (send_all(sock, msg_begin, msg_size) == -1) {
     throw std::runtime_error("Error getting sparse mf model");
   }
-  
+
   // 4. receive user vectors and item vectors
   // FORMAT here is
   // minibatch_size * user vectors. Each vector is user_id + user_bias + NUM_FACTORS * FEATURE_TYPE
@@ -264,7 +264,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
 
   // build a sparse model and return
   SparseMFModel model((FEATURE_TYPE*)buffer, minibatch_size, item_ids_count);
-  
+
   delete[] msg_begin;
   delete[] buffer;
 
@@ -284,7 +284,7 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   if (send(sock, &size, sizeof(uint32_t), 0) == -1) {
     throw std::runtime_error("Error sending grad size");
   }
-  
+
   char* data = new char[size];
   gradient.serialize(data);
   if (send_all(sock, data, size) == 0) {
@@ -292,7 +292,7 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   }
   delete[] data;
 }
-  
+
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
   std::cout << "Setting status id: " << id << " status: " << status << std::endl;
   uint32_t data[3] = {SET_TASK_STATUS, id, status};
@@ -313,5 +313,81 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-} // namespace cirrus
+void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
+  uint32_t operation = SEND_LDA_UPDATE;
+#ifdef DEBUG
+  std::cout << "Sending LDA updates" << std::endl;
+#endif
+  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending operation");
+  }
 
+  uint32_t size = gradient.getSerializedSize();
+#ifdef DEBUG
+  std::cout << "Sending LDA updates with size: " << size << std::endl;
+#endif
+  ret = send(sock, &size, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending grad size");
+  }
+
+  char data[size];
+  gradient.serialize(data);
+  ret = send_all(sock, data, size);
+  if (ret == 0) {
+    throw std::runtime_error("Error sending grad");
+  }
+}
+
+LDAModel PSSparseServerInterface::get_lda_model(const LDAStatistics& info) {
+
+#ifdef DEBUG
+  std::cout << "Getting LDA model " << std::endl;
+#endif
+
+#ifdef DEBUG
+  std::cout << "Sending operation and size" << std::endl;
+#endif
+
+  // 1. Send operation
+  uint32_t operation = GET_LDA_MODEL;
+  if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
+    throw std::runtime_error("Error getting lda model");
+  }
+
+  // 2. Send the size of vocab slise
+  uint32_t msg_size = info.get_serialize_slice_size();
+#ifdef DEBUG
+  std::cout << "msg_size: " << msg_size << std::endl;
+#endif
+  send_all(sock, &msg_size, sizeof(uint32_t));
+
+  // 3. Send slice
+  if (send_all(sock, info.serialize_slice(), msg_size) == -1) {
+    throw std::runtime_error("Error getting sparse lr model");
+  }
+
+  //4. receive partial_nvt from server
+  uint32_t to_receive_size = info.get_receive_size();
+#ifdef DEBUG
+  std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
+#endif
+  char* buffer = new char[to_receive_size];
+  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+
+#ifdef DEBUG
+  std::cout << "Loading model from memory" << std::endl;
+#endif
+  LDAModel lda_model(buffer, info.serialize());
+
+  delete[] msg_begin;
+  delete[] buffer;
+
+  return lda_model
+}
+
+
+
+
+} // namespace cirrus
