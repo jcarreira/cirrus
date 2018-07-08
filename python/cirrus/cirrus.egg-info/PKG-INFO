@@ -1,0 +1,14 @@
+Metadata-Version: 1.1
+Name: cirrus
+Version: 0.0.1
+Summary: Serverless ML Training on Lambdas
+Home-page: https://github.com/jcarreira/cirrus.git
+Author: jcarreira
+Author-email: joao@berkeley.edu
+License: UNKNOWN
+Description: To be finished
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Unix
