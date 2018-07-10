@@ -38,7 +38,9 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
   while (1) {
     int ret = nfs_opendir(nfs, path.c_str(), &nfsdir);
     if (ret != 0) {
-      std::cout << "Error in nfs_opendir ret: " << ret << std::endl;
+      std::cout << "Error in nfs_opendir ret: " << ret
+                << " path: " << path.c_str()
+                << std::endl;
       usleep(100000); // wait 10ms
       //throw std::runtime_error("nfs open dir failed");
     } else {

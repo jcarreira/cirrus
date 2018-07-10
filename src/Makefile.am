@@ -1,4 +1,5 @@
 TOP_DIR = $(top_srcdir)/
+LIBNFS_DIR=$(TOP_DIR)/third_party/libnfs2/libnfs
 
 AUTOMAKE_OPTIONS = foreign
 
@@ -18,7 +19,7 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/keyutils/ \
 	       -L$(TOP_DIR)/third_party/gflags/lib/ \
 	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
-	       -L$(TOP_DIR)/third_party/libnfs/lib
+	       -L$(TOP_DIR)/third_party/libnfs2/libnfs/lib/.libs
 
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
@@ -33,13 +34,13 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
-	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc \
-	   -I$(TOP_DIR)/third_party/libnfs/ \
-	   -I$(TOP_DIR)/third_party/libnfs/nfs \
-	   -I$(TOP_DIR)/third_party/libnfs/include/  \
-	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc/ \
-	   -I$(TOP_DIR)/third_party/libnfs/mount \
-	   -I$(TOP_DIR)/third_party/libnfs/infs/ \
+	   -I$(LIBNFS_DIR)/include/nfsc \
+	   -I$(LIBNFS_DIR)/ \
+	   -I$(LIBNFS_DIR)/nfs \
+	   -I$(LIBNFS_DIR)/include/  \
+	   -I$(LIBNFS_DIR)/include/nfsc/ \
+	   -I$(LIBNFS_DIR)/mount \
+	   -I$(LIBNFS_DIR)/infs/ \
 	   -ggdb -frecord-gcc-switches -O3
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
@@ -58,15 +59,15 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3.cpp SparseDataset.cpp \
 	      PSSparseServerInterface.cpp \
 	      NFSFile.cpp NFSls.cpp \
-	      $(TOP_DIR)/third_party/libnfs/lib/libnfs-sync.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs4/nfs4.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs/nfs.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs/libnfs-raw-nfs.c \
-	      $(TOP_DIR)/third_party/libnfs/mount/mount.c \
-	      $(TOP_DIR)/third_party/libnfs/mount/libnfs-raw-mount.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs4/libnfs-raw-nfs4.c \
-	      $(TOP_DIR)/third_party/libnfs/portmap/portmap.c \
-	      $(TOP_DIR)/third_party/libnfs/portmap/libnfs-raw-portmap.c \
+	      $(LIBNFS_DIR)/lib/libnfs-sync.c \
+	      $(LIBNFS_DIR)/nfs4/nfs4.c \
+	      $(LIBNFS_DIR)/nfs/nfs.c \
+	      $(LIBNFS_DIR)/nfs/libnfs-raw-nfs.c \
+	      $(LIBNFS_DIR)/mount/mount.c \
+	      $(LIBNFS_DIR)/mount/libnfs-raw-mount.c \
+	      $(LIBNFS_DIR)/nfs4/libnfs-raw-nfs4.c \
+	      $(LIBNFS_DIR)/portmap/portmap.c \
+	      $(LIBNFS_DIR)/portmap/libnfs-raw-portmap.c \
 	      PSSparseServerTask.cpp \
 	      PSSparseServerTaskEFS.cpp
 

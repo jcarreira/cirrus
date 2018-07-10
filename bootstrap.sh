@@ -53,10 +53,15 @@ cd ../glog
 cmake ../glog
 make -j 10
 
-cd ../libnfs
-./boostrap
-cmake .
+# we create another directory level because otherwise
+# configure gets confused with the top directory
+mkdir libnfs2
+mv libnfs libnfs2
+cd libnfs2/libnfs/
+./bootstrap
+./configure
 make -j 10
+cd ../..
 
 #untar and compile curl
 cd ..
