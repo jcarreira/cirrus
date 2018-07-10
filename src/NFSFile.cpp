@@ -120,7 +120,11 @@ NFSFile::~NFSFile() {
   if (client.path)
     free(client.path);
 
-  nfs_close(nfs, file_handle);
+  int ret = nfs_close(nfs, file_handle);
+  if (ret != 0) {
+      std::cout << "Error closing nfs file ret: " << std::endl;
+      exit(-1);
+  }
 
   if (created_nfs && nfs != NULL) {
     nfs_destroy_context(nfs);

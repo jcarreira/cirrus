@@ -4,9 +4,24 @@
 #include <iostream>
 
 namespace cirrus {
+    
+NFSls::NFSls(struct nfs_context* nfs, struct nfs_url* url, const std::string& path)
+    : nfs(nfs), url(url), path(path) {
+  from_scratch = false;
+  
+  std::cout << "Starting NFSls" << std::endl;
+  
+  client.server = url->server;
+  client.path = url->path;
+  client.is_finished = 0;
+}
 
 NFSls::NFSls(const std::string& path) :
   path(path) {
+
+  exit(-1);
+
+  from_scratch = true;
 
   std::cout << "Starting NFSls" << std::endl;
 
@@ -76,10 +91,12 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
 }
 
 NFSls::~NFSls() {
-  free(client.server);
-  free(client.path);
-  if (nfs != NULL) {
-    nfs_destroy_context(nfs);
+  if (from_scratch) {
+      free(client.server);
+      free(client.path);
+      if (nfs != NULL) {
+          nfs_destroy_context(nfs);
+      }
   }
 }
 
