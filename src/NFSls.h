@@ -11,6 +11,7 @@ namespace cirrus {
 
 class NFSls {
  public:
+    NFSls(struct nfs_context* nfs_, struct nfs_url* url, const std::string& path);
     NFSls(const std::string& path);
     virtual ~NFSls();
 
@@ -28,6 +29,8 @@ class NFSls {
     } client;
 
     std::string path;
+
+    bool from_scratch = false;
 };
 
 }  // namespace cirrus

@@ -21,6 +21,8 @@
 #include <netinet/tcp.h>
 #include <unistd.h>
 
+#include <libnfs.h>
+
 namespace cirrus {
 class MLTask {
   public:
@@ -353,9 +355,14 @@ class PSSparseServerTaskEFS : public MLTask {
     void loop(int id);
 
     void write_model(uint64_t version);
+    void write_model2(uint64_t version);
+    void write_model3(uint64_t version);
 
     void apply_to_model(LRSparseGradient& grad);
     LRSparseGradient check_gradient();
+    LRSparseGradient check_gradient2();
+
+    void start();
 
     // Model/ML related methods
     std::shared_ptr<char> serialize_lr_model(const SparseLRModel&, uint64_t* model_size) const;
@@ -363,6 +370,11 @@ class PSSparseServerTaskEFS : public MLTask {
     /**
       * Attributes
       */
+    struct nfs_context *nfs_ = nullptr;
+    struct nfs_url *url_ = nullptr;
+    char* server_ = nullptr, *path_ = nullptr;
+
+
     std::vector<uint64_t> curr_indexes = std::vector<uint64_t>(NUM_POLL_THREADS);
     std::mutex to_process_lock;
     sem_t sem_new_req;

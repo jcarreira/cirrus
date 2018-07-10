@@ -62,7 +62,7 @@ std::map<std::string, uint64_t> path_to_size;
   *
   */
 LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
-  NFSls ls("/");
+  NFSls ls(nfs_, url_, "/");
 
   while (1) {
     std::cout << "LOOP" << std::endl;
@@ -92,7 +92,84 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
 
         int32_t grad_size = -1;
 
-        NFSFile file(ls.nfs, "/" + path);
+        NFSFile file(nfs_, "/" + path);
+        int ret = file.read(off, (char*)&grad_size, sizeof(int32_t));
+        std::cout << "grad size: " << grad_size << std::endl;
+        if (ret != sizeof(grad_size)) {
+          std::cout << "Error reading gradient size" << std::endl;
+          continue;
+        }
+        if (grad_size > 10 * 1024 * 1024) {
+          throw std::runtime_error("Gradient is too large");
+        }
+
+        std::shared_ptr<char[]> grad_data(new char[grad_size]);
+        ret = file.read(off + sizeof(int32_t), grad_data.get(), grad_size);
+        if (ret != grad_size) {
+          std::cout << "Error reading gradient" << std::endl;
+          continue;
+        }
+          
+        path_to_offset[path] += grad_size + sizeof(int32_t);
+
+        LRSparseGradient gradient(0);
+        gradient.loadSerialized(grad_data.get());
+        return gradient;
+      } else {
+        continue; // otherwise ignore
+      }
+    }
+    usleep(1000); // wait a ms if we haven't seen any changes
+  }
+}
+
+LRSparseGradient PSSparseServerTaskEFS::check_gradient2() {
+  while (1) {
+    std::cout << "LOOP" << std::endl;
+
+    std::vector<std::pair<std::string, uint64_t>> result;
+    // try to open all files of the form "gradientX"
+    for (int i = 0; i < 10; ++i) {
+      std::string filename = "gradient" + std::to_string(i);
+      struct nfsfh* file_handle;
+      int ret = nfs_open(nfs_, filename.c_str(), O_CREAT | O_RDWR, &file_handle);
+      if (ret != 0) {
+        continue;
+      }
+      nfs_close(nfs_, file_handle);
+
+      struct nfs_stat_64 st; 
+      char dir_file_path[1024];
+      sprintf(dir_file_path, "%s/%s", path_, filename.c_str());
+      //std::cout << "efs path: " << dir_file_path << " filename: " << filename << std::endl;
+      ret = nfs_stat64(nfs_, dir_file_path, &st);
+      if (ret != 0) {
+        fprintf(stderr, "Failed to stat(%s) %s\n", dir_file_path, nfs_get_error(nfs_));
+        continue;
+      }
+      result.push_back(std::make_pair(filename, st.nfs_size));
+    }
+
+    for (const auto& entry : result) {
+      std::string path = entry.first;
+      // if entry starts with "gradient"
+      // we check if we have seen this file before
+      std::cout << "checking file: " << path << std::endl;
+      if (path.compare(0, std::string("gradient").size(), "gradient") == 0) {
+        uint64_t off = 0;
+        uint64_t size = 0;
+        size = path_to_size[path] = entry.second;
+        if (path_to_offset.find(path) != path_to_offset.end()) {
+          off = path_to_offset[path];
+        } else {
+          off = path_to_offset[path] = 0; // we start reading from the beginning
+        }
+
+        std::cout << "Reading from off: " << off <<  " size " << size << std::endl;
+
+        int32_t grad_size = -1;
+
+        NFSFile file(nfs_, "/" + path);
         int ret = file.read(off, (char*)&grad_size, sizeof(int32_t));
         std::cout << "grad size: " << grad_size << std::endl;
         if (ret != sizeof(grad_size)) {
@@ -156,7 +233,7 @@ int nfs_write_wrapper(
 }
 #endif
 
-void PSSparseServerTaskEFS::write_model(uint64_t version) {
+void PSSparseServerTaskEFS::write_model2(uint64_t version) {
 
   uint64_t size = 0;
   std::shared_ptr<char> model = serialize_lr_model(*lr_model, &size);
@@ -187,7 +264,7 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
   std::cout << "Mounting nfs" << std::endl;
   int ret = nfs_mount(nfs, server, path);
   if (ret != 0) {
-    throw std::runtime_error("Error mounting nfs");
+    throw std::runtime_error("Error mounting nfs ret: " + std::to_string(ret));
   }
 
   struct nfsfh* file_handle;
@@ -212,6 +289,131 @@ void PSSparseServerTaskEFS::write_model(uint64_t version) {
   free(server); 
   free(path); 
   free(url); 
+}
+
+void PSSparseServerTaskEFS::write_model(uint64_t version) {
+  uint64_t size = 0;
+  std::shared_ptr<char> model = serialize_lr_model(*lr_model, &size);
+  std::string filename = "model" + std::to_string(version);
+  std::cout << "Writing " << filename
+    << " with size: " << size
+    << std::endl;
+  
+  //NFSFile file("/" + filename);
+  //file.write(0, model.get(), size);
+
+#if 0
+  static struct nfs_context *nfs = nullptr;
+  static struct nfs_url *url = nullptr;
+  static bool done = false;
+  
+  if (done == false) {
+      done = true;
+      nfs = nfs_init_context();
+      if (nfs == NULL) {
+          throw std::runtime_error("Error initing nfs");
+      }
+
+      url = nfs_parse_url_dir(nfs,
+              "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
+      if (url == NULL) {
+          throw std::runtime_error("Error parsing nfs url");
+      }
+
+      char *server = url->server;
+      char* path = url->path;
+
+      std::cout << "Mounting nfs" << std::endl;
+      int ret = nfs_mount(nfs, server, path);
+      if (ret != 0) {
+          throw std::runtime_error("Error mounting nfs ret: " + std::to_string(ret));
+      }
+  }
+#endif
+
+  struct nfsfh* file_handle;
+  int ret = nfs_open(nfs_, filename.c_str(), O_CREAT | O_RDWR, &file_handle);
+  if (ret != 0) {
+    throw std::runtime_error("Error open");
+  }
+
+  uint32_t write_size = size;
+  std::cout << "Writing model with size: " << size
+    << " real write size: " << write_size << std::endl;
+
+  ret = nfs_write_wrapper(
+      nfs_, file_handle, sizeof(uint32_t), write_size, model.get());
+  if (ret <= 0) {
+    throw std::runtime_error("Error nfs_pwrite " + std::to_string(ret));
+  }
+  nfs_close(nfs_, file_handle);
+  std::cout << "Wrote and closed file" << std::endl;
+    
+  //nfs_destroy_context(nfs);
+  //free(server); 
+  //free(path); 
+  //free(url); 
+}
+
+void PSSparseServerTaskEFS::write_model3(uint64_t version) {
+  std::string filename = "model" + std::to_string(version);
+  std::cout << "Writing " << filename
+    << std::endl;
+  
+  static struct nfs_context *nfs = nullptr;
+  static struct nfs_url *url = nullptr;
+  static bool done = false;
+  static std::string data;
+  
+  if (done == false) {
+      done = true;
+      nfs = nfs_init_context();
+      if (nfs == NULL) {
+          throw std::runtime_error("Error initing nfs");
+      }
+
+      url = nfs_parse_url_dir(nfs,
+              "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
+      if (url == NULL) {
+          throw std::runtime_error("Error parsing nfs url");
+      }
+
+      char *server = url->server;
+      char* path = url->path;
+
+      std::cout << "Mounting nfs" << std::endl;
+      int ret = nfs_mount(nfs, server, path);
+      if (ret != 0) {
+          throw std::runtime_error("Error mounting nfs ret: " + std::to_string(ret));
+      }
+
+      data.reserve(10000);
+      for (int i = 0; i < 10000; ++i)
+          data += "a";
+  }
+
+  struct nfsfh* file_handle;
+  int ret = nfs_open(nfs, filename.c_str(), O_CREAT | O_RDWR, &file_handle);
+  if (ret != 0) {
+    throw std::runtime_error("Error open");
+  }
+
+  uint32_t write_size = data.size();
+  std::cout << "Writing model with size: " << data.size()
+    << " real write size: " << write_size << std::endl;
+
+  ret = nfs_write_wrapper(
+      nfs, file_handle, sizeof(uint32_t), data.size(), data.c_str());
+  if (ret <= 0) {
+    throw std::runtime_error("Error nfs_pwrite " + std::to_string(ret));
+  }
+  nfs_close(nfs, file_handle);
+  std::cout << "Wrote and closed file" << std::endl;
+    
+  //nfs_destroy_context(nfs);
+  //free(server); 
+  //free(path); 
+  //free(url); 
 }
 
 #if 0
@@ -244,7 +446,47 @@ void test_written_model(SparseLRModel& model) {
 }
 #endif
 
+void erase_model(int model_version) {
+    //int ret = nfs_unlink(n
+}
+
+void PSSparseServerTaskEFS::start() {
+    nfs_ = nfs_init_context();
+    if (nfs_ == NULL) {
+        throw std::runtime_error("Error initing nfs");
+    }
+
+    url_ = nfs_parse_url_dir(nfs_,
+            "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
+    if (url_ == NULL) {
+        throw std::runtime_error("Error parsing nfs url");
+    }
+
+    server_ = url_->server;
+    path_ = url_->path;
+
+    std::cout << "Mounting nfs" << std::endl;
+    int ret = nfs_mount(nfs_, server_, path_);
+    if (ret != 0) {
+        throw std::runtime_error("Error mounting nfs ret: " + std::to_string(ret));
+    }
+}
+
 void PSSparseServerTaskEFS::run(const Configuration& config) {
+
+#if 0
+  if (true) {
+      int v = 0;
+      while (1) {
+          write_model3(v);
+          v++;
+      }
+  }
+  exit(0);
+#endif
+
+  start();
+
   std::cout
     << "PS task initializing model"
     << " size: " << model_size
@@ -270,10 +512,14 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
     // we sit in a loop checking gradients and updating model
 
     auto time1 = get_time_us();
-    auto grad = check_gradient();
+    auto grad = check_gradient2();
     auto time2 = get_time_us();
     apply_to_model(grad);
     auto time3 = get_time_us();
+
+    //if (model_version) {
+    //    erase_model(model_version - 1);
+    //}
     write_model(model_version++);
     auto time4 = get_time_us();
     std::cout
