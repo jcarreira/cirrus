@@ -5,15 +5,11 @@
 
 namespace cirrus {
     
-NFSls::NFSls(struct nfs_context* nfs, struct nfs_url* url, const std::string& path)
-    : nfs(nfs), url(url), path(path) {
+NFSls::NFSls(struct nfs_context* nfs, const std::string& path)
+    : nfs(nfs), path(path) {
   from_scratch = false;
   
   std::cout << "Starting NFSls" << std::endl;
-  
-  client.server = url->server;
-  client.path = url->path;
-  client.is_finished = 0;
 }
 
 NFSls::NFSls(const std::string& path) :
@@ -30,18 +26,13 @@ NFSls::NFSls(const std::string& path) :
     throw std::runtime_error("Error initing nfs");
   }
   
-  url = NULL;
   url = nfs_parse_url_dir(nfs, "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
   if (url == NULL) {
     throw std::runtime_error("Error parsing nfs url");
   }
 
-  client.server = url->server;
-  client.path = url->path;
-  client.is_finished = 0;
-
   std::cout << "Mounting nfs" << std::endl;
-  int ret = nfs_mount(nfs, client.server, client.path);
+  int ret = nfs_mount(nfs, url->server, url->path);
   if (ret != 0) {
     throw std::runtime_error("Error mounting nfs");
   }
@@ -92,8 +83,8 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
 
 NFSls::~NFSls() {
   if (from_scratch) {
-      free(client.server);
-      free(client.path);
+      free(url->server);
+      free(url->path);
       if (nfs != NULL) {
           nfs_destroy_context(nfs);
       }

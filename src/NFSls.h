@@ -11,22 +11,15 @@ namespace cirrus {
 
 class NFSls {
  public:
-    NFSls(struct nfs_context* nfs_, struct nfs_url* url, const std::string& path);
+    NFSls(struct nfs_context* nfs_, const std::string& path);
     NFSls(const std::string& path);
     virtual ~NFSls();
 
     std::vector<std::pair<std::string, uint64_t>> do_ls();
  public:
-    struct nfs_context *nfs = nullptr;
-    struct nfs_url *url = nullptr;
-    struct nfsdir *nfsdir = nullptr;
-    
-    struct {
-      char *server;
-      char *path;
-      uint32_t mount_port;
-      int is_finished;
-    } client;
+    struct nfs_context* nfs = nullptr;
+    struct nfs_url* url = nullptr;
+    struct nfsdir* nfsdir = nullptr;
 
     std::string path;
 

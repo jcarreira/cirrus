@@ -45,8 +45,8 @@ std::shared_ptr<char> PSSparseServerTaskEFS::serialize_lr_model(
 void PSSparseServerTaskEFS::apply_to_model(LRSparseGradient& grad) {
   std::cout << "Applying gradient to model" << std::endl;
   lr_model->sgd_update(task_config.get_learning_rate(), &grad);
-  std::cout << "print gradient" << std::endl;
-  grad.print();
+  //std::cout << "print gradient" << std::endl;
+  //grad.print();
 }
 
 // for every gradient file we keep track of the offset
@@ -62,7 +62,7 @@ std::map<std::string, uint64_t> path_to_size;
   *
   */
 LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
-  NFSls ls(nfs_, url_, "/");
+  NFSls ls(nfs_, "/");
 
   while (1) {
     std::cout << "LOOP" << std::endl;
@@ -127,6 +127,7 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient2() {
   while (1) {
     std::cout << "LOOP" << std::endl;
 
+    auto time1 = get_time_us();
     std::vector<std::pair<std::string, uint64_t>> result;
     // try to open all files of the form "gradientX"
     for (int i = 0; i < 10; ++i) {
@@ -149,6 +150,7 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient2() {
       }
       result.push_back(std::make_pair(filename, st.nfs_size));
     }
+    auto time2 = get_time_us();
 
     for (const auto& entry : result) {
       std::string path = entry.first;
@@ -191,12 +193,16 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient2() {
 
         LRSparseGradient gradient(0);
         gradient.loadSerialized(grad_data.get());
+        auto time3 = get_time_us();
+        std::cout << "elapsed1: " << (time2 - time1)
+                  << "elapsed2: " << (time3 - time2)
+                  << std::endl;
         return gradient;
       } else {
         continue; // otherwise ignore
       }
     }
-    usleep(1000); // wait a ms if we haven't seen any changes
+    //usleep(1000); // wait a ms if we haven't seen any changes
   }
 }
 
@@ -446,8 +452,16 @@ void test_written_model(SparseLRModel& model) {
 }
 #endif
 
-void erase_model(int model_version) {
-    //int ret = nfs_unlink(n
+void PSSparseServerTaskEFS::erase_model(int model_version) {
+
+  std::string filename = "/model" + std::to_string(model_version);
+
+  std::cout << "Erasing file: " << filename << std::endl;
+
+  int ret = nfs_unlink(nfs_, filename.c_str());
+  if (ret != 0) {
+    throw std::runtime_error("Error erasing model");
+  }
 }
 
 void PSSparseServerTaskEFS::start() {
@@ -512,14 +526,14 @@ void PSSparseServerTaskEFS::run(const Configuration& config) {
     // we sit in a loop checking gradients and updating model
 
     auto time1 = get_time_us();
-    auto grad = check_gradient2();
+    auto grad = check_gradient();
     auto time2 = get_time_us();
     apply_to_model(grad);
     auto time3 = get_time_us();
 
-    //if (model_version) {
-    //    erase_model(model_version - 1);
-    //}
+    if (model_version >= 5) {
+        erase_model(model_version - 5);
+    }
     write_model(model_version++);
     auto time4 = get_time_us();
     std::cout

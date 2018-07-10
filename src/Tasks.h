@@ -78,6 +78,9 @@ class LogisticSparseTaskS3 : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
+    void start();
+    void test();
+
     void get_latest_model(
         const SparseDataset& dataset,
         SparseLRModel& model,
@@ -91,6 +94,10 @@ class LogisticSparseTaskS3 : public MLTask {
 #else
     void push_gradient(LRSparseGradient*);
 #endif
+    
+    struct nfs_context *nfs_ = nullptr;
+    struct nfs_url *url_ = nullptr;
+    char* server_ = nullptr, *path_ = nullptr;
 };
 
 class PSSparseTask : public MLTask {
@@ -363,6 +370,7 @@ class PSSparseServerTaskEFS : public MLTask {
     LRSparseGradient check_gradient2();
 
     void start();
+    void erase_model(int);
 
     // Model/ML related methods
     std::shared_ptr<char> serialize_lr_model(const SparseLRModel&, uint64_t* model_size) const;

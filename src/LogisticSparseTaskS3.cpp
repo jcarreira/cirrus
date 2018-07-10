@@ -19,7 +19,7 @@ namespace cirrus {
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg, uint64_t version, uint64_t& grad_cum_size) {
   // here we write this gradient to the file gradient<gradient_version>
   std::string grad_name = "gradient" + std::to_string(version);
-  NFSFile file(grad_name);
+  NFSFile file(nfs_, grad_name);
 
   int32_t serialized_size = static_cast<int>(lrg->getSerializedSize());
   std::shared_ptr<char[]> data(new char[serialized_size]);
@@ -101,7 +101,7 @@ void LogisticSparseTaskS3::get_latest_model(
     SparseLRModel& model,
     const Configuration& config) {
   
-  NFSls ls("/");
+  NFSls ls(nfs_, "/");
   std::vector<std::pair<std::string, uint64_t>> all_files = ls.do_ls();
   std::vector<std::pair<std::string, uint64_t>> model_entries;
 
@@ -131,7 +131,7 @@ void LogisticSparseTaskS3::get_latest_model(
     << " with size: " << first.second
     << std::endl;
 
-  NFSFile file("/" + first.first);
+  NFSFile file(nfs_, "/" + first.first);
   int ret = 0;
   
   uint32_t max_model_size = 10*1024*1024;
@@ -151,11 +151,44 @@ void LogisticSparseTaskS3::get_latest_model(
     const Configuration& config) {}
 #endif
 
+void LogisticSparseTaskS3::start() {
+    nfs_ = nfs_init_context();
+    if (nfs_ == NULL) {
+        throw std::runtime_error("Error initing nfs");
+    }
+
+    url_ = nfs_parse_url_dir(nfs_,
+            "nfs://fs-ac79ac05.efs.us-west-2.amazonaws.com/?version=4&nfsport=2049");
+    if (url_ == NULL) {
+        throw std::runtime_error("Error parsing nfs url");
+    }
+
+    server_ = url_->server;
+    path_ = url_->path;
+
+    std::cout << "Mounting nfs" << std::endl;
+    int ret = nfs_mount(nfs_, server_, path_);
+    if (ret != 0) {
+        throw std::runtime_error("Error mounting nfs ret: " + std::to_string(ret));
+    }
+}
+
+void LogisticSparseTaskS3::test() {
+  while (1) {
+    NFSls ls(nfs_, "/");
+    std::vector<std::pair<std::string, uint64_t>> all_files = ls.do_ls();
+  }
+
+}
+
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3"
     << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
+
+  start();
+  //test();
 
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;

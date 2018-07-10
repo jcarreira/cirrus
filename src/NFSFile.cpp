@@ -11,9 +11,10 @@
 
 namespace cirrus {
 
-NFSFile::NFSFile(struct nfs_context * nfs, const std::string& filename) :
+NFSFile::NFSFile(struct nfs_context * nfs,  const std::string& filename) :
   nfs(nfs),
-  filename(filename) {
+  filename(filename),
+  url(url) {
   int ret = nfs_open(nfs, filename.c_str(), O_CREAT | O_RDWR, &file_handle);
   if (ret != 0) {
     throw std::runtime_error("Error opening nfs file");
@@ -39,7 +40,6 @@ NFSFile::NFSFile(const std::string& filename) :
 
   client.server = url->server;
   client.path = url->path;
-  client.is_finished = 0;
 
   int ret = nfs_mount(nfs, client.server, client.path);
   if (ret != 0) {
