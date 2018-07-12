@@ -40,8 +40,9 @@ int main() {
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
   FEATURE_TYPE avg_loss = 0;
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 200; i++) {
     usleep(ERROR_INTERVAL_USEC);
+    std::cout << i << std::endl;
     try {
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] getting the full model"
