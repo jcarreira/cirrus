@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="cirrus",
-    version="0.0.1",
+    version="0.0.2",
     author="jcarreira",
     author_email="joao@berkeley.edu",
     description="Serverless Machine Learning platform",

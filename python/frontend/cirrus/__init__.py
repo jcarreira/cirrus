@@ -1,1 +1,1 @@
-from cirrus import cirrus
+from cirrus import *
