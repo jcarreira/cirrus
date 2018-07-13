@@ -34,10 +34,16 @@ PSSparseServerInterface::PSSparseServerInterface(const std::string& ip, int port
   std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
   // Connect to the server
-  if (::connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    throw std::runtime_error(
-        "Client could not connect to server."
-        " Address: " + ip + " port: " + std::to_string(port));
+  int ret = -1;
+  while (ret == -1) {
+    ret = ::connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+    if (ret < 0) {
+      std::cout << "Failed to make contact with server with ip: " << ip
+                << " port: " << port << std::endl;
+      sleep(1);
+    } else {
+      std::cout << "Made contact with server" << std::endl;
+    }
   }
 }
 
