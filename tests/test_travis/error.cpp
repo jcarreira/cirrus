@@ -1,7 +1,7 @@
 #include <Tasks.h>
 
 #include "Serializers.h"
-#include "config.h"
+#include "cirrus-config.h"
 #include "Utils.h"
 #include "SparseLRModel.h"
 #include "PSSparseServerInterface.h"
