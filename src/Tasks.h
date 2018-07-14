@@ -106,11 +106,11 @@ class LogisticSparseTaskEFS : public MLTask {
         int ps_port;
     };
 
+#endif
     void get_latest_model(
         const SparseDataset& dataset,
         SparseLRModel& model,
         const Configuration& config);
-#endif
 
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
@@ -134,7 +134,7 @@ class LogisticSparseTaskS3 : public MLTask {
         uint64_t ps_port) :
       MLTask(model_size,
           batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
+          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
   {}
 
     /**
@@ -175,6 +175,9 @@ class LogisticSparseTaskS3 : public MLTask {
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
+
+    std::unique_ptr<SparseModelGet> sparse_model_get;
+    PSSparseServerInterface* psint;
 };
 
 class PSSparseTask : public MLTask {

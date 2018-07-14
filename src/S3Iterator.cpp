@@ -26,8 +26,6 @@ S3Iterator::S3Iterator(
     << " right_id: " << right_id
     << std::endl;
 
-  // initialize s3
-  s3_initialize_aws();
   s3_client = std::make_shared<S3Client>();
 
   last = left_id;  // last is exclusive

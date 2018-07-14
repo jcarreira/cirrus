@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
   std::cout << "Starting parameter server" << std::endl;
  
   // We should only do this once and we do it here
-  s3_initialize_aws();
+  cirrus::s3_initialize_aws();
   print_hostname();
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
