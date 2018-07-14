@@ -5,9 +5,10 @@ AUTOMAKE_OPTIONS = foreign
 
 CXX = g++
 
-#: gcc -D_U_="__attribute__((unused))"  -DHAVE_CONFIG_H -static  -I. -Infs -Iinclude/  -Iinclude/nfsc/ -Imount examples/nfsclient-write.c lib/libnfs-sync.c nfs4/nfs4.c nfs/nfs.c nfs/libnfs-raw-nfs.c mount/mount.c  mount/libnfs-raw-mount.c nfs4/libnfs-raw-nfs4.c portmap/portmap.c portmap/libnfs-raw-portmap.c  -L/home/ec2-user/joao/libnfs/lib/ -lnfs -o nfsclient-writ
-
-bin_PROGRAMS = parameter_server ps_test csv_to_libsvm test_libnfs
+bin_PROGRAMS = parameter_server ps_test csv_to_libsvm $(TOP_DIR)/tests/test_travis/test_lr \
+	       $(TOP_DIR)/tests/test_travis/test_ps $(TOP_DIR)/tests/test_travis/worker \
+	       $(TOP_DIR)/tests/test_travis/error \
+	       test_libnfs
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
@@ -45,13 +46,14 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
+	      OptimizationMethod.cpp AdaGrad.cpp \
+	      Momentum.cpp SGD.cpp Nesterov.cpp\
 	      Model.cpp LRModel.cpp SoftmaxModel.cpp SparseLRModel.cpp \
+	      S3Client.cpp Checksum.cpp \
 	      SparseMFModel.cpp MFModel.cpp\
               ModelGradient.cpp MlUtils.cpp Configuration.cpp \
-              Checksum.cpp \
-              ErrorSparseTask.cpp \
-	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
+              ErrorSparseTask.cpp MFNetflixTask.cpp \
+	      LogisticSparseTaskS3.cpp LogisticSparseTaskEFS.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
@@ -68,8 +70,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      $(LIBNFS_DIR)/nfs4/libnfs-raw-nfs4.c \
 	      $(LIBNFS_DIR)/portmap/portmap.c \
 	      $(LIBNFS_DIR)/portmap/libnfs-raw-portmap.c \
-	      PSSparseServerTask.cpp \
-	      PSSparseServerTaskEFS.cpp
+	      PSSparseServerTask.cpp PSSparseServerTaskEFS.cpp
 
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
@@ -86,3 +87,11 @@ ps_test_SOURCES = PSSparseServerTaskTest.cpp $(CPP_SOURCES)
 csv_to_libsvm_SOURCES = CriteoCsvToLibSVM.cpp $(CPP_SOURCES)
 
 test_libnfs_SOURCES = test_libnfs.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_test_lr_SOURCES = $(TOP_DIR)/tests/test_travis/check_correctness_cirrus_sgd.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis/ps_test.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_worker_SOURCES = $(TOP_DIR)/tests/test_travis/worker.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_error_SOURCES = $(TOP_DIR)/tests/test_travis/error.cpp $(CPP_SOURCES)

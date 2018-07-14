@@ -1,15 +1,18 @@
 TOP_DIR = $(top_srcdir)/
+LIBNFS_DIR=$(TOP_DIR)/third_party/libnfs2/libnfs
 
 AUTOMAKE_OPTIONS = foreign
 
 CXX = g++
 
-bin_PROGRAMS = parameter_server ps_test csv_to_libsvm test_libnfs
+bin_PROGRAMS = parameter_server ps_test csv_to_libsvm $(TOP_DIR)/tests/test_travis/test_lr \
+	       $(TOP_DIR)/tests/test_travis/test_ps $(TOP_DIR)/tests/test_travis/worker \
+	       $(TOP_DIR)/tests/test_travis/error \
+	       test_libnfs
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
-		-lall -lkeyutils -lresolv -lldap -llber -lpthread -lgflags \
-                -lnfs
+		-lall -lkeyutils -lresolv -lgflags -lnfs
 
 LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-s3 \
@@ -17,52 +20,56 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/keyutils/ \
 	       -L$(TOP_DIR)/third_party/gflags/lib/ \
 	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
-	       -L$(TOP_DIR)/third_party/libnfs/lib
+	       -L$(TOP_DIR)/third_party/libnfs2/libnfs/lib/.libs
 
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -lpthread
 
-CPPFLAGS = -I$(TOP_DIR) \
+CPPFLAGS = -DHAVE_CONFIG_H \
+	   -D_U_="__attribute__((unused))" \
+           -I$(TOP_DIR) \
            -I$(TOP_DIR)/third_party/flatbuffers/include \
            -I$(TOP_DIR)/third_party/eigen_source \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
-	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc \
-	   -I$(TOP_DIR)/third_party/libnfs/ \
-	   -I$(TOP_DIR)/third_party/libnfs/nfs \
-	   -I$(TOP_DIR)/third_party/libnfs/include/  \
-	   -I$(TOP_DIR)/third_party/libnfs/include/nfsc/ \
-	   -I$(TOP_DIR)/third_party/libnfs/mount \
-	   -I$(TOP_DIR)/third_party/libnfs/infs/ \
+	   -I$(LIBNFS_DIR)/include/nfsc \
+	   -I$(LIBNFS_DIR)/ \
+	   -I$(LIBNFS_DIR)/nfs \
+	   -I$(LIBNFS_DIR)/include/  \
+	   -I$(LIBNFS_DIR)/include/nfsc/ \
+	   -I$(LIBNFS_DIR)/mount \
+	   -I$(LIBNFS_DIR)/infs/ \
 	   -ggdb -frecord-gcc-switches -O3
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
+	      OptimizationMethod.cpp AdaGrad.cpp \
+	      Momentum.cpp SGD.cpp Nesterov.cpp\
 	      Model.cpp LRModel.cpp SoftmaxModel.cpp SparseLRModel.cpp \
+	      S3Client.cpp Checksum.cpp \
 	      SparseMFModel.cpp MFModel.cpp\
               ModelGradient.cpp MlUtils.cpp Configuration.cpp \
-              Checksum.cpp \
-              ErrorSparseTask.cpp \
-	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
+              ErrorSparseTask.cpp MFNetflixTask.cpp \
+	      LogisticSparseTaskS3.cpp LogisticSparseTaskEFS.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
 	      PerformanceLambdaTask.cpp \
 	      S3.cpp SparseDataset.cpp \
-	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
-	      PSSparseServerTaskEFS.cpp \
+	      PSSparseServerInterface.cpp \
 	      NFSFile.cpp NFSls.cpp \
-	      $(TOP_DIR)/third_party/libnfs/lib/libnfs-sync.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs4/nfs4.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs/nfs.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs/libnfs-raw-nfs.c \
-	      $(TOP_DIR)/third_party/libnfs/mount/mount.c \
-	      $(TOP_DIR)/third_party/libnfs/mount/libnfs-raw-mount.c \
-	      $(TOP_DIR)/third_party/libnfs/nfs4/libnfs-raw-nfs4.c \
-	      $(TOP_DIR)/third_party/libnfs/portmap/portmap.c \
-	      $(TOP_DIR)/third_party/libnfs/portmap/libnfs-raw-portmap.c
+	      $(LIBNFS_DIR)/lib/libnfs-sync.c \
+	      $(LIBNFS_DIR)/nfs4/nfs4.c \
+	      $(LIBNFS_DIR)/nfs/nfs.c \
+	      $(LIBNFS_DIR)/nfs/libnfs-raw-nfs.c \
+	      $(LIBNFS_DIR)/mount/mount.c \
+	      $(LIBNFS_DIR)/mount/libnfs-raw-mount.c \
+	      $(LIBNFS_DIR)/nfs4/libnfs-raw-nfs4.c \
+	      $(LIBNFS_DIR)/portmap/portmap.c \
+	      $(LIBNFS_DIR)/portmap/libnfs-raw-portmap.c \
+	      PSSparseServerTask.cpp PSSparseServerTaskEFS.cpp
+
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp Model.cpp LRModel.cpp \
@@ -78,3 +85,11 @@ ps_test_SOURCES = PSSparseServerTaskTest.cpp $(CPP_SOURCES)
 csv_to_libsvm_SOURCES = CriteoCsvToLibSVM.cpp $(CPP_SOURCES)
 
 test_libnfs_SOURCES = test_libnfs.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_test_lr_SOURCES = $(TOP_DIR)/tests/test_travis/check_correctness_cirrus_sgd.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis/ps_test.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_worker_SOURCES = $(TOP_DIR)/tests/test_travis/worker.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_error_SOURCES = $(TOP_DIR)/tests/test_travis/error.cpp $(CPP_SOURCES)
