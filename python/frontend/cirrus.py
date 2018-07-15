@@ -10,25 +10,28 @@ from threading import Thread
 
 class CostModel:
     def __init__(self,
-            vm_type,
-            num_vms,
-            s3_space_mb,
-            num_workers,
+            num_exps, # number of experiments
+            vm_type,  # vm type of experiments
+            num_vms_per_exp,  # num. of vms per experiment
+            s3_space_mb, # size of S3 space used
+            num_workers_per_exp, # num. of lambda workers per exp
             worker_size):
 
+        self.num_exps = num_exps
         self.vm_type = vm_type
-        self.num_vms = num_vms
+        self.num_vms_per_exp = num_vms_per_exp
         self.s3_space_mb = s3_space_mb
-        self.num_workers = num_workers
+        self.num_workers_per_exp = num_workers_per_exp
         self.worker_size = worker_size
 
-        print "Cost Model"
+    def get_total_cost(self, num_secs):
+      return num_exps * get_cost_per_exp(num_secs)
 
     # compute cos ($) of running worload
     # with given number of vms of specific type,
     # with lambdas of specific size
     # and s3 storage of specific size
-    def get_cost(self, num_secs):
+    def get_cost_per_exp(self, num_secs):
         # cost of smallest lambda (128MB) per hour
         lambda_cost_base_h = 0.007488
         total_lambda_cost_h = (self.worker_size / 128.0 * lambda_cost_base_h) \
@@ -239,6 +242,7 @@ class LogisticRegressionTask:
 
             start_time = time.time()
             cost_model = CostModel(
+                    1,
                     'm5.large',
                     self.n_ps,
                     0,
