@@ -77,7 +77,7 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient() {
       std::string path = entry.first;
       // if entry starts with "gradient"
       // we check if we have seen this file before
-      std::cout << "checking file: " << path << std::endl;
+      //std::cout << "checking file: " << path << std::endl;
       if (path.compare(0, std::string("gradient").size(), "gradient") == 0) {
         uint64_t off = 0;
         uint64_t size = 0;
@@ -156,7 +156,7 @@ LRSparseGradient PSSparseServerTaskEFS::check_gradient2() {
       std::string path = entry.first;
       // if entry starts with "gradient"
       // we check if we have seen this file before
-      std::cout << "checking file: " << path << std::endl;
+      //std::cout << "checking file: " << path << std::endl;
       if (path.compare(0, std::string("gradient").size(), "gradient") == 0) {
         uint64_t off = 0;
         uint64_t size = 0;

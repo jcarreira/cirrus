@@ -1,11 +1,7 @@
 #define USE_EFS
 
-#define USE_REDIS
-
-#ifdef USE_REDIS
-#define PS_IP "172.31.2.117"
 #define PS_PORT 1337
-#endif
+#define PS_IP "127.0.0.1"
 
 #define LOADING_TASK_RANK -100000
 #define PERFORMANCE_LAMBDA_RANK (-100000)

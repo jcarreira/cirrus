@@ -51,7 +51,7 @@ void run_tasks(int rank, int nworkers,
      * Number of tasks is determined by the value of nworkers
      */
     if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION) {
-      cirrus::LogisticSparseTaskS3 lt(features_per_sample,
+      cirrus::LogisticSparseTaskEFS lt(features_per_sample,
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);
@@ -68,7 +68,7 @@ void run_tasks(int rank, int nworkers,
     * SPARSE tasks
     */
   } else if (rank == ERROR_SPARSE_TASK_RANK) {
-    cirrus::ErrorSparseTask et((1 << config.get_model_bits()),
+    cirrus::ErrorSparseTaskEFS et((1 << config.get_model_bits()),
         batch_size, samples_per_batch, features_per_sample,
         nworkers, rank, ps_ip, ps_port);
     et.run(config);

@@ -276,8 +276,6 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
       FEATURE_TYPE value = feat.second;
       part3[index] += value * part2[i];
 
-      std::cout << "indxe: " << index << std::endl;
-
 #ifdef DEBUG
       if (std::isnan(part3[index]) || std::isinf(part3[index])) {
         std::cout << "part3 isnan" << std::endl;

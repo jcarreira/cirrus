@@ -39,7 +39,7 @@ NFSls::NFSls(const std::string& path) :
 }
 
 std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
-  std::cout << "Nfs open dir: " << path.c_str() << std::endl;
+  //std::cout << "Nfs open dir: " << path.c_str() << std::endl;
 
   while (1) {
     int ret = nfs_opendir(nfs, path.c_str(), &nfsdir);
@@ -56,7 +56,7 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
 
   std::vector<std::pair<std::string, uint64_t>> result;
   struct nfsdirent *nfsdirent;
-  std::cout << "Reading dir nfs" << std::endl;
+  //std::cout << "Reading dir nfs" << std::endl;
   while((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
     if (!strcmp(nfsdirent->name, ".") || !strcmp(nfsdirent->name, "..")) {
       continue;
@@ -66,15 +66,17 @@ std::vector<std::pair<std::string, uint64_t>> NFSls::do_ls() {
     
     char dir_file_path[1024];
     sprintf(dir_file_path, "%s/%s", path.c_str(), nfsdirent->name);
-    std::cout << "efs path: " << dir_file_path << " nfsdirent->name: " << nfsdirent->name << std::endl;
+    //std::cout << "efs path: " << dir_file_path
+    //          << " nfsdirent->name: " << nfsdirent->name
+    //          << std::endl;
     int ret = nfs_stat64(nfs, dir_file_path, &st);
     if (ret != 0) {
       fprintf(stderr, "Failed to stat(%s) %s\n", dir_file_path, nfs_get_error(nfs));
       continue;
     }
-    std::cout << "path: " << dir_file_path << " size: " << st.nfs_size << std::endl;
+    //std::cout << "path: " << dir_file_path << " size: " << st.nfs_size << std::endl;
     result.push_back(std::make_pair(std::string(nfsdirent->name), st.nfs_size));
-    printf(" %s  result size: %d\n", nfsdirent->name, result.size());
+    //printf(" %s  result size: %d\n", nfsdirent->name, result.size());
   }
   nfs_closedir(nfs, nfsdir);
 

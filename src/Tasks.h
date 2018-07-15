@@ -108,7 +108,6 @@ class LogisticSparseTaskEFS : public MLTask {
 
 #endif
     void get_latest_model(
-        const SparseDataset& dataset,
         SparseLRModel& model,
         const Configuration& config);
 
@@ -203,10 +202,6 @@ class PSSparseTask : public MLTask {
     /**
       * Attributes
       */
-#if defined(USE_REDIS)
-    std::vector<unsigned int> gradientVersions;
-#endif
-
     uint64_t server_clock = 0;  // minimum of all worker clocks
     std::unique_ptr<std::thread> thread;
 };
@@ -227,6 +222,30 @@ class ErrorSparseTask : public MLTask {
     void run(const Configuration& config);
 
   private:
+};
+
+class ErrorSparseTaskEFS : public MLTask {
+  public:
+    ErrorSparseTaskEFS(
+        uint64_t model_size,
+        uint64_t batch_size, uint64_t samples_per_batch,
+        uint64_t features_per_sample, uint64_t nworkers,
+        uint64_t worker_id, const std::string& ps_ip,
+        uint64_t ps_port) :
+      MLTask(model_size,
+          batch_size, samples_per_batch, features_per_sample,
+          nworkers, worker_id, ps_ip, ps_port)
+  {}
+
+    void run(const Configuration& config);
+
+  private:
+    void get_latest_model(SparseLRModel& model, const Configuration& config);
+    void start();
+
+    struct nfs_context *nfs_ = nullptr;
+    struct nfs_url *url_ = nullptr;
+    char* server_ = nullptr, *path_ = nullptr;
 };
 
 class PerformanceLambdaTask : public MLTask {

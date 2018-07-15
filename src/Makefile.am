@@ -52,7 +52,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3Client.cpp Checksum.cpp \
 	      SparseMFModel.cpp MFModel.cpp\
               ModelGradient.cpp MlUtils.cpp Configuration.cpp \
-              ErrorSparseTask.cpp MFNetflixTask.cpp \
+              ErrorSparseTask.cpp ErrorSparseTaskEFS.cpp MFNetflixTask.cpp \
 	      LogisticSparseTaskS3.cpp LogisticSparseTaskEFS.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \

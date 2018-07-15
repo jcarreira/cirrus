@@ -15,7 +15,6 @@
 
 namespace cirrus {
 
-#ifdef USE_EFS
 void LogisticSparseTaskEFS::push_gradient(LRSparseGradient* lrg, uint64_t version, uint64_t& grad_cum_size) {
   // here we write this gradient to the file gradient<gradient_version>
   std::string grad_name = "gradient" + std::to_string(version);
@@ -26,19 +25,24 @@ void LogisticSparseTaskEFS::push_gradient(LRSparseGradient* lrg, uint64_t versio
   lrg->serialize(data.get()); // FIXME this should called serializeTo for consistency
 
   std::cout << "serialized size: " << serialized_size << " at offset " << grad_cum_size << std::endl;
-  int ret = file.write(grad_cum_size,
-      reinterpret_cast<char*>(&serialized_size), sizeof(int32_t));
-  ret = file.write(grad_cum_size + sizeof(int32_t), data.get(), serialized_size);
-  if (ret != serialized_size) {
+
+  char* all_data = new char[sizeof(int32_t) + serialized_size];
+  *reinterpret_cast<int32_t*>(all_data) = serialized_size;
+
+  std::copy(data.get(), data.get() + serialized_size, all_data + sizeof(int32_t));
+
+  //int ret = file.write(grad_cum_size,
+  //    reinterpret_cast<char*>(&serialized_size), sizeof(int32_t));
+  //ret = file.write(grad_cum_size + sizeof(int32_t), data.get(), serialized_size);
+  int ret = file.write(grad_cum_size, all_data, sizeof(int32_t) + serialized_size);
+  if (ret != serialized_size + sizeof(int32_t)) {
     throw std::runtime_error("Error writing gradient: " + grad_name);
   }
 
   grad_cum_size += sizeof(int32_t) + serialized_size;
+
+  delete[] all_data;
 }
-#else
-void LogisticSparseTaskEFS::push_gradient(LRSparseGradient* lrg) {
-}
-#endif
 
 // get samples and labels data
 bool LogisticSparseTaskEFS::get_dataset_minibatch(
@@ -71,7 +75,6 @@ bool LogisticSparseTaskEFS::get_dataset_minibatch(
 }
 
 
-#ifdef USE_EFS
 class Comparator {
   public:
     Comparator(const std::string& str)
@@ -97,7 +100,6 @@ class Comparator {
   * Find latest model file and read it
   */
 void LogisticSparseTaskEFS::get_latest_model(
-    const SparseDataset& dataset,
     SparseLRModel& model,
     const Configuration& config) {
   
@@ -135,21 +137,22 @@ void LogisticSparseTaskEFS::get_latest_model(
   int ret = 0;
   
   uint32_t max_model_size = 10*1024*1024;
+
   std::shared_ptr<char[]> latest_model(new char[max_model_size]);
-  ret = file.read(0, latest_model.get(), max_model_size);
-  if (ret <= 0) { // 0 means we read the whole thing
-    throw std::runtime_error("Error reading model. ret: " + std::to_string(ret));
+  while (1) {
+    ret = file.read(0, latest_model.get(), max_model_size);
+    if (ret <= 0) { // 0 means we read the whole thing
+      std::cout << "Error reading model. ret: " + std::to_string(ret) << std::endl;
+      //usleep(100000);
+      continue;
+      //throw std::runtime_error("Error reading model. ret: " + std::to_string(ret));
+    }
+    break;
   }
   model.loadSerialized(latest_model.get()); // update the model
 
   std::cout << "Latest model checksum: " << model.checksum() << std::endl;
 }
-#else
-void LogisticSparseTaskEFS::get_latest_model(
-    const SparseDataset& dataset,
-    SparseLRModel& model,
-    const Configuration& config) {}
-#endif
 
 void LogisticSparseTaskEFS::start() {
     nfs_ = nfs_init_context();
@@ -232,7 +235,7 @@ void LogisticSparseTaskEFS::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     //sparse_model_get->get_new_model_inplace(*dataset, model, config);
-    get_latest_model(*dataset, model, config);
+    get_latest_model(model, config);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -243,12 +246,8 @@ void LogisticSparseTaskEFS::run(const Configuration& config, int worker) {
 #endif
 
     try {
-#ifdef USE_EFS
       gradient = model.minibatch_grad(*dataset, config.get_epsilon());
-      gradient->print();
-#else
-      gradient = model.minibatch_grad_sparse(*dataset, config);
-#endif
+      //gradient->print();
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -266,15 +265,11 @@ void LogisticSparseTaskEFS::run(const Configuration& config, int worker) {
 
     try {
       LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
-#ifdef USE_EFS
       auto t1 = get_time_us();
       push_gradient(lrg, grad_version, grad_cum_size);
       std::cout
         << "push gradient time (us): " << (get_time_us() - t1)
         << std::endl;
-#else
-      push_gradient(lrg);
-#endif
     } catch(...) {
       std::cout << "[WORKER] "
         << "Worker task error doing put of gradient" << "\n";
