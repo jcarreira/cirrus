@@ -195,6 +195,7 @@ class LDAUpdates {
 
     virtual ~LDAUpdates() = default;
 
+    LDAUpdates() {}
     LDAUpdates(LDAUpdates&& data);
     LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s);
     LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
@@ -205,6 +206,9 @@ class LDAUpdates {
     void loadSerialized(const char* mem);
     char* serialize() const;
     uint64_t getSerializedSize() const ;
+
+    void update(const LDAUpdates& gradient);
+    char* get_partial_model(const char* slice)
 
     void setVersion(int v) : version(v) {}
     int getVersion() const {return version;}

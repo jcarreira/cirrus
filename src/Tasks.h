@@ -272,6 +272,10 @@ class PSSparseServerTask : public MLTask {
         const Request& req, std::vector<char>& thread_buffer);
     bool process_get_mf_full_model(
         const Request& req, std::vector<char>& thread_buffer);
+    bool process_send_lda_update(
+        const Request& req, std::vector<char>& thread_buffer);
+    bool process_get_lda_model(
+        const Request& req, std::vector<char>& thread_buffer);
 
     /**
       * Attributes
@@ -308,6 +312,7 @@ class PSSparseServerTask : public MLTask {
 
     std::unique_ptr<SparseLRModel> lr_model; // last computed model
     std::unique_ptr<MFModel> mf_model; // last computed model
+    std::unique_ptr<LDAUpdates> lda_global_vars; // nvt + nt
     Configuration task_config;
     uint32_t num_connections = 0;
 
@@ -433,7 +438,8 @@ class LoadingLDATaskS3 : public MLTask {
     LDADataset read_dataset(const Configuration& config);
     LDAStatistics count_dataset(const std::vector<std::vector<std::pair<int, int>>>& docs,\
                         std::vector<int>& nvt,
-                        std::vector<int>& nt, int K);
+                        std::vector<int>& nt, int K,
+                        std::vector<int>& global_vocab);
 
   private:
 };

@@ -131,6 +131,8 @@ void Configuration::parse_line(const std::string& line) {
         iss >> labels_path;
     } else if (s == "n_workers:") {
         iss >> n_workers;
+    } else if (s == "K:") {
+        iss >> K_;
     } else if (s == "opt_method:") {
         iss >> opt_method;
     }  else if (s == "epsilon:") {
@@ -146,7 +148,7 @@ void Configuration::parse_line(const std::string& line) {
     } else if (s == "limit_samples:") {
         iss >> limit_samples;
     } else if (s == "momentum_beta:") {
-        iss >> momentum_beta;  
+        iss >> momentum_beta;
     } else if (s == "s3_bucket:") {
         iss >> s3_bucket_name;
     } else if (s == "use_bias:") {
@@ -154,7 +156,7 @@ void Configuration::parse_line(const std::string& line) {
     } else if (s == "num_users:") {
         iss >> nusers;
     } else if (s == "num_items:") {
-        iss >> nitems; 
+        iss >> nitems;
     } else if (s == "model_bits:") {
         iss >> model_bits;
     } else if (s == "netflix_workers:") {
@@ -355,6 +357,10 @@ int Configuration::get_users() const {
 
 int Configuration::get_items() const {
   return nitems;
+}
+
+int Configuration::get_k() const {
+  return K_;
 }
 
 bool Configuration::get_grad_threshold_use() const {

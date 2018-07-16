@@ -10,6 +10,7 @@
 #include "Momentum.h"
 #include "SGD.h"
 #include "Nesterov.h"
+#include "S3.h"
 
 #undef DEBUG
 
@@ -124,6 +125,33 @@ bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vecto
   return true;
 }
 
+bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+#ifdef DEBUG
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+  //buffer.resize(incoming_size);
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  LDAUpdates gradient(0);
+  gradient.loadSerialized(reinterpret_cast<const char*>(thread_buffer.data()));
+
+  model_lock.lock();
+  lda_global_vars.update(gradient);
+  model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
 // XXX we have to refactor this ASAP
 // move this to SparseMFModel
 
@@ -214,6 +242,35 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   return true;
 }
 
+bool PSSparseServerTask::process_get_lda_model(
+    const Request& req, std::vector<char>& thread_buffer) {
+  // need to parse the buffer to get the indices of the model we want
+  // to send back to the client
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+#ifdef DEBUG
+  std::cout << "GET_MODEL_REQ incoming size: " << incoming_size << std::endl;
+#endif
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  const char* data = thread_buffer.data();
+  uint32_t to_send_size;
+  auto data_to_send = lda_global_vars.get_partial_model(data, to_send_size);
+  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+    return false;
+  }
+  return true;
+}
+
+
 bool PSSparseServerTask::process_get_mf_full_model(
     const Request& req, std::vector<char>& thread_buffer) {
   model_lock.lock();
@@ -290,7 +347,8 @@ void PSSparseServerTask::gradient_f() {
 
     req.req_id = operation;
     if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-        operation == GET_LR_SPARSE_MODEL || operation == GET_MF_SPARSE_MODEL) {
+        operation == GET_LR_SPARSE_MODEL || operation == GET_MF_SPARSE_MODEL ||
+        operation == SEND_LDA_UPDATE || operation == GET_LDA_MODEL) {
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
         if (close(req.poll_fd.fd) != 0) {
@@ -318,6 +376,10 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_mf_gradient(req, thread_buffer)) {
         break;
       }
+    } else if(req.req_id == SEND_LDA_UPDATE){
+      if (!process_send_lda_update(req, thread_buffer)) {
+        break;
+      }
     } else if (req.req_id == GET_LR_SPARSE_MODEL) {
 #ifdef DEBUG
       std::cout << "process_get_lr_sparse_model" << std::endl;
@@ -340,7 +402,10 @@ void PSSparseServerTask::gradient_f() {
     } else if (req.req_id == GET_MF_FULL_MODEL) {
       if (!process_get_mf_full_model(req, thread_buffer))
         break;
-    } else if (req.req_id == GET_TASK_STATUS) {
+    } else if(req.req_id == GET_LDA_MODEL){
+      if (!process_get_lda_model(req, thread_buffer))
+        break;
+    }else if (req.req_id == GET_TASK_STATUS) {
       uint32_t task_id;
       if (read_all(sock, &task_id, sizeof (uint32_t)) == 0) {
         break;
@@ -357,9 +422,9 @@ void PSSparseServerTask::gradient_f() {
         uint32_t status = 1;
         send_all(sock, &status, sizeof (uint32_t));
       }
-    
+
     } else if (operation == SET_TASK_STATUS) {
-    
+
       uint32_t data[2] = {0}; // id + status
       if (read_all(sock, data, sizeof (uint32_t) * 2) == 0) {
         break;
@@ -368,7 +433,7 @@ void PSSparseServerTask::gradient_f() {
       std::cout << "Set status task id: " << data[0] << " status: " << data[1] << std::endl;
 #endif
       task_to_status[data[0]] = data[1];
-    
+
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
@@ -401,13 +466,13 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
   //if (read_all(sock, &operation, sizeof(uint32_t)) == 0) { // read operation
   //  return false;
   //}
-#ifdef DEBUG 
+#ifdef DEBUG
   std::cout << "Operation: " << operation << " - "
       << operation_to_name[operation] << std::endl;
 #endif
 
   uint32_t incoming_size = 0;
-#ifdef DEBUG 
+#ifdef DEBUG
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
   to_process_lock.lock();
@@ -423,6 +488,17 @@ void PSSparseServerTask::start_server() {
   lr_model->randomize();
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(), NUM_FACTORS));
   mf_model->randomize();
+  if(task_config.model_type == LDA){
+    // Get the global stats from S3
+    s3_initialize_aws();
+    auto s3_client = s3_create_client();
+    std::string obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-LDA";
+    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, *s3_client, config.get_s3_bucket());
+    const char* s3_data = s3_obj->str().c_str();
+
+    lda_global_vars->reset(new LDAUpdates());
+    lda_global_vars->loadSerialized(s3s3_data);
+  }
 
   sem_init(&sem_new_req, 0, 0);
 
@@ -627,21 +703,22 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   task_config = config;
 
-  auto learning_rate = config.get_learning_rate();
-  auto epsilon = config.get_epsilon();
-  auto momentum_beta = config.get_momentum_beta();
-  if (config.get_opt_method() == "sgd") {
-    opt_method.reset(new SGD(learning_rate));
-  } else if (config.get_opt_method() == "nesterov") {
-    opt_method.reset(new Nesterov(learning_rate, momentum_beta));
-  } else if (config.get_opt_method() == "momentum") {
-    opt_method.reset(new Momentum(learning_rate, momentum_beta));
-  } else if (config.get_opt_method() == "adagrad") {
-    opt_method.reset(new AdaGrad(learning_rate, epsilon));
-  } else {
-    throw std::runtime_error("Unknown opt method");
+  if (task_config.model_type != LDA){
+    auto learning_rate = config.get_learning_rate();
+    auto epsilon = config.get_epsilon();
+    auto momentum_beta = config.get_momentum_beta();
+    if (config.get_opt_method() == "sgd") {
+      opt_method.reset(new SGD(learning_rate));
+    } else if (config.get_opt_method() == "nesterov") {
+      opt_method.reset(new Nesterov(learning_rate, momentum_beta));
+    } else if (config.get_opt_method() == "momentum") {
+      opt_method.reset(new Momentum(learning_rate, momentum_beta));
+    } else if (config.get_opt_method() == "adagrad") {
+      opt_method.reset(new AdaGrad(learning_rate, epsilon));
+    } else {
+      throw std::runtime_error("Unknown opt method");
+    }
   }
-
   start_server();
 
   //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);

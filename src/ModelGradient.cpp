@@ -438,6 +438,7 @@ LDAUpdates::LDAUpdates(LDAUpdates&& other) {
 LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt) :
   change_nvt(nvt), change_nt(nt){
     slice.clear();
+    slice.resize(0);
   }
 
 LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s) :
@@ -538,6 +539,49 @@ void LDAUpdates::print() const {
     std::cout << v << " ";
   }
   std::cout << std::endl;
+}
+
+void LDAUpdates::update(const LDAUpdates& gradient){
+  for(int i=0; i<gradient.slice.size(); ++i){
+    for(int j=0; j<K_; ++j){
+      change_nvt[gradient.slice[i]][j] += gradient.change_nvt[i*K_ + j];
+    }
+  }
+
+  for(int i=0; i<K_; ++i){
+    change_nt[i] += gradient.change_nt[i];
+  }
+}
+
+char* LDAUpdates::get_partial_model(const char* slice, uint32_t& to_send_size){
+
+  std::vector<std::vector<int>> partial_nvt;
+
+  const int* len = reinterpret_cast<const int*>(slice);
+  slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
+  for(int i=0; i<*len; ++i){
+    const int* word_idx = reinterpret_cast<const int*>(slice);
+    partial_nvt.push_back(change_nvt[*word_idx]);
+    slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
+  }
+
+  char* mem = new char[MAX_MSG_SIZE];
+  char* mem_begin = mem;
+  store_value<int>(mem, slice.size());
+  store_value<int>(mem, partial_nvt.size());
+  for(const auto& nt_vi: partial_nvt){
+    for(const auto& n: nt_vi){
+      store_value<int>(mem, n);
+    }
+  }
+
+  for(int i=0; i<K_; ++i){
+    store_value<int>(mem, global_nt[i]);
+  }
+
+  to_send_size = sizeof(int) * (2 + partial_nvt.size() * change_nvt[0].size());
+
+  return mem_begin;
 }
 
 

@@ -332,8 +332,7 @@ void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
     throw std::runtime_error("Error sending grad size");
   }
 
-  char data[size];
-  gradient.serialize(data);
+  const void* data = reinterpret_cast<const void*>(gradient.serialize())''
   ret = send_all(sock, data, size);
   if (ret == 0) {
     throw std::runtime_error("Error sending grad");
