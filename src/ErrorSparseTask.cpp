@@ -17,6 +17,8 @@ namespace cirrus {
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
         const std::string& ps_ip, uint64_t ps_port) {
+  throw "fix";
+#if 0
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
@@ -27,6 +29,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   return psi->get_full_model(use_col_filtering);
+#endif
 }
 
 void ErrorSparseTask::error_response() {

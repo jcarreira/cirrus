@@ -54,11 +54,11 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
 	      Tensor.cpp messages/CreateTensorMessage.cpp \
 	      messages/GetTensorMessage.cpp messages/AddTensorMessage.cpp \
-	      messages/GetSparseTensorMessage.cpp
+	      messages/GetSparseTensorMessage.cpp \
+	      ErrorSparseTask.cpp \
+	      MFNetflixTask.cpp
               
 # not compiling these for now
-#ErrorSparseTask.cpp 
-#MFNetflixTask.cpp
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp Model.cpp LRModel.cpp \

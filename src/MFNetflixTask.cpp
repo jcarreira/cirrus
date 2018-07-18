@@ -13,28 +13,7 @@
 namespace cirrus {
 
 void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
-#ifdef DEBUG
-  auto before_push_us = get_time_us();
-  std::cout << "Publishing gradients" << std::endl;
-#endif
-  psint->send_mf_gradient(mfg);
-#ifdef DEBUG
-  std::cout << "Published gradients!" << std::endl;
-  auto elapsed_push_us = get_time_us() - before_push_us;
-  static uint64_t before = 0;
-  if (before == 0)
-    before = get_time_us();
-  auto now = get_time_us();
-  std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * mfg.getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
-  before = now;
-#endif
+  throw "error";
 }
 
 // get samples and labels data
