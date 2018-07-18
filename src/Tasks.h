@@ -92,6 +92,7 @@ class LogisticSparseTaskS3 : public MLTask {
         void get_new_model_inplace(const SparseDataset& ds, SparseLRModel& model, const Configuration& config) {
           throw "error";
           //psi->get_lr_sparse_model_inplace(ds, model, config);
+        }
 
       private:
         std::unique_ptr<PSSparseServerInterface> psi;
@@ -288,17 +289,10 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-  bool process_get_mf_sparse_model(const Request& req,
-                                   std::vector<char>&,
-                                   int tn);
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
+  bool process_add_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+  bool process_get_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+  bool process_get_sparse_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+  bool process_create_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
 
   /**
     * Attributes
