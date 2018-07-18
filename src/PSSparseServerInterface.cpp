@@ -7,7 +7,7 @@
 #include <Checksum.h>
 #include <Constants.h>
 #include <CreateTensorMessage.h>
-#include <UpdateTensorMessage.h>
+#include <AddTensorMessage.h>
 #include <GetTensorMessage.h>
 
 uint32_t GET_TENSOR_MSG_VAR = GET_TENSOR_MSG;
@@ -353,7 +353,7 @@ bool PSSparseServerInterface::create_tensor(const std::string& tensor_name,
 
 bool PSSparseServerInterface::add_tensor(const std::string& tensor_name,
         const SparseTensor& sparse_tensor) {
-  UpdateTensorMessage add_tensor_msg(tensor_name, sparse_tensor);
+  AddTensorMessage add_tensor_msg(tensor_name, sparse_tensor);
  
   // 1. send tensor size 
   if (send_all(sock, add_tensor_msg.get_tensor_size_data(),
@@ -367,7 +367,7 @@ bool PSSparseServerInterface::add_tensor(const std::string& tensor_name,
       throw std::runtime_error("Error sending update tensor msg");
   }
 
-  UpdateTensorMessageReply add_tensor_msg_reply;
+  AddTensorMessageReply add_tensor_msg_reply;
   if (read_all(sock, const_cast<char*>(add_tensor_msg_reply.get_return_data()),
               add_tensor_msg_reply.get_return_size()) == 0) {
       throw std::runtime_error("Error getting add_tensor_msg_reply");
