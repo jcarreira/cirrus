@@ -31,17 +31,21 @@ PSSparseServerTask::PSSparseServerTask(
   MLTask(model_size,
       batch_size, samples_per_batch, features_per_sample,
       nworkers, worker_id, ps_ip, ps_port) {
+
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
   std::atomic_init(&thread_count, 0);
 
-  operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
-  operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
   operation_to_name[CREATE_TENSOR_MSG] = "CREATE_TENSOR_MSG";
   operation_to_name[ADD_TENSOR_MSG] = "ADD_TENSOR_MSG";
   operation_to_name[GET_TENSOR_MSG] = "GET_TENSOR_MSG";
   operation_to_name[GET_SPARSE_TENSOR_MSG] = "GET_SPARSE_TENSOR_MSG";
+  operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
+  operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
+  operation_to_name[REGISTER_TASK] = "REGISTER_TASK";
+  operation_to_name[GET_NUMM_CONNS] = "GET_NUM_CONNS";
+  operation_to_name[GET_LAST_TIME_ERROR] = "GET_LAST_TIME_ERROR";
 
   for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
     thread_msg_buffer[i] =
@@ -274,6 +278,11 @@ void PSSparseServerTask::gradient_f() {
       process_get_tensor_msg(req, thread_buffer);
     } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 
       process_get_sparse_tensor_msg(req, thread_buffer);
+    } else if (operation == GET_NUM_CONNS) {
+      std::cout << "Retrieve num connections: " << num_connections << std::endl;
+      if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
+      }
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
