@@ -268,6 +268,9 @@ class PSSparseServerTask : public MLTask {
     //bool process_get_mf_full_model(const Request& req, std::vector<char>& thread_buffer);
 
     bool process_create_tensor_msg(const Request& req, std::vector<char>&);
+    bool process_get_sparse_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+    bool process_get_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+    bool process_add_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
 
     /**
       * Attributes

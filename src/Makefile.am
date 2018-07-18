@@ -45,7 +45,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3.cpp SparseDataset.cpp \
 	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
 	      Tensor.cpp messages/CreateTensorMessage.cpp \
-	      messages/GetTensorMessage.cpp messages/UpdateTensorMessage.cpp \
+	      messages/GetTensorMessage.cpp messages/AddTensorMessage.cpp \
 	      messages/GetSparseTensorMessage.cpp
               
 # not compiling these for now

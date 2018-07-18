@@ -5,6 +5,8 @@
 #include "Constants.h"
 #include "Checksum.h"
 #include "CreateTensorMessage.h"
+#include "AddTensorMessage.h"
+#include "GetTensorMessage.h"
 
 #include <signal.h>
 
@@ -82,7 +84,7 @@ bool PSSparseServerTask::process_add_tensor_msg(
     throw std::runtime_error("Uhandled error");
   }
 
-  UpdateTensorMessage add_tensor_msg(thread_buffer.data());
+  AddTensorMessage add_tensor_msg(thread_buffer.data());
 
   // XXX implement here
 

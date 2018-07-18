@@ -58,9 +58,9 @@ class PSSparseServerInterface {
   /** Gets a sparse tensor (2d tensor)
     * @param tensor_name name of the tensor 
     */
-//  SparseTensor get_sparse_tensor(
-//          const std::string& tensor_name,
-//          const std::vector<std::tuple<uint32_t, uint32_t>>& indexes);
+  SparseTensor get_sparse_tensor(
+          const std::string& tensor_name,
+          const std::vector<std::tuple<uint32_t, uint32_t>>& indexes);
 //  
 //  /** Gets a sparse tensor (3d tensor)
 //    * @param tensor_name name of the tensor 
