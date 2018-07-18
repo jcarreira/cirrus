@@ -44,7 +44,7 @@ PSSparseServerTask::PSSparseServerTask(
   operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
   operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
   operation_to_name[REGISTER_TASK] = "REGISTER_TASK";
-  operation_to_name[GET_NUMM_CONNS] = "GET_NUM_CONNS";
+  operation_to_name[GET_NUM_CONNS] = "GET_NUM_CONNS";
   operation_to_name[GET_LAST_TIME_ERROR] = "GET_LAST_TIME_ERROR";
 
   for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
@@ -208,16 +208,6 @@ void PSSparseServerTask::gradient_f() {
       }
       send_all(sock, &task_reg, sizeof(uint32_t));
       continue;
-    } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-               operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL) {
-      // read 4 bytes of the size of the remaining message
-      uint32_t incoming_size = 0;
-      if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
-        handle_failed_read(&req.poll_fd);
-        continue;
-      }
-      req.incoming_size = incoming_size;
     } else if (operation == CREATE_TENSOR_MSG || operation == ADD_TENSOR_MSG ||
         GET_TENSOR_MSG || operation == GET_SPARSE_TENSOR_MSG) {
       uint32_t incoming_size = 0;
