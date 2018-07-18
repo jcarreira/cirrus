@@ -9,6 +9,11 @@
 #include "GetTensorMessage.h"
 
 #include <signal.h>
+#include "OptimizationMethod.h"
+#include "AdaGrad.h"
+#include "Momentum.h"
+#include "SGD.h"
+#include "Nesterov.h"
 
 #undef DEBUG
 
@@ -28,17 +33,11 @@ PSSparseServerTask::PSSparseServerTask(
       nworkers, worker_id, ps_ip, ps_port) {
   std::cout << "PSSparseServerTask is built" << std::endl;
 
+  std::atomic_init(&gradientUpdatesCount, 0UL);
   std::atomic_init(&thread_count, 0);
 
-  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT";
-  operation_to_name[SEND_MF_GRADIENT] = "SEND_MF_GRADIENT";
-  operation_to_name[GET_LR_FULL_MODEL] = "GET_LR_FULL_MODEL";
-  operation_to_name[GET_MF_FULL_MODEL] = "GET_MF_FULL_MODEL";
-  operation_to_name[GET_LR_SPARSE_MODEL] = "GET_LR_SPARSE_MODEL";
-  operation_to_name[GET_MF_SPARSE_MODEL] = "GET_MF_SPARSE_MODEL";
   operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
   operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
-  
   operation_to_name[CREATE_TENSOR_MSG] = "CREATE_TENSOR_MSG";
   operation_to_name[ADD_TENSOR_MSG] = "ADD_TENSOR_MSG";
   operation_to_name[GET_TENSOR_MSG] = "GET_TENSOR_MSG";
@@ -153,6 +152,17 @@ bool PSSparseServerTask::process_create_tensor_msg(
   return true;
 }
 
+void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
+  if (close(pfd->fd) != 0) {
+    std::cout << "Error closing socket. errno: " << errno << std::endl;
+  }
+  num_connections--;
+  std::cout << "PS closing connection after process(): " << num_connections
+            << std::endl;
+  pfd->fd = -1;
+  pfd->revents = 0;
+}
+
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
   thread_buffer.resize(120 * 1024 * 1024); // 120 MB
@@ -168,31 +178,39 @@ void PSSparseServerTask::gradient_f() {
 
     int sock = req.poll_fd.fd;
 
+    // first read 4 bytes for operation ID
     uint32_t operation = 0;
     if (read_all(sock, &operation, sizeof(uint32_t)) == 0) {
-      if (close(req.poll_fd.fd) != 0) {
-        std::cout << "Error closing socket. errno: " << errno << std::endl;
-      }
-      num_connections--;
-      std::cout << "PS closing connection after process(): " << num_connections << std::endl;
-      req.poll_fd.fd = -1;
-      req.poll_fd.revents = 0;
+      handle_failed_read(&req.poll_fd);
       continue;
     }
 
     // read the incoming_size value from the client
     req.req_id = operation;
-    if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-        operation == GET_LR_SPARSE_MODEL || operation == GET_MF_SPARSE_MODEL) {
+
+    if (operation == REGISTER_TASK) {
+      // read the task id
+      uint32_t task_id = 0;
+      if (read_all(sock, &task_id, sizeof(uint32_t)) == 0) {
+        handle_failed_read(&req.poll_fd);
+        continue;
+      }
+      // check if this task has already been registered
+      uint32_t task_reg =
+          (registered_tasks.find(task_id) != registered_tasks.end());
+
+      if (task_reg == 0) {
+        registered_tasks.insert(task_id);
+      }
+      send_all(sock, &task_reg, sizeof(uint32_t));
+      continue;
+    } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
+               operation == GET_LR_SPARSE_MODEL ||
+               operation == GET_MF_SPARSE_MODEL) {
+      // read 4 bytes of the size of the remaining message
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
-        if (close(req.poll_fd.fd) != 0) {
-          std::cout << "Error closing socket. errno: " << errno << std::endl;
-        }
-        num_connections--;
-        std::cout << "PS closing connection after process(): " << num_connections << std::endl;
-        req.poll_fd.fd = -1;
-        req.poll_fd.revents = 0;
+        handle_failed_read(&req.poll_fd);
         continue;
       }
       req.incoming_size = incoming_size;
@@ -240,10 +258,12 @@ void PSSparseServerTask::gradient_f() {
     
       uint32_t data[2] = {0}; // id + status
       if (read_all(sock, data, sizeof (uint32_t) * 2) == 0) {
-        break;
+        handle_failed_read(&req.poll_fd);
+        continue;
       }
 #ifdef DEBUG
-      std::cout << "Set status task id: " << data[0] << " status: " << data[1] << std::endl;
+      std::cout << "Set status task id: " << data[0] << " status: " << data[1]
+                << std::endl;
 #endif
       task_to_status[data[0]] = data[1];
     } else if (req.req_id = CREATE_TENSOR_MSG) {
@@ -303,7 +323,8 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
-  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(), NUM_FACTORS));
+  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
+                             NUM_FACTORS));
   mf_model->randomize();
 
   sem_init(&sem_new_req, 0, 0);
@@ -332,8 +353,6 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   if (poll_id == 0) {
     std::cout << "Starting server, poll id " << poll_id << std::endl;
 
-    poll_thread = pthread_self();
-
     server_sock_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock_ < 0) {
       throw std::string("Server error creating socket");
@@ -357,17 +376,17 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_);
+    serv_addr.sin_port = htons(ps_port);
     std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
     int ret = bind(server_sock_,
             reinterpret_cast<sockaddr*> (&serv_addr), sizeof(serv_addr));
     if (ret < 0) {
-      throw std::runtime_error("Error binding in port " + to_string(port_));
+      throw std::runtime_error("Error binding in port " + to_string(ps_port));
     }
 
     if (listen(server_sock_, SOMAXCONN) == -1) {
-      throw std::runtime_error("Error listening on port " + to_string(port_));
+      throw std::runtime_error("Error listening on port " + to_string(ps_port));
     }
     fdses[0].at(0).fd = server_sock_;
     fdses[0].at(0).events = POLLIN;
@@ -392,7 +411,8 @@ void PSSparseServerTask::loop(int poll_id) {
 
   std::cout << "Starting loop for id: " << poll_id << std::endl;
   while (1) {
-    int poll_status = poll(fdses[poll_id].data(), curr_indexes[poll_id], timeout);
+    int poll_status =
+        poll(fdses[poll_id].data(), curr_indexes[poll_id], timeout);
     if (poll_status == -1) {
       if (errno != EINTR) {
         throw std::runtime_error("Server error calling poll.");
@@ -402,10 +422,7 @@ void PSSparseServerTask::loop(int poll_id) {
     } else if (
             (poll_id == 0 && fdses[poll_id][1].revents == POLLIN)
          || (poll_id != 0 && fdses[poll_id][0].revents == POLLIN)) {
-      //std::cout << "Ignoring" << std::endl;
-      int posit = 0;
-      if (poll_id == 0)
-        posit = 1;
+      int posit = (poll_id == 0);        // =1 if main poll thread, 0 otherwise
       fdses[poll_id][posit].revents = 0; // Reset the event flags
       char a[1];
       assert(read(pipefds[poll_id][0], a, 1) >= 0);
@@ -422,7 +439,8 @@ void PSSparseServerTask::loop(int poll_id) {
         if (curr_fd.revents != POLLIN) {
           //LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
           if (curr_fd.revents & POLLHUP) {
-            std::cout << "PS closing connection " << num_connections << std::endl;
+            std::cout << "PS closing connection " << num_connections
+                      << std::endl;
             num_connections--;
             close(curr_fd.fd);
             curr_fd.fd = -1;
@@ -459,10 +477,12 @@ void PSSparseServerTask::loop(int poll_id) {
 #endif
           if (!process(curr_fd, poll_id)) {
             if (close(curr_fd.fd) != 0) {
-              std::cout << "Error closing socket. errno: " << errno << std::endl;
+              std::cout << "Error closing socket. errno: " << errno
+                        << std::endl;
             }
             num_connections--;
-            std::cout << "PS closing connection after process(): " << num_connections << std::endl;
+            std::cout << "PS closing connection after process(): "
+                      << num_connections << std::endl;
             curr_fd.fd = -1;
           }
         }
@@ -508,6 +528,22 @@ void PSSparseServerTask::run(const Configuration& config) {
   }
 
   task_config = config;
+
+  auto learning_rate = config.get_learning_rate();
+  auto epsilon = config.get_epsilon();
+  auto momentum_beta = config.get_momentum_beta();
+  if (config.get_opt_method() == "sgd") {
+    opt_method.reset(new SGD(learning_rate));
+  } else if (config.get_opt_method() == "nesterov") {
+    opt_method.reset(new Nesterov(learning_rate, momentum_beta));
+  } else if (config.get_opt_method() == "momentum") {
+    opt_method.reset(new Momentum(learning_rate, momentum_beta));
+  } else if (config.get_opt_method() == "adagrad") {
+    opt_method.reset(new AdaGrad(learning_rate, epsilon));
+  } else {
+    throw std::runtime_error("Unknown opt method");
+  }
+
   start_server();
 
   //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
@@ -543,7 +579,8 @@ void PSSparseServerTask::checkpoint_model_loop() {
     }
 }
 
-void PSSparseServerTask::checkpoint_model_file(const std::string& filename) const {
+void PSSparseServerTask::checkpoint_model_file(
+    const std::string& filename) const {
   uint64_t model_size;
   std::shared_ptr<char> data = serialize_lr_model(*lr_model, &model_size);
 
