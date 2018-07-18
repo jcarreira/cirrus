@@ -31,7 +31,8 @@ class PSSparseServerInterface {
     * Create a multidimensional tensor
     * @param tensor_name Name of the new tensor
     */
-  bool create_tensor(const std::string& tensor_name, const std::vector<uint32_t>& tensor_dims);
+  bool create_tensor(const std::string& tensor_name,
+                     const std::vector<uint32_t>& tensor_dims);
 
   /**
     * Updates a parameter server tensor with

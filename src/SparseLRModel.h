@@ -4,6 +4,7 @@
 #include <vector>
 #include <utility>
 #include <Model.h>
+#include <SparseTensor.h>
 #include <SparseDataset.h>
 #include <ModelGradient.h>
 #include <Configuration.h>
@@ -123,6 +124,10 @@ class SparseLRModel : public CirrusModel {
             double epsilon) const override;
 
     std::unique_ptr<ModelGradient> minibatch_grad_sparse(
+        const SparseDataset& dataset,
+        const Configuration& config) const;
+    
+    std::unique_ptr<SparseTensor> minibatch_grad_sparse_tensor(
         const SparseDataset& dataset,
         const Configuration& config) const;
     /**

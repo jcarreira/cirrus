@@ -196,6 +196,5 @@ SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tenso
   return SparseTensor(nullptr);
 }
 
-
 } // namespace cirrus
 

@@ -12,10 +12,6 @@
 
 namespace cirrus {
 
-void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
-  throw "error";
-}
-
 // get samples and labels data
 bool MFNetflixTask::get_dataset_minibatch(
     std::unique_ptr<SparseDataset>& dataset,

@@ -1,4 +1,5 @@
 #include <SparseLRModel.h>
+#include <SparseTensor.h>
 #include <Utils.h>
 #include <MlUtils.h>
 #include <Eigen/Dense>
@@ -407,6 +408,59 @@ void SparseLRModel::ensure_preallocated_vectors(const Configuration& config) con
   if (part2.capacity() == 0) {
     part2.resize(500);
   }
+}
+
+std::unique_ptr<SparseTensor> SparseLRModel::minibatch_grad_sparse_tensor(
+        const SparseDataset& dataset,
+        const Configuration& config) const {
+  if (!is_sparse_) {
+    throw std::runtime_error("This model is not sparse");
+  }
+
+  ensure_preallocated_vectors(config);
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    double part1_i = 0;
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+#ifdef DEBUG
+      if (weights_sparse_.find(index) == weights_sparse_.end()) {
+        std::cout << "Needed weight with index: " << index << std::endl;
+        throw std::runtime_error("Weight not found");
+      }
+#endif
+      part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
+    }
+    part2[i] = dataset.labels_[i] - s_1(part1_i);
+  }
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+      unique_indices.push_back(index);
+      part3[index] += value * part2[i];
+    }
+  }
+
+  std::vector<std::pair<int, FEATURE_TYPE>> res;
+  res.reserve(unique_indices.size());
+  for (auto& v : unique_indices) {
+    uint64_t index = v;//.first;
+    FEATURE_TYPE value = part3[index];
+    if (value == 0)
+      continue;
+    // we set this to 0 so that next iteration part3 is all 0s
+    else part3[index] = 0;
+    double final_grad = value + weights_sparse_[index] * 2 * config.get_epsilon();
+    if (!config.get_grad_threshold_use()
+        || (config.get_grad_threshold_use() && std::abs(final_grad) > config.get_grad_threshold())) {
+      res.push_back(std::make_pair(index, final_grad));
+    }
+  }
+  std::unique_ptr<SparseTensor> ret = std::make_unique<SparseTensor>(std::move(res));
+  return ret;
 }
 
 std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
