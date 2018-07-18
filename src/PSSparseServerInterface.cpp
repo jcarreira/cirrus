@@ -12,6 +12,8 @@
 #include <AddTensorMessageReply.h>
 #include <GetTensorMessage.h>
 #include <GetTensorMessageReply.h>
+#include <GetSparseTensorMessage.h>
+#include <GetSparseTensorMessageReply.h>
 
 uint32_t GET_TENSOR_MSG_VAR = GET_TENSOR_MSG;
 uint32_t GET_SPARSE_TENSOR_MSG_VAR = GET_SPARSE_TENSOR_MSG;
@@ -167,12 +169,31 @@ Tensor PSSparseServerInterface::get_tensor(const std::string& tensor_name) {
 
 SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tensor_name,
         const std::vector<uint32_t>& indexes) {
-  return SparseTensor();
+  // 1. send operation id
+  if (send_all(sock, &GET_SPARSE_TENSOR_MSG_VAR, sizeof(GET_SPARSE_TENSOR_MSG_VAR)) == -1) {
+      throw std::runtime_error("Error send GET_TENSOR_MSG");
+  }
+
+  GetSparseTensorMessage msg(tensor_name, indexes);
+  // 2. send tensor name
+  if (send_all(sock, const_cast<char*>(msg.get_data()),
+        msg.get_data_size()) == -1) {
+      throw std::runtime_error("Error sending tensor name");
+  }
+
+  GetSparseTensorMessageReply msg_reply(indexes);
+  if (read_all(sock, msg_reply.get_data(),
+              msg_reply.get_size()) == 0) {
+      throw std::runtime_error("Error getting msg_reply");
+  }
+
+  return SparseTensor(msg_reply.get_data());
 }
 
 SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tensor_name,
         const std::vector<std::tuple<uint32_t, uint32_t>>& indexes) {
-  return SparseTensor();
+  throw "fix";
+  return SparseTensor(nullptr);
 }
 
 

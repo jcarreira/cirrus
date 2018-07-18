@@ -52,11 +52,12 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      PerformanceLambdaTask.cpp \
 	      S3.cpp SparseDataset.cpp \
 	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
-	      Tensor.cpp messages/CreateTensorMessage.cpp \
-	      messages/GetTensorMessage.cpp messages/AddTensorMessage.cpp \
-	      messages/GetSparseTensorMessage.cpp \
-	      ErrorSparseTask.cpp \
-	      MFNetflixTask.cpp
+	      Tensor.cpp SparseTensor.cpp \
+	      messages/CreateTensorMessage.cpp messages/CreateTensorMessageReply.cpp \
+	      messages/GetTensorMessage.cpp messages/GetTensorMessageReply.cpp \
+	      messages/AddTensorMessage.cpp messages/AddTensorMessageReply.cpp \
+	      messages/GetSparseTensorMessage.cpp messages/GetSparseTensorMessageReply.cpp \
+	      ErrorSparseTask.cpp MFNetflixTask.cpp
               
 # not compiling these for now
 
