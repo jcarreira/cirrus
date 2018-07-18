@@ -1,3 +1,4 @@
+#include "LDAStatistics.h"
 #include "S3SparseIterator.h"
 #include "Utils.h"
 #include <unistd.h>
@@ -58,7 +59,7 @@ S3SparseIterator::S3SparseIterator(
   }
 
   // global variables are stored at SAMPLE_BASE
-  if (config.get_s3_bucket() == "cirrus-lda"){
+  if (conf.get_s3_bucket() == "nytimes-lda"){
     assert(left_id > 0);
   }
 }
@@ -208,11 +209,10 @@ void S3SparseIterator::push_samples_lda(std::ostringstream* oss) {
     int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
 
     // pop partial LDAStatistics according to minibatch_rows
-    char* minibatch_s3_data = s3_lda_stat.pop_partial(minibatch_rows);
+    char* minibatch_s3_data = s3_lda_stat.pop_partial_docs(minibatch_rows);
     new_queue->push(std::make_pair(reinterpret_cast<const void*>(minibatch_s3_data), is_last));
 
     }
-  }
 
   ring_lock.lock();
   minibatches_list.add(new_queue);
@@ -287,7 +287,7 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     if (config.get_s3_bucket() == "cirrus-criteo-kaggle-19b-random" ||
       config.get_s3_bucket() == "cirrus-criteo-kaggle-20b-random") {
       obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-CRITEO";
-    } else if(config.get_s3_bucket() == "cirrus-lda")
+    } else if(config.get_s3_bucket() == "nytimes-lda")
       obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-LDA";
     else {
       obj_id_str = "CIRRUS" + std::to_string(obj_id);
@@ -331,7 +331,7 @@ try_start:
     }
 
     //auto start = get_time_us();
-    if (config.get_s3_bucket() == "cirrus-lda")
+    if (config.get_s3_bucket() == "nytimes-lda")
       push_samples_lda(s3_obj);
     else
       push_samples(s3_obj);

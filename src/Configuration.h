@@ -74,6 +74,16 @@ class Configuration {
     std::string get_input_type() const;
 
     /**
+      * Get the path to the file with vocabularies for lda
+      */
+    std::string get_vocab_path() const;
+
+    /**
+      * Get the path to the file with statistics representing documents for lda
+      */
+    std::string get_doc_path() const;
+
+    /**
       * print the configuration parameters
       */
     void print() const;
@@ -171,6 +181,9 @@ class Configuration {
 
     std::string samples_path;  //< path to dataset samples
     std::string labels_path;   //< path to dataset labels
+
+    std::string vocab_path;
+    std::string doc_path;
 
     Configuration::ModelType model_type = UNKNOWN;  //< type of the model
 

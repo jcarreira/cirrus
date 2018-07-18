@@ -40,7 +40,7 @@ namespace cirrus{
      * @param s
      * Set the sample_size equal parameter s
      */
-    void set_sample_size(int s) : sample_size(s) {}
+    void set_sample_size(int s) {sample_size = s;}
     /**
      * Return the corpus size
      */
@@ -54,7 +54,7 @@ namespace cirrus{
      * whether word indices and counts are valid
      */
     void check() const;
-    
+
   private:
     std::vector<std::vector<std::pair<int, int> > > docs_;
     std::vector<std::string> vocabs_;

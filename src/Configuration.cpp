@@ -45,6 +45,16 @@ void Configuration::read(const std::string& path) {
 }
 
 void Configuration::print() const {
+
+  if (model_type == LDA){
+    std::cout << "Printing configuration: " << std::endl;
+    std::cout << "vocab_path: " << get_vocab_path() << std::endl;
+    std::cout << "doc_path: " << get_doc_path() << std::endl;
+    std::cout << "K: " << get_k() << std::endl;
+    std::cout << "limit_samples: " << get_limit_samples() << std::endl;
+    std::cout << "S3 size: " << get_s3_size() << std::endl;
+    std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
+  } else {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "input_path: " << get_input_path() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
@@ -72,6 +82,8 @@ void Configuration::print() const {
         << "users: " << nusers << std::endl
         << " items: " << nitems << std::endl;
     }
+  }
+
 }
 
 void Configuration::check() const {
@@ -127,7 +139,11 @@ void Configuration::parse_line(const std::string& line) {
         iss >> input_path;
     } else if (s == "samples_path:") {
         iss >> samples_path;
-    } else if (s == "labels_path:") {
+    } else if (s == "vocab_path:") {
+        iss >> vocab_path;
+    } else if (s == "doc_path:") {
+        iss >> doc_path;
+    }else if (s == "labels_path:") {
         iss >> labels_path;
     } else if (s == "n_workers:") {
         iss >> n_workers;
@@ -176,6 +192,8 @@ void Configuration::parse_line(const std::string& line) {
       iss >> model;
       if (model == "LogisticRegression") {
           model_type = LOGISTICREGRESSION;
+      }if (model == "LDA") {
+          model_type = LDA;
       } else if (model == "Softmax") {
           model_type = SOFTMAX;
       } else if (model == "CollaborativeFiltering") {
@@ -249,6 +267,18 @@ std::string Configuration::get_labels_path() const {
     if (input_type != "double_binary")
         throw std::runtime_error("mismatch between paths and input type");
     return labels_path;
+}
+
+std::string Configuration::get_vocab_path() const {
+    if (vocab_path == "")
+        throw std::runtime_error("vocab path not loaded");
+    return vocab_path;
+}
+
+std::string Configuration::get_doc_path() const {
+    if (doc_path == "")
+        throw std::runtime_error("doc path not loaded");
+    return doc_path;
 }
 
 double Configuration::get_learning_rate() const {

@@ -25,16 +25,14 @@ namespace cirrus{
     buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
     V_ = *V;
 
-    const int* V_len = reinterpret_cast<const int*>(buffer);
     const int* K = reinterpret_cast<const int*>(info);
     K_ = *K;
 
-    buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
     info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
 
     nvt.clear();
     std::vector<int> nt_vi;
-    for(int i=0; i<*V_len; ++i){
+    for(int i=0; i<*V; ++i){
       for(int j=0; j<*K; ++j){
         const int* temp = reinterpret_cast<const int*>(buffer);
         buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
@@ -76,9 +74,7 @@ namespace cirrus{
     const int* D = reinterpret_cast<const int*>(info);
     info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
     for(int i=0; i<*D; ++i){
-      const int* n = reinterpret_cast<const int*>(info);
-      info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
-      for(int j=0; j<*n; ++j){
+      for(int j=0; j<*K; ++j){
         const int* temp = reinterpret_cast<const int*>(info);
         info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
         nt_di.push_back(*temp);

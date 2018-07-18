@@ -1,0 +1,109 @@
+.\"
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\" Copyright (C) 2016 Intel Corporation. All rights reserved.
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License
+.\" as published by the Free Software Foundation; either version
+.\" 2 of the License, or (at your option) any later version.
+.\"
+.TH KEYCTL_DH_COMPUTE 3 "07 Apr 2016" Linux "Linux Key Management Calls"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH NAME
+keyctl_dh_compute \- Compute a Diffie-Hellman shared secret or public key
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SYNOPSIS
+.nf
+.B #include <keyutils.h>
+.sp
+.BI "long keyctl_dh_compute(key_serial_t " private ", key_serial_t " prime ,
+.BI "key_serial_t " base ", char *" buffer ", size_t " buflen ");"
+.sp
+.BI "long keyctl_dh_compute_alloc(key_serial_t " private,
+.BI "key_serial_t " prime ", key_serial_t " base ", void **" _buffer ");"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH DESCRIPTION
+.BR keyctl_dh_compute ()
+computes a Diffie-Hellman public key or shared secret.  That computation is:
+.IP
+.I base
+^
+.I private
+( mod
+.I prime
+)
+.P
+When
+.I base
+is a key containing the shared generator value, the remote public key is
+computed.  When
+.I base
+is a key containing the remote public key, the shared secret is computed.
+.P
+.IR base ", " private ", and " prime
+must all refer to
+.BR user -type
+keys containing the parameters for the computation.  Each of these keys must
+grant the caller
+.B read
+permission in order for them to be used.
+.P
+.I buffer
+and
+.I buflen
+specify the buffer into which the computed result will be placed.
+.I buflen
+may be zero, in which case the buffer is not used and the minimum buffer length
+is fetched.
+.P
+.BR keyctl_dh_compute_alloc ()
+is similar to
+.BR keyctl_dh_compute ()
+except that it allocates a buffer big enough to hold the payload data and
+places the data in it.  If successful, a pointer to the buffer is placed in
+.IR *_buffer .
+The caller must free the buffer.
+.P
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH RETURN VALUE
+On success
+.BR keyctl_dh_compute ()
+returns the amount of data placed into the buffer when
+.I buflen
+is non-zero.  When
+.I buflen
+is zero, the minimum buffer length to hold the data is returned.
+.P
+On success
+.BR keyctl_dh_compute_alloc ()
+returns the amount of data in the buffer.
+.P
+On error, both functions set errno to an appropriate code and return the value
+.BR -1 .
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH ERRORS
+.TP
+.B ENOKEY
+One of the keys specified is invalid or not readable.
+.TP
+.B EINVAL
+The buffer pointer is invalid or buflen is too small.
+.TP
+.B EOPNOTSUPP
+One of the keys was not a valid user key.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH LINKING
+This is a library function that can be found in
+.IR libkeyutils .
+When linking,
+.B \-lkeyutils
+should be specified to the linker.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SEE ALSO
+.BR keyctl (1),
+.br
+.BR keyctl (2),
+.br
+.BR keyctl (3),
+.br
+.BR keyutils (7)

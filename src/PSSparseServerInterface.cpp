@@ -5,6 +5,8 @@
 #include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
+#include "LDAStatistics.h"
+
 
 //#define DEBUG
 
@@ -332,14 +334,14 @@ void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
     throw std::runtime_error("Error sending grad size");
   }
 
-  const void* data = reinterpret_cast<const void*>(gradient.serialize())''
+  void* data = reinterpret_cast<void*>(gradient.serialize());
   ret = send_all(sock, data, size);
   if (ret == 0) {
     throw std::runtime_error("Error sending grad");
   }
 }
 
-LDAModel PSSparseServerInterface::get_lda_model(const LDAStatistics& info) {
+LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
 
 #ifdef DEBUG
   std::cout << "Getting LDA model " << std::endl;
@@ -356,11 +358,11 @@ LDAModel PSSparseServerInterface::get_lda_model(const LDAStatistics& info) {
   }
 
   // 2. Send the size of vocab slise
-  uint32_t msg_size = info.get_serialize_slice_size();
+  int msg_size = info.get_serialize_slice_size();
 #ifdef DEBUG
   std::cout << "msg_size: " << msg_size << std::endl;
 #endif
-  send_all(sock, &msg_size, sizeof(uint32_t));
+  send_all(sock, &msg_size, sizeof(int));
 
   // 3. Send slice
   if (send_all(sock, info.serialize_slice(), msg_size) == -1) {
@@ -380,10 +382,10 @@ LDAModel PSSparseServerInterface::get_lda_model(const LDAStatistics& info) {
 #endif
   LDAModel lda_model(buffer, info.serialize());
 
-  delete[] msg_begin;
+  // delete[] msg_begin;
   delete[] buffer;
 
-  return lda_model
+  return lda_model;
 }
 
 

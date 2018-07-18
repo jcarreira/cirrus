@@ -1069,7 +1069,7 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
 
 LDADataset  InputReader::read_lda_input(const std::string& input_doc_file,
                             const std::string& input_vocab_file,
-                            const std::string& delimiter
+                            const std::string& delimiter,
                             const Configuration& config){
 
   std::cout << "Reading input file: " << input_doc_file << std::endl;

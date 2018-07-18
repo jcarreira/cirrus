@@ -122,7 +122,7 @@ class InputReader {
      */
     LDADataset read_lda_input(const std::string& input_doc_file,
                               const std::string& input_vocab_file,
-                              const std::string& delimiter
+                              const std::string& delimiter,
                               const Configuration&);
 
   private:

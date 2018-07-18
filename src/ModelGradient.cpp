@@ -469,6 +469,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   int len = *reinterpret_cast<const uint32_t*>(mem);
   mem = reinterpret_cast<const char*>(
       (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  change_nvt.resize(len);
   const int* nvt = reinterpret_cast<const int*>(mem);
   std::copy(nvt, nvt + len, change_nvt.begin());
   mem = reinterpret_cast<const char*>(
@@ -477,6 +478,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   len = *reinterpret_cast<const uint32_t*>(mem);
   mem = reinterpret_cast<const char*>(
       (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  change_nt.resize(len);
   const int* nt = reinterpret_cast<const int*>(mem);
   std::copy(nt, nt + len, change_nt.begin());
   mem = reinterpret_cast<const char*>(
@@ -485,6 +487,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   len = *reinterpret_cast<const uint32_t*>(mem);
   mem = reinterpret_cast<const char*>(
       (reinterpret_cast<const char*>(mem) + sizeof(uint32_t)));
+  slice.resize(len);
   const int* s = reinterpret_cast<const int*>(mem);
   std::copy(s, s + len, slice.begin());
 
@@ -492,7 +495,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
 
 char* LDAUpdates::serialize() const {
 
-  char* mem = new char[MAX_MSG_SIZE];
+  char* mem = new char[1024*1024*100];
   char* mem_begin = mem;
 
   *reinterpret_cast<uint32_t*>(mem) = version;
@@ -542,13 +545,14 @@ void LDAUpdates::print() const {
 }
 
 void LDAUpdates::update(const LDAUpdates& gradient){
+  int K = change_nt.size();
   for(int i=0; i<gradient.slice.size(); ++i){
-    for(int j=0; j<K_; ++j){
-      change_nvt[gradient.slice[i]][j] += gradient.change_nvt[i*K_ + j];
+    for(int j=0; j<K; ++j){
+      change_nvt[gradient.slice[i] * K + j] += gradient.change_nvt[i*K + j];
     }
   }
 
-  for(int i=0; i<K_; ++i){
+  for(int i=0; i<change_nt.size(); ++i){
     change_nt[i] += gradient.change_nt[i];
   }
 }
@@ -556,30 +560,32 @@ void LDAUpdates::update(const LDAUpdates& gradient){
 char* LDAUpdates::get_partial_model(const char* slice, uint32_t& to_send_size){
 
   std::vector<std::vector<int>> partial_nvt;
+  int K = change_nt.size();
 
   const int* len = reinterpret_cast<const int*>(slice);
   slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
   for(int i=0; i<*len; ++i){
     const int* word_idx = reinterpret_cast<const int*>(slice);
-    partial_nvt.push_back(change_nvt[*word_idx]);
+    std::vector<int> partial(change_nvt.begin() + *word_idx * K, change_nvt.begin() + (*word_idx + 1) * K);
+    partial_nvt.push_back(partial);
     slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
   }
 
-  char* mem = new char[MAX_MSG_SIZE];
+  char* mem = new char[1024*1024*100];
   char* mem_begin = mem;
-  store_value<int>(mem, slice.size());
   store_value<int>(mem, partial_nvt.size());
+
   for(const auto& nt_vi: partial_nvt){
     for(const auto& n: nt_vi){
       store_value<int>(mem, n);
     }
   }
 
-  for(int i=0; i<K_; ++i){
-    store_value<int>(mem, global_nt[i]);
+  for(int i=0; i<change_nt.size(); ++i){
+    store_value<int>(mem, change_nt[i]);
   }
 
-  to_send_size = sizeof(int) * (2 + partial_nvt.size() * change_nvt[0].size());
+  to_send_size = sizeof(int) * (1 + (partial_nvt.size() + 1) * K);
 
   return mem_begin;
 }

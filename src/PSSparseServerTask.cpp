@@ -19,6 +19,17 @@
 
 namespace cirrus {
 
+  SEND_LR_GRADIENT,
+  SEND_MF_GRADIENT,
+  SEND_LDA_UPDATE,
+  GET_LR_FULL_MODEL,
+  GET_MF_FULL_MODEL,
+  GET_LR_SPARSE_MODEL,
+  GET_MF_SPARSE_MODEL,
+  GET_LDA_MODEL,
+  SET_TASK_STATUS,
+  GET_TASK_STATUS
+
 PSSparseServerTask::PSSparseServerTask(
     uint64_t model_size,
     uint64_t batch_size, uint64_t samples_per_batch,
@@ -34,12 +45,14 @@ PSSparseServerTask::PSSparseServerTask(
 
     operation_to_name[0] = "SEND_LR_GRADIENT";
     operation_to_name[1] = "SEND_MF_GRADIENT";
-    operation_to_name[2] = "GET_LR_FULL_MODEL";
-    operation_to_name[3] = "GET_MF_FULL_MODEL";
-    operation_to_name[4] = "GET_LR_SPARSE_MODEL";
-    operation_to_name[5] = "GET_MF_SPARSE_MODEL";
-    operation_to_name[6] = "SET_TASK_STATUS";
-    operation_to_name[7] = "GET_TASK_STATUS";
+    operation_to_name[2] = "SEND_LDA_UPDATE";
+    operation_to_name[3] = "GET_LR_FULL_MODEL";
+    operation_to_name[4] = "GET_MF_FULL_MODEL";
+    operation_to_name[5] = "GET_LR_SPARSE_MODEL";
+    operation_to_name[6] = "GET_MF_SPARSE_MODEL";
+    operation_to_name[7] = "GET_LDA_MODEL";
+    operation_to_name[8] = "SET_TASK_STATUS";
+    operation_to_name[9] = "GET_TASK_STATUS";
 
     for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
       thread_msg_buffer[i] =
@@ -142,11 +155,11 @@ bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector
     throw std::runtime_error("Uhandled error");
   }
 
-  LDAUpdates gradient(0);
+  LDAUpdates gradient;
   gradient.loadSerialized(reinterpret_cast<const char*>(thread_buffer.data()));
 
   model_lock.lock();
-  lda_global_vars.update(gradient);
+  lda_global_vars->update(gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -263,7 +276,7 @@ bool PSSparseServerTask::process_get_lda_model(
 
   const char* data = thread_buffer.data();
   uint32_t to_send_size;
-  auto data_to_send = lda_global_vars.get_partial_model(data, to_send_size);
+  auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size);
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;
   }
@@ -361,7 +374,8 @@ void PSSparseServerTask::gradient_f() {
         continue;
       }
       req.incoming_size = incoming_size;
-
+    } else{
+      std::cout << "Invalid operation ------------\n";
     }
 
 #ifdef DEBUG
@@ -488,16 +502,17 @@ void PSSparseServerTask::start_server() {
   lr_model->randomize();
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(), NUM_FACTORS));
   mf_model->randomize();
-  if(task_config.model_type == LDA){
+  if(task_config.get_model_type() == cirrus::Configuration::LDA){
     // Get the global stats from S3
     s3_initialize_aws();
     auto s3_client = s3_create_client();
-    std::string obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, *s3_client, config.get_s3_bucket());
+
+    std::string obj_id_str = std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
+    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
     const char* s3_data = s3_obj->str().c_str();
 
-    lda_global_vars->reset(new LDAUpdates());
-    lda_global_vars->loadSerialized(s3s3_data);
+    lda_global_vars.reset(new LDAUpdates());
+    lda_global_vars->loadSerialized(s3_data);
   }
 
   sem_init(&sem_new_req, 0, 0);
@@ -703,7 +718,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   task_config = config;
 
-  if (task_config.model_type != LDA){
+  if (task_config.get_model_type() != cirrus::Configuration::LDA){
     auto learning_rate = config.get_learning_rate();
     auto epsilon = config.get_epsilon();
     auto momentum_beta = config.get_momentum_beta();

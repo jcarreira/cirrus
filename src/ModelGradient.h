@@ -208,9 +208,9 @@ class LDAUpdates {
     uint64_t getSerializedSize() const ;
 
     void update(const LDAUpdates& gradient);
-    char* get_partial_model(const char* slice)
+    char* get_partial_model(const char* slice, uint32_t& to_send_size);
 
-    void setVersion(int v) : version(v) {}
+    void setVersion(int v) {version = v;}
     int getVersion() const {return version;}
 
     void print() const;

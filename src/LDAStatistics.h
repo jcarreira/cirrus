@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+#include <set>
 
 namespace cirrus{
   /**
@@ -18,7 +20,7 @@ namespace cirrus{
     /**
       * Load LDAStatistics from serialized memory
       */
-    LDAStatistics(const char* msg, int minibatch_size);
+    LDAStatistics(const char* msg);
     /**
       * Create a LDAStatistics based on vectors.
       * Construction is done by simply copying vectors.
@@ -54,7 +56,7 @@ namespace cirrus{
     /**
       * Get the number of documents stored in this LDAStatistics
       */
-    int get_num_docs() const {return ndt.size();}
+    int get_num_docs() const {return ndt_.size();}
     /**
       * @param minibatch_size
       *
@@ -67,7 +69,7 @@ namespace cirrus{
       *
       * Set the slice_size to s
       */
-    void set_slice_size(int s) : slice_size(s) {}
+    void set_slice_size(int s) {slice_size = s;}
     /**
       * Return partial LDAStatistics covering only slice_size number of words
       */

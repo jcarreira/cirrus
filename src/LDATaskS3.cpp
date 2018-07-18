@@ -49,7 +49,7 @@ bool LDATaskS3::get_dataset_minibatch(
   #ifdef DEBUG
     auto finish1 = get_time_us();
   #endif
-    local_vars.reset(new LDAStatistics(reinterpret_cast<const char*>(minibatch))); 
+    local_vars.reset(new LDAStatistics(reinterpret_cast<const char*>(minibatch)));
 
   #ifdef DEBUG
     auto finish2 = get_time_us();
@@ -73,7 +73,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     this->config = config;
 
     psint = new PSSparseServerInterface(ps_ip, ps_port);
-    sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
+    lda_model_get = std::make_unique<LDAModelGet>(ps_ip, ps_port);
 
     std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
       << std::endl;
@@ -96,7 +96,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     auto start_time = get_time_ms();
 
     std::unique_ptr<LDAStatistics> s3_local_vars;
-    get_dataset_minibatch(s3_local_vars, s3_iter)
+    get_dataset_minibatch(s3_local_vars, s3_iter);
     while (1) {
       // get data, labels and model
   #ifdef DEBUG
@@ -115,7 +115,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       auto now = get_time_us();
   #endif
       // compute mini batch gradient
-      std::unique_ptr<ModelGradient> gradient;
+      std::unique_ptr<LDAUpdates> gradient;
 
       // we get the model subset with just the right amount of weights
       model = std::move(lda_model_get->get_new_model(*local_vars, config));

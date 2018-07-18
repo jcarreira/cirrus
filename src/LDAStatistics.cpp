@@ -87,7 +87,7 @@ namespace cirrus{
     // TODO: can be improved
     store_value<int>(msg, ndt_.size());
     for(const auto& nt_di: ndt_){
-      store_value<int>(msg, nt_di.size());
+      // store_value<int>(msg, nt_di.size());
       for(const auto& n: nt_di){
         store_value<int>(msg, n);
       }
@@ -115,7 +115,7 @@ namespace cirrus{
   }
 
   int LDAStatistics::get_serialize_size(){
-    return (3 + ndt_.size() * (1 + K_) + slice_.size()) * sizeof(int);
+    return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int);
   }
 
   int LDAStatistics::get_serialize_slice_size(){
@@ -123,7 +123,7 @@ namespace cirrus{
   }
 
   int LDAStatistics::get_receive_size(){
-    return (2 + (slice_.size() + 1) * K_) * sizeof(int);
+    return (1 + (slice_.size() + 1) * K_) * sizeof(int);
   }
 
   char* LDAStatistics::pop_partial_docs(int minibatch_size){
@@ -139,7 +139,7 @@ namespace cirrus{
       if(d_.front() != cur ){
         cur = d_.front();
         ndt_partial.push_back(ndt_.front());
-        ndt.erase(ndt_.begin());
+        ndt_.erase(ndt_.begin());
       }else{
         int gindex = w_.front();
         t_partial.push_back(t_.front());
@@ -149,7 +149,7 @@ namespace cirrus{
         d_.erase(d_.begin());
         w_.erase(w_.begin());
         if(slice_partial.find(gindex) == slice_partial.end())
-          slice_partial.push_back(gindex);
+          slice_partial.insert(slice_partial.end(), gindex);
       }
     }
 
@@ -166,7 +166,7 @@ namespace cirrus{
       slice = std::vector<int>(slice_.begin()+cur, slice_.end());
     partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
     cur += slice_size;
-    if(slice_size - cur < slice_size)
+    if(slice_.size() - cur < slice_size)
       return -1;
     return 1;
   }

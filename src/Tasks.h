@@ -397,8 +397,8 @@ class LDATaskS3 : public MLTask {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
           }
 
-        LDAModelGet get_new_model(const LDAStatistics& info, const Configuration& config) {
-          return std::move(psi->get_lda_model(info));
+        LDAModel get_new_model(LDAStatistics& info, const Configuration& config) {
+          return psi->get_lda_model(info);
         }
 
       private:
@@ -439,7 +439,7 @@ class LoadingLDATaskS3 : public MLTask {
     LDAStatistics count_dataset(const std::vector<std::vector<std::pair<int, int>>>& docs,\
                         std::vector<int>& nvt,
                         std::vector<int>& nt, int K,
-                        std::vector<int>& global_vocab);
+                        std::set<int>& global_vocab);
 
   private:
 };

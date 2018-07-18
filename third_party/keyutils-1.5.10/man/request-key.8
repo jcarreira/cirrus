@@ -1,0 +1,38 @@
+.\"
+.\" Copyright (C) 2004 Red Hat, Inc. All Rights Reserved.
+.\" Written by David Howells (dhowells@redhat.com)
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License
+.\" as published by the Free Software Foundation; either version
+.\" 2 of the License, or (at your option) any later version.
+.\"
+.TH REQUEST-KEY 8 "15 Nov 2011" Linux "Linux Key Management Utilities"
+.SH NAME
+request\-key \- handle key instantiation callback requests from the kernel
+.SH SYNOPSIS
+\fB/sbin/request\-key \fR<op> <key> <uid> <gid> <threadring> <processring>
+	<sessionring> [<info>]
+.SH DESCRIPTION
+This program is invoked by the kernel when the kernel is asked for a key that
+it doesn't have immediately available. The kernel creates a partially set up
+key and then calls out to this program to instantiate it. It is not intended
+to be called directly.
+.SH ERRORS
+All errors will be logged to the syslog.
+.SH FILES
+.ul
+/etc/request\-key.conf
+.ul 0
+Instantiation handler configuration file.
+.P
+.ul
+/etc/request\-key.d/<keytype>.conf
+.ul 0
+Keytype specific configuration file.
+.SH SEE ALSO
+.ad l
+.nh
+.BR keyctl (1),
+.BR request\-key.conf (5),
+.BR keyrings (7)

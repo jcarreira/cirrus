@@ -6,23 +6,24 @@
 #include "Utils.h"
 #include "config.h"
 #include <random>
+#include <set>
 
 namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
 
-LDADataset LoadingSparseTaskS3::read_dataset(
+LDADataset LoadingLDATaskS3::read_dataset(
     const Configuration& config) {
 
   InputReader input;
   return input.read_lda_input(
-      config.get_input_path(),
-      // config.get_vocab_path(),
+      config.get_doc_path(),
+      config.get_vocab_path(),
       ",",
       config);
 }
 
-LDAStatistics LoadingSparseTaskS3::count_dataset(
+LDAStatistics LoadingLDATaskS3::count_dataset(
                     const std::vector<std::vector<std::pair<int, int>>>& docs,\
                     std::vector<int>& nvt,
                     std::vector<int>& nt, int K,
@@ -30,8 +31,8 @@ LDAStatistics LoadingSparseTaskS3::count_dataset(
 
   std::vector<int> t, d, w;
   std::vector<std::vector<int>> ndt;
-  std::set<int> local_vocab
-  std::vector,int> ndt_row(K);
+  std::set<int> local_vocab;
+  std::vector<int> ndt_row(K);
 
   for(const auto& doc: docs){
     for(const auto& feat: doc){
@@ -53,14 +54,13 @@ LDAStatistics LoadingSparseTaskS3::count_dataset(
       }
     }
     ndt.push_back(ndt_row);
-    ++ idx;
     ndt_row.clear();
   }
   std::vector<int> local_vocab_vec(local_vocab.begin(), local_vocab.end());
   return LDAStatistics(K, ndt, local_vocab_vec, t, d, w);
 }
 
-void LoadingSparseTaskS3::run(const Configuration& config) {
+void LoadingLDATaskS3::run(const Configuration& config) {
   std::cout << "[LOADER] " << "Read lda input..." << std::endl;
 
   uint64_t s3_obj_num_samples = config.get_s3_size();

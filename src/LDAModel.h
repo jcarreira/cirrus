@@ -16,6 +16,7 @@ namespace cirrus{
       */
     class LDAModel{
       public:
+        LDAModel() {}
         /**
           * LDA Model constructor from serialized memory
           * @param buffer Serialized memory containing global statistics
