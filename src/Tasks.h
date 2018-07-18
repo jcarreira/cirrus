@@ -85,10 +85,12 @@ class LogisticSparseTaskS3 : public MLTask {
           }
 
         SparseLRModel get_new_model(const SparseDataset& ds, const Configuration& config) {
-          return std::move(psi->get_lr_sparse_model(ds, config));
+          throw "error";
+          //return std::move(psi->get_lr_sparse_model(ds, config));
         }
         void get_new_model_inplace(const SparseDataset& ds, SparseLRModel& model, const Configuration& config) {
-          psi->get_lr_sparse_model_inplace(ds, model, config);
+          throw "error";
+          //psi->get_lr_sparse_model_inplace(ds, model, config);
         }
 
       private:
@@ -258,12 +260,12 @@ class PSSparseServerTask : public MLTask {
     void gradient_f();
 
     // message handling
-    bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-    bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-    bool process_get_mf_sparse_model(const Request& req, std::vector<char>&, int tn);
-    bool process_get_lr_full_model(const Request& req, std::vector<char>& thread_buffer);
-    bool process_send_mf_gradient(const Request& req, std::vector<char>& thread_buffer);
-    bool process_get_mf_full_model(const Request& req, std::vector<char>& thread_buffer);
+    //bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
+    //bool process_send_lr_gradient(const Request& req, std::vector<char>&);
+    //bool process_get_mf_sparse_model(const Request& req, std::vector<char>&, int tn);
+    //bool process_get_lr_full_model(const Request& req, std::vector<char>& thread_buffer);
+    //bool process_send_mf_gradient(const Request& req, std::vector<char>& thread_buffer);
+    //bool process_get_mf_full_model(const Request& req, std::vector<char>& thread_buffer);
 
     bool process_create_tensor_msg(const Request& req, std::vector<char>&);
 
@@ -340,7 +342,8 @@ class MFNetflixTask : public MLTask {
 
         SparseMFModel get_new_model(
             const SparseDataset& ds, uint64_t user_base_index, uint64_t mb_size) {
-          return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
+          throw "error";
+          //return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
         }
 
       private:

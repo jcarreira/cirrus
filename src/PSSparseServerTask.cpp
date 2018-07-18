@@ -38,7 +38,7 @@ PSSparseServerTask::PSSparseServerTask(
   operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
   
   operation_to_name[CREATE_TENSOR_MSG] = "CREATE_TENSOR_MSG";
-  operation_to_name[UPDATE_TENSOR_MSG] = "UPDATE_TENSOR_MSG";
+  operation_to_name[ADD_TENSOR_MSG] = "ADD_TENSOR_MSG";
   operation_to_name[GET_TENSOR_MSG] = "GET_TENSOR_MSG";
   operation_to_name[GET_SPARSE_TENSOR_MSG] = "GET_SPARSE_TENSOR_MSG";
 
@@ -279,7 +279,7 @@ bool PSSparseServerTask::process_get_lr_full_model(
   return true;
 }
 
-bool PSSparseServerTask::process_update_tensor_msg(
+bool PSSparseServerTask::process_add_tensor_msg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
@@ -295,7 +295,7 @@ bool PSSparseServerTask::process_update_tensor_msg(
     throw std::runtime_error("Uhandled error");
   }
 
-  UpdateTensorMessage update_tensor_msg(thread_buffer.data());
+  UpdateTensorMessage add_tensor_msg(thread_buffer.data());
 
   // XXX implement here
 
@@ -407,7 +407,7 @@ void PSSparseServerTask::gradient_f() {
         continue;
       }
       req.incoming_size = incoming_size;
-    } else if (operation == CREATE_TENSOR_MSG || operation == UPDATE_TENSOR_MSG ||
+    } else if (operation == CREATE_TENSOR_MSG || operation == ADD_TENSOR_MSG ||
         GET_TENSOR_MSG || operation == GET_SPARSE_TENSOR_MSG) {
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
@@ -489,8 +489,8 @@ void PSSparseServerTask::gradient_f() {
       task_to_status[data[0]] = data[1];
     } else if (req.req_id = CREATE_TENSOR_MSG) {
       process_create_tensor_msg(req, thread_buffer);
-    } else if (req.req_id = UPDATE_TENSOR_MSG) { 
-      process_update_tensor_msg(req, thread_buffer);
+    } else if (req.req_id = ADD_TENSOR_MSG) { 
+      process_add_tensor_msg(req, thread_buffer);
     } else if (req.req_id = GET_TENSOR_MSG) { 
       process_get_tensor_msg(req, thread_buffer);
     } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 

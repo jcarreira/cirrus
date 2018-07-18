@@ -12,6 +12,8 @@
 namespace cirrus {
 
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
+  throw "need to implement";
+#if 0
 #ifdef DEBUG
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
@@ -34,6 +36,7 @@ void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
       << " since last(us): " << (now - before)
       << "\n";
   before = now;
+#endif
 #endif
 }
 

@@ -192,7 +192,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
       uint64_t itemId = dataset.data_[user_from_0][j].first;
       FEATURE_TYPE rating = dataset.data_[user_from_0][j].second;
       
-
       //std::cout <<
       //  "user_from_0: " << user_from_0
       //  << " itemId: " << itemId

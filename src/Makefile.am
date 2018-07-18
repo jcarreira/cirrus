@@ -37,9 +37,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      SparseMFModel.cpp MFModel.cpp\
               ModelGradient.cpp MlUtils.cpp Configuration.cpp \
               Checksum.cpp \
-              ErrorSparseTask.cpp \
 	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
@@ -49,6 +47,10 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      Tensor.cpp messages/CreateTensorMessage.cpp \
 	      messages/GetTensorMessage.cpp messages/UpdateTensorMessage.cpp \
 	      messages/GetSparseTensorMessage.cpp
+              
+# not compiling these for now
+#ErrorSparseTask.cpp 
+#MFNetflixTask.cpp
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp Model.cpp LRModel.cpp \

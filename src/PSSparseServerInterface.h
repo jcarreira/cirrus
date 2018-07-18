@@ -18,6 +18,7 @@
 #include <SparseMFModel.h>
 #include <Model.h>
 #include <Tensor.h>
+#include <SparseTensor.h>
 
 namespace cirrus {
 
@@ -34,13 +35,13 @@ class PSSparseServerInterface {
 
   /**
     * Updates a parameter server tensor with
-    * given update_tensor
+    * given add_tensor
     * @param tensor_name Name of the tensor to be update
-    * @param update_tensor Name of the tensor gradient
+    * @param add_tensor
     */
-  bool update_tensor(
+  bool add_tensor(
           const std::string& tensor_name,
-          const SparseTensor& update_tensor);
+          const SparseTensor& add_tensor);
 
   /** gets a full tensor
     * @param tensor_name name of the tensor 
@@ -57,18 +58,20 @@ class PSSparseServerInterface {
   /** Gets a sparse tensor (2d tensor)
     * @param tensor_name name of the tensor 
     */
-  SparseTensor get_sparse_tensor(
-          const std::string& tensor_name,
-          const std::vector<std::tuple<uint32_t, uint32_t>>& indexes);
-  
-  /** Gets a sparse tensor (3d tensor)
-    * @param tensor_name name of the tensor 
-    */
-  SparseTensor get_sparse_tensor(
-          const std::string& tensor_name,
-          const std::vector<
-               std::tuple<uint32_t, uint32_t, uint32_t>>& indexes);
+//  SparseTensor get_sparse_tensor(
+//          const std::string& tensor_name,
+//          const std::vector<std::tuple<uint32_t, uint32_t>>& indexes);
+//  
+//  /** Gets a sparse tensor (3d tensor)
+//    * @param tensor_name name of the tensor 
+//    */
+//  SparseTensor get_sparse_tensor(
+//          const std::string& tensor_name,
+//          const std::vector<
+//               std::tuple<uint32_t, uint32_t, uint32_t>>& indexes);
 
+
+#if 0
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
   
@@ -77,6 +80,7 @@ class PSSparseServerInterface {
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
+#endif
 
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
