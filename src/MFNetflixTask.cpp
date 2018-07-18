@@ -42,15 +42,44 @@ bool MFNetflixTask::get_dataset_minibatch(
   return true;
 }
 
+std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
+MFNetflixTask::build_indexes(const SparseDataset& ds,
+                             uint64_t sample_index,
+                             uint32_t mb_size) {
+  std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> res;
+  res.resize(4); // user_bias, item_bias, user_weights, item_weights
+
+  bool seen[17770] = {false}; // fix
+  for (const auto& sample : ds.data_) {
+    for (const auto& w : sample) {
+      uint32_t movieId = w.first;
+      if (seen[movieId]) {
+        continue;
+      } else {
+        seen[movieId] = true;
+      }
+      res[1].push_back(std::make_tuple(movieId, UINT32_MAX)); // get all values
+      res[3].push_back(std::make_tuple(movieId, UINT32_MAX)); // get all values
+    }
+  }
+
+  for (uint32_t i = sample_index; i < sample_index + mb_size; ++i) {
+    res[0].push_back(std::make_tuple(i, UINT32_MAX));
+    res[2].push_back(std::make_tuple(i, UINT32_MAX));
+  }
+}
+
 void MFNetflixTask::run(const Configuration& config, int worker) {
   std::cout << "Starting MFNetflixTask"
-    << std::endl;
+            << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
   psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-
-  mf_model_get = std::make_unique<MFModelGet>(ps_ip, ps_port);
+  psint->create_tensor("mf_item_bias", std::vector<uint32_t>{0});
+  psint->create_tensor("mf_user_bias", std::vector<uint32_t>{0});
+  psint->create_tensor("mf_item_weights", std::vector<uint32_t>{0, 0});
+  psint->create_tensor("mf_user_weights", std::vector<uint32_t>{0, 0});
 
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
@@ -110,10 +139,20 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     // compute mini batch gradient
     std::unique_ptr<ModelGradient> gradient;
 
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> indexes =
+      build_indexes(*dataset, sample_index, config.get_minibatch_size());
     // we get the model subset with just the right amount of weights
-    SparseMFModel model =
-      mf_model_get->get_new_model(
-              *dataset, sample_index, config.get_minibatch_size());
+    SparseTensor mf_user_bias = psint->get_sparse_tensor("mf_user_bias",
+                                                         indexes[0]);
+    SparseTensor mf_item_bias = psint->get_sparse_tensor("mf_item_bias",
+                                                         indexes[1]);
+    SparseTensor mf_user_weights = psint->get_sparse_tensor("mf_user_weights",
+                                                            indexes[2]);
+    SparseTensor mf_item_weights = psint->get_sparse_tensor("mf_item_weights",
+                                                            indexes[3]);
+    //SparseMFModel model =
+    //  mf_model_get->get_new_model(
+    //          *dataset, sample_index, config.get_minibatch_size());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -123,17 +162,19 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      auto gradient = model.minibatch_grad(*dataset, config, sample_index);
+      auto gradient_tensor = model.minibatch_grad_tensor(*dataset, config, sample_index);
+      //auto gradient = model.minibatch_grad(*dataset, config, sample_index);
 #ifdef DEBUG
       auto elapsed_us = get_time_us() - now;
       std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
         << " at time: " << get_time_us() << "\n";
 #endif
-      MFSparseGradient* grad_ptr =
-        dynamic_cast<MFSparseGradient*>(gradient.get());
-      push_gradient(*grad_ptr);
-      sample_index += config.get_minibatch_size();
+      //MFSparseGradient* grad_ptr =
+      //  dynamic_cast<MFSparseGradient*>(gradient.get());
+      //push_gradient(*grad_ptr);
 
+      psint->add_tensor("mf_model", gradient_tensor);
+      sample_index += config.get_minibatch_size();
 
       if (sample_index + config.get_minibatch_size() > sample_high) {
           sample_index = sample_low;

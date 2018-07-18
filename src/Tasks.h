@@ -346,32 +346,15 @@ class MFNetflixTask : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
-    class MFModelGet {
-      public:
-        MFModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-        }
-
-        SparseMFModel get_new_model(
-            const SparseDataset& ds, uint64_t user_base_index, uint64_t mb_size) {
-          throw "error";
-          //return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
-        }
-
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
-    };
-
-  private:
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
+      build_indexes(const SparseDataset& ds,
+          uint64_t sample_index,
+          uint32_t mb_size);
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
     void push_gradient(MFSparseGradient&);
 
-    std::unique_ptr<MFModelGet> mf_model_get;
     std::unique_ptr<PSSparseServerInterface> psint;
 };
 
