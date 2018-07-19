@@ -104,24 +104,14 @@ bool PSSparseServerTask::process_send_lr_gradient(const unsigned char *gradient_
 // XXX we have to refactor this ASAP
 // move this to SparseMFModel
 
-bool PSSparseServerTask::process_get_mf_sparse_model(
-    const Request& req, std::vector<char>& thread_buffer, int thread_number) {
-  uint32_t k_items = 0;
-  uint32_t base_user_id = 0;
-  uint32_t minibatch_size = 0;
-  uint32_t magic_value = 0;
+bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
+    const unsigned char* id_list) {
+  uint32_t base_user_id = load_value<uint32_t>(id_list);
+  uint32_t minibatch_size = load_value<uint32_t>(id_list);
 
-  read_all(req.sock, &k_items, sizeof(uint32_t));
-  read_all(req.sock, &base_user_id, sizeof(uint32_t));
-  read_all(req.sock, &minibatch_size, sizeof(uint32_t));
-  read_all(req.sock, &magic_value, sizeof(uint32_t));
-
-  assert(k_items > 0);
   assert(minibatch_size > 0);
-  if (magic_value != MAGIC_NUMBER) {
-    throw std::runtime_error("Wrong message");
-  }
-  read_all(req.sock, thread_buffer.data(), k_items * sizeof(uint32_t));
+  // TODO(nsomani): Send and receive the SparseMFModel via a FlatBuffer.
+  /*
   uint32_t to_send_size =
       minibatch_size *
           (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
@@ -135,7 +125,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
   sparse_mf_model.serializeFromDense(
       *mf_model, base_user_id, minibatch_size,
-      k_items, thread_buffer.data(), thread_msg_buffer[thread_number]);
+      k_items, id_list, thread_msg_buffer[thread_number]);
 
   //uint32_t to_send_size = data_to_send.size();
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
@@ -145,6 +135,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
       -1) {
     return false;
   }
+  */
   return true;
 }
 
@@ -298,11 +289,11 @@ void PSSparseServerTask::gradient_f() {
       case message::WorkerMessage::Request_SparseModelRequest:
         {
           auto sparse_req = msg->payload_as_SparseModelRequest();
-          const unsigned char *index_buf = sparse_req->index_list()->data();
+          const unsigned char *index_buf = sparse_req->index_info()->data();
           if (sparse_req->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-            process_get_lr_sparse_model(sparse_req->index_list()->size(), index_buf);
+            process_get_lr_sparse_model(sparse_req->index_info()->size(), index_buf);
           } else if (sparse_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-            // TODO(nsomani): Implement sparse MF model.
+            process_get_mf_sparse_model(sparse_req->index_info()->size() - 2, sparse_req->index_info()->data())
           }
           else {
             throw std::runtime_error("Unimplemented request for sparse model");

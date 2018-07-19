@@ -120,7 +120,7 @@ int64_t send_all(int sock, void* data, size_t len) {
   return bytes_sent;
 }
 
-void send_flatbuffer(flatbuffers::FlatBufferBuilder* fbb) {
+void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb) {
   uint8_t *msg_buf = (*builder).GetBufferPointer();
   int size = (*builder).GetSize();
   if (send_all(sock, &size, sizeof(int)) < 1) {

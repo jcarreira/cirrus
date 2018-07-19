@@ -84,11 +84,10 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 
   builder.Finish(sparse_msg);
 
-  #ifdef DEBUG
-    std::cout << "Sending sparse model request" << std::endl;
-  #endif
-    send_flatbuffer(&builder);
-  }
+#ifdef DEBUG
+  std::cout << "Sending sparse model request" << std::endl;
+#endif
+  send_flatbuffer(sock, &builder);
   
   // Get the message size and FlatBuffer message
   int msg_size;
@@ -105,20 +104,15 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
     throw std::runtime_error("Unhandled error");
   }
 
-  auto msg = message::PSMessage::GetPSMessage(&buf);
+  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
 
-  // TODO(nsomani): Interpret as sparse model, get weights.
-  /*
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
   // build a truly sparse model and return
-  // XXX this copy could be avoided
-  lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, (uint32_t*)msg, num_weights, config);
-  
-  delete[] msg_begin;
-  delete[] buffer;
-  */
+  // TODO: Can this copy be avoided?
+  lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, 
+    (uint32_t*)msg->model()->data(), msg->model()->size(), config);
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config) {
@@ -191,15 +185,16 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   */
 SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     const SparseDataset& ds, uint32_t user_base, uint32_t minibatch_size) {
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg; // need to keep this pointer to delete later
  
-  uint32_t item_ids_count = 0;
-  store_value<uint32_t>(msg, 0); // we will write this value later
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
-  store_value<uint32_t>(msg, MAGIC_NUMBER); // magic value
   bool seen[17770] = {false};
+  int num_bytes = sizeof(uint32_t) * 2;
+
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
@@ -210,24 +205,22 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
       //store_value<uint32_t>(msg, movieId); // encode the index
-      item_ids_count++;
+      num_bytes += sizeof(uint32_t);
     }
   }
   msg = msg_begin;
-  store_value<uint32_t>(msg, item_ids_count); // store correct value here
 
-  // 1. Send operation
-  uint32_t operation = GET_MF_SPARSE_MODEL;
-  send_all(sock, &operation, sizeof(uint32_t));
-  // 2. Send msg size
-  uint32_t msg_size = sizeof(uint32_t) * 4 + sizeof(uint32_t) * item_ids_count;
-  send_all(sock, &msg_size, sizeof(uint32_t));
-  // 3. Send request message
-  if (send_all(sock, msg_begin, msg_size) == -1) {
-    throw std::runtime_error("Error getting sparse mf model");
-  }
+  auto id_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_start));
   
-  // 4. receive user vectors and item vectors
+  auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(builder, 
+    id_vec,
+    message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
+
+  builder.Finish(sparse_msg);
+
+  send_flatbuffer(sock, &builder);
+  
+  // receive user vectors and item vectors
   // FORMAT here is
   // minibatch_size * user vectors. Each vector is user_id + user_bias + NUM_FACTORS * FEATURE_TYPE
   // num_item_ids * item vectors. Each vector is item_id + item_bias + NUM_FACTORS * FEATURE_TYPE
@@ -267,7 +260,7 @@ void PSSparseServerInterface::send_gradient(
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
-  send_flatbuffer(&builder);
+  send_flatbuffer(sock, &builder);
 }
 
 void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient) {
