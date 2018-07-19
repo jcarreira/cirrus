@@ -7,6 +7,7 @@ namespace cirrus {
 /**
   * Format:
   * operation id (uint32_t)
+  * message size
   * tensor_name with null ptr (tensor_name.size() + 1)
   * num_dims (uint32_t)
   * dims (each uint32_t)
@@ -17,7 +18,7 @@ CreateTensorMessage::CreateTensorMessage(
     uint32_t tensor_dim) :
   tensor_name(tensor_name),
   tensor_dim(std::vector<uint32_t>{tensor_dim}) {
-    data.reset(new char[getDataSize()]);
+    data.reset(new char[getTotalDataSize()]);
     populateData();
 }
 
@@ -26,7 +27,7 @@ CreateTensorMessage::CreateTensorMessage(
     const std::vector<uint32_t>& tensor_dim) :
   tensor_name(tensor_name),
   tensor_dim(tensor_dim) {
-    data.reset(new char[getDataSize()]);
+    data.reset(new char[getTotalDataSize()]);
     populateData();
 }
 
@@ -37,8 +38,9 @@ CreateTensorMessage::CreateTensorMessage(const char* data) {
 void CreateTensorMessage::populateData() {
   char* data_ptr = data.get();
   store_value<uint32_t>(data_ptr, CREATE_TENSOR_MSG);
+  store_value<uint32_t>(data_ptr, getDataSize());
   store_value<std::string>(data_ptr, tensor_name);
-  store_value(data_ptr, static_cast<char>(0));
+  store_value(data_ptr, static_cast<char>(0)); // null after name
   store_value(data_ptr, tensor_dim.size());
   store_value(data_ptr, tensor_dim);
 }
@@ -50,8 +52,13 @@ std::string CreateTensorMessage::getName() const {
 std::vector<uint32_t> CreateTensorMessage::getTensorDims() const {
   return tensor_dim;
 }
-    
+
 uint32_t CreateTensorMessage::getDataSize() const {
+  // all but the operation id
+  return getTotalDataSize() - sizeof(uint32_t);
+}
+    
+uint32_t CreateTensorMessage::getTotalDataSize() const {
   return
     sizeof(uint32_t) + // operation id
     tensor_name.size() + 1 + // tensor name with null
@@ -60,8 +67,7 @@ uint32_t CreateTensorMessage::getDataSize() const {
 }
     
 const char* CreateTensorMessage::getData() const {
-  throw "fix";
-  return nullptr;
+  return data.get();
 }
 
 }  // namespace cirrus

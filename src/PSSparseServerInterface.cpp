@@ -85,55 +85,16 @@ bool PSSparseServerInterface::createTensor2D(const std::string& tensor_name,
   CreateTensorMessage create_msg(tensor_name,
                                  std::vector<uint32_t>{tensor_dims.first,
                                                        tensor_dims.second});
-  // 1. send operation id
-  if (send_all(sock,
-        &CREATE_TENSOR_MSG_VAR,
-        sizeof(CREATE_TENSOR_MSG_VAR)) == -1) {
-    throw std::runtime_error("Error send CREATE_TENSOR_MSG");
-  }
-
-  // 2. send total size
-  uint32_t message_size = create_msg.getDataSize();
-  if (send_all(sock, &message_size, sizeof(message_size)) == -1) {
-    throw std::runtime_error("Error sending create tensor msg size");
-  }
-
-  // 3. send name and tensor dimension
-  if (send_all(sock, const_cast<char*>(create_msg.getData()),
-        create_msg.getDataSize()) == -1) {
-    throw std::runtime_error("Error sending create tensor msg");
-  }
-
-  CreateTensorMessageReply create_msg_reply;
-  // receive boolean reply
-  if (read_all(sock,
-        const_cast<char*>(create_msg_reply.getReturnData()),
-        create_msg_reply.getReturnSize()) == 0) {
-    throw std::runtime_error("Error getting create_msg_reply");
-  }
-
-  return create_msg_reply.getBool();
+  throw "fix";
+  false;
 }
 
 bool PSSparseServerInterface::createTensor1D(const std::string& tensor_name,
     uint32_t tensor_dim) {
   CreateTensorMessage create_msg(tensor_name, tensor_dim);
-  // 1. send operation id
-  if (send_all(sock,
-        &CREATE_TENSOR_MSG_VAR,
-        sizeof(CREATE_TENSOR_MSG_VAR)) == -1) {
-    throw std::runtime_error("Error send CREATE_TENSOR_MSG");
-  }
-
-  // 2. send total size
-  uint32_t message_size = create_msg.getDataSize();
-  if (send_all(sock, &message_size, sizeof(message_size)) == -1) {
-    throw std::runtime_error("Error sending create tensor msg size");
-  }
-
-  // 3. send name and tensor dimension
+  
   if (send_all(sock, const_cast<char*>(create_msg.getData()),
-        create_msg.getDataSize()) == -1) {
+        create_msg.getTotalDataSize()) == -1) {
     throw std::runtime_error("Error sending create tensor msg");
   }
 

@@ -17,12 +17,13 @@ class CreateTensorMessage {
     std::string getName() const;
     std::vector<uint32_t> getTensorDims() const;
 
-    uint32_t getDataSize() const;
+    uint32_t getTotalDataSize() const;
     
     const char* getData() const;
 
   private:
     void populateData();
+    uint32_t getDataSize() const;
 
     std::string tensor_name;
     const std::vector<uint32_t> tensor_dim;
