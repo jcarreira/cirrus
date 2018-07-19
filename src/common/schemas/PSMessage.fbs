@@ -1,0 +1,22 @@
+namespace cirrus.message.PSMessage;
+
+union Response { SparseModelResponse, FullModelResponse, TaskResponse }
+
+table SparseModelResponse {
+  model:[ubyte];
+}
+
+table FullModelResponse {
+  model:[ubyte];
+}
+
+table TaskResponse {
+  task_id:int;
+  status:int;
+}
+
+table PSMessage {
+  payload:Response;
+}
+
+root_type PSMessage;

@@ -4,6 +4,8 @@ AUTOMAKE_OPTIONS = foreign
 
 CXX = g++
 
+SUBDIRS = common
+
 bin_PROGRAMS = parameter_server ps_test csv_to_libsvm $(TOP_DIR)/tests/test_travis/test_lr \
 	       $(TOP_DIR)/tests/test_travis/test_ps $(TOP_DIR)/tests/test_travis/worker \
 	       $(TOP_DIR)/tests/test_travis/error

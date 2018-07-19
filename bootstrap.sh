@@ -4,12 +4,17 @@
 git submodule init
 git submodule update
 
-# install eigen, keyutils, kerberos, sparsehash, gflags, glog
+# install eigen, flatbuffers, keyutils, kerberos, sparsehash, gflags, glog
 cd third_party
 
 if [ ! -d "eigen_source" ]; then
   sh get_eigen.sh
 fi
+
+cd flatbuffers
+cmake -G "Unix Makefiles"
+make -j 10
+cd ..
 
 # get keyutils library
 KEYUTILS=keyutils-1.5.10
