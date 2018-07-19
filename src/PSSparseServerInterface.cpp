@@ -52,28 +52,9 @@ PSSparseServerInterface::~PSSparseServerInterface() {
 }
 
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
-  flatbuffers::FlatBufferBuilder builder(1024);
-  int grad_size = gradient.getSerializedSize();
-  unsigned char buf[grad_size];
-  auto grad_vec = builder.CreateUninitializedVector(grad_size, (unsigned char **) &buf);
-  gradient.serialize(buf);
-  auto grad_msg = message::WorkerMessage::CreateGradientMessage(builder, 
-    grad_vec, 
-    message::WorkerMessage::ModelType_LOGISTIC_REGRESSION);
-  builder.Finish(grad_msg);
-#ifdef DEBUG
-  std::cout << "Sending gradient" << std::endl;
-#endif
-  // TODO: Move the followng into its own function, since sending all FlatBuffer
-  // messages will be the same.
-  uint8_t *msg_buf = builder.GetBufferPointer();
-  int size = builder.GetSize();
-  if (send(sock, &size, sizeof(int), 0) < 1) {
-    throw std::runtime_error("Error sending message size");
-  }
-  if (send(sock, msg_buf, size, 0) < 1) {
-    throw std::runtime_error("Error sending gradient");
-  }
+  PSSparseServerInterface::send_gradient(gradient, 
+    message::WorkerMessage::ModelType_LOGISTIC_REGRESSION
+    )
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel& lr_model,
@@ -81,56 +62,53 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 #ifdef DEBUG
   std::cout << "Getting LR sparse model inplace" << std::endl;
 #endif
-  // we don't know the number of weights to start with
-  char* msg = new char[MAX_MSG_SIZE];
-  char* msg_begin = msg; // need to keep this pointer to delete later
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
-  uint32_t num_weights = 0;
-  store_value<uint32_t>(msg, num_weights); // just make space for the number of weights
+  // Make the index vector
+  // We don't know the number of weights to start with
+  unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
+  unsigned char* msg_start = msg;
+  uint32_t num_bytes = 0;
+
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
+      num_bytes += sizeof(w.first)
       store_value<uint32_t>(msg, w.first); // encode the index
-      num_weights++;
     }
   }
-  msg = msg_begin;
-  store_value<uint32_t>(msg, num_weights); // store correct value here
-#ifdef DEBUG
-  assert(std::distance(msg_begin, msg) < MAX_MSG_SIZE);
-  std::cout << std::endl;
-#endif
+  auto index_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_start));
+  
+  auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(builder, 
+    index_vec,
+    message::WorkerMessage::ModelType_LOGISTIC_REGRESSION);
 
-#ifdef DEBUG
-  std::cout << "Sending operation and size" << std::endl;
-#endif
-  // 1. Send operation
-  uint32_t operation = GET_LR_SPARSE_MODEL;
-  if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
-    throw std::runtime_error("Error getting sparse lr model");
-  }
-  // 2. Send msg size
-  uint32_t msg_size = sizeof(uint32_t) + sizeof(uint32_t) * num_weights;
-#ifdef DEBUG
-  std::cout << "msg_size: " << msg_size
-    << " num_weights: " << num_weights
-    << std::endl;
-#endif
-  send_all(sock, &msg_size, sizeof(uint32_t));
-  // 3. Send num_weights + weights
-  if (send_all(sock, msg_begin, msg_size) == -1) {
-    throw std::runtime_error("Error getting sparse lr model");
+  builder.Finish(sparse_msg);
+
+  #ifdef DEBUG
+    std::cout << "Sending sparse model request" << std::endl;
+  #endif
+    send_flatbuffer(&builder);
   }
   
-  //4. receive weights from PS
-  uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
-  //std::cout << "Model sent. Receiving: " << num_weights << " weights" << std::endl;
+  // Get the message size and FlatBuffer message
+  int msg_size;
+  if (read_all(sock, &msg_size, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    continue;
+  }
+  char buf[msg_size];
+  try {
+    if (read_all(sock, &buf, msg_size) == 0) {
+      throw std::runtime_error("Error reading message");
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
+  }
 
-#ifdef DEBUG
-  std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
-#endif
-  char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+  auto msg = message::PSMessage::GetPSMessage(&buf);
 
+  // TODO(nsomani): Interpret as sparse model, get weights.
+  /*
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
@@ -140,6 +118,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   
   delete[] msg_begin;
   delete[] buffer;
+  */
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config) {
@@ -273,26 +252,29 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   return std::move(model);
 }
 
-// 1. send operation (uint32_t)
-// 2. send gradient size (uint32_t)
-// 3. send gradient data
-void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient) {
-  uint32_t operation = SEND_MF_GRADIENT;
-  if (send(sock, &operation, sizeof(uint32_t), 0) == -1) {
-    throw std::runtime_error("Error sending operation");
-  }
+void PSSparseServerInterface::send_gradient(
+    const ModelGradient& gradient,
+    message::WorkerMessage::ModelType mt) {
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+  int grad_size = gradient.getSerializedSize();
+  unsigned char buf[grad_size];
+  auto grad_vec = builder.CreateUninitializedVector(grad_size, static_cast<unsigned char **> (&buf));
+  gradient.serialize(buf);
+  auto grad_msg = message::WorkerMessage::CreateGradientMessage(builder, 
+    grad_vec, 
+    mt);
+  builder.Finish(grad_msg);
+#ifdef DEBUG
+  std::cout << "Sending gradient" << std::endl;
+#endif
+  send_flatbuffer(&builder);
+}
 
-  uint32_t size = gradient.getSerializedSize();
-  if (send(sock, &size, sizeof(uint32_t), 0) == -1) {
-    throw std::runtime_error("Error sending grad size");
-  }
-  
-  char* data = new char[size];
-  gradient.serialize(data);
-  if (send_all(sock, data, size) == 0) {
-    throw std::runtime_error("Error sending grad");
-  }
-  delete[] data;
+void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient) {
+  PSSparseServerInterface::send_gradient(
+    gradient,
+    message::WorkerMessage::ModelType_MATRIX_FACTORIZATION
+    )
 }
   
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {

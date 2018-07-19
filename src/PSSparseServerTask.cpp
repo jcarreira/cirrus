@@ -70,24 +70,9 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   return x.fd == -1;
 }
 
-bool PSSparseServerTask::process_send_mf_gradient(
-    const Request& req,
-    std::vector<char>& thread_buffer) {
-  uint32_t incoming_size = req.incoming_size;
-#ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
-            << std::endl;
-#endif
-  if (incoming_size > thread_buffer.size()) {
-    throw std::runtime_error("Not enough buffer");
-  }
-  if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-    return false;
-  }
-
+bool PSSparseServerTask::process_send_mf_gradient(const unsigned char *gradient_buf) {
   MFSparseGradient gradient;
-  gradient.loadSerialized(thread_buffer.data());
-
+  gradient.loadSerialized(gradient_buf);
   model_lock.lock();
 #ifdef DEBUG
   std::cout << "Doing sgd update" << std::endl;
@@ -105,9 +90,9 @@ bool PSSparseServerTask::process_send_mf_gradient(
   return true;
 }
 
-bool PSSparseServerTask::process_send_lr_gradient(const unsigned char **gradient_buf) {
+bool PSSparseServerTask::process_send_lr_gradient(const unsigned char *gradient_buf) {
   LRSparseGradient gradient(0);
-  gradient.loadSerialized(*gradient_buf);
+  gradient.loadSerialized(gradient_buf);
   model_lock.lock();
   opt_method->sgd_update(
       lr_model, &gradient);
@@ -163,27 +148,10 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   return true;
 }
 
-bool PSSparseServerTask::process_get_lr_sparse_model(
-    const Request& req, std::vector<char>& thread_buffer) {
+bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
+  const unsigned char* index_list) {
   // need to parse the buffer to get the indices of the model we want
   // to send back to the client
-  uint32_t incoming_size = req.incoming_size;
-  if (incoming_size > thread_buffer.size()) {
-    throw std::runtime_error("Not enough buffer");
-  }
-#ifdef DEBUG
-  std::cout << "GET_MODEL_REQ incoming size: " << incoming_size << std::endl;
-#endif
-  try {
-    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-      return false;
-    }
-  } catch (...) {
-    throw std::runtime_error("Uhandled error");
-  }
-
-  const char* data = thread_buffer.data();
-  uint64_t num_entries = load_value<uint32_t>(data);
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
   assert(to_send_size < 1024 * 1024);
@@ -194,17 +162,29 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
     << " weights from model. Size: " << to_send_size
     << std::endl;
 #endif
+
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+
+  // Make the weights vector
+  int num_bytes = 0;
   for (uint32_t i = 0; i < num_entries; ++i) {
-    uint32_t entry_index = load_value<uint32_t>(data);
+    uint32_t entry_index = load_value<uint32_t>(index_list);
     double weight = lr_model->get_nth_weight(entry_index);
     opt_method->edit_weight(weight);
+    num_bytes += sizeof(weight);
     store_value<FEATURE_TYPE>(
         data_to_send_ptr,
         weight);
   }
-  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
-    return false;
-  }
+
+  auto weights_vec = builder.CreateVector(
+    num_bytes, static_cast<unsigned char **> (&data_to_send));
+  
+  auto sparse_msg = message::PSMessage::CreateSparseModelResponse(builder, weights_vec);
+
+  builder.Finish(sparse_msg);
+
+  send_flatbuffer(&builder);
   return true;
 }
 
@@ -292,7 +272,6 @@ void PSSparseServerTask::gradient_f() {
     if (msg_size > thread_buffer.size()) {
       throw std::runtime_error("Not enough buffer");
     }
-    //buffer.resize(incoming_size);
     try {
       if (read_all(sock, thread_buffer.data(), msg_size) == 0) {
         throw std::runtime_error("Error reading message");
@@ -306,11 +285,27 @@ void PSSparseServerTask::gradient_f() {
       case message::WorkerMessage::Request_GradientMessage:
         {
           auto gradient_msg = msg->payload_as_GradientMessage();
+          const unsigned char *gradient_buf = gradient_msg->gradient()->data();
           if (gradient_msg->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-            const unsigned char *gradient_buf = gradient_msg->gradient()->data();
-            process_send_lr_gradient(&gradient_buf);
-          } else {
-            // TODO: Implement MF model gradient, and change to switch case when more models are added.
+            process_send_lr_gradient(gradient_buf);
+          } else if (gradient_msg->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+            process_send_mf_gradient(gradient_buf);
+          }
+          else {
+            throw std::runtime_error("Unimplemented gradient type");
+          }
+        }
+      case message::WorkerMessage::Request_SparseModelRequest:
+        {
+          auto sparse_req = msg->payload_as_SparseModelRequest();
+          const unsigned char *index_buf = sparse_req->index_list()->data();
+          if (sparse_req->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+            process_get_lr_sparse_model(sparse_req->index_list()->size(), index_buf);
+          } else if (sparse_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+            // TODO(nsomani): Implement sparse MF model.
+          }
+          else {
+            throw std::runtime_error("Unimplemented request for sparse model");
           }
         }
       default:
