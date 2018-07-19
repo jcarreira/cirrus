@@ -3,7 +3,7 @@ namespace cirrus.message.WorkerMessage;
 union Request { SparseModelRequest, FullModelRequest, GradientMessage, TaskRequest, TaskMessage }
 
 enum ModelType : byte {
-  LOGISTIC_REGRESSION = 1,
+  LOGISTIC_REGRESSION = 0,
   MATRIX_FACTORIZATION
 }
 
