@@ -43,6 +43,8 @@ PSSparseServerTask::PSSparseServerTask(
     operation_to_name[8] = "REGISTER_TASK";
     operation_to_name[9] = "GET_NUM_CONNS";
     operation_to_name[10] = "GET_LAST_TIME_ERROR";
+    operation_to_name[11] = "SEND_SM_GRADIENT";
+    operation_to_name[12] = "GET_SM_FULL_MODEL";
 
     for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
       thread_msg_buffer[i] =
@@ -96,6 +98,41 @@ bool PSSparseServerTask::process_send_mf_gradient(
   std::cout
     << "sgd update done"
     << " checksum: " << mf_model->checksum()
+    << std::endl;
+#endif
+  model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
+bool PSSparseServerTask::process_send_sm_gradient(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+#ifdef DEBUG
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+  if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+    return false;
+  }
+
+  SoftmaxGradient gradient;
+  gradient.loadSerialized(thread_buffer.data());
+
+  model_lock.lock();
+#ifdef DEBUG
+  std::cout << "Doing sgd update" << std::endl;
+#endif
+  sm_model->sgd_update(
+      task_config.get_learning_rate(), &gradient);
+#ifdef DEBUG
+  std::cout
+    << "sgd update done"
+    << " checksum: " << sm_model->checksum()
     << std::endl;
 #endif
   model_lock.unlock();
@@ -254,6 +291,34 @@ bool PSSparseServerTask::process_get_mf_full_model(
   return true;
 }
 
+bool PSSparseServerTask::process_get_sm_full_model(
+    const Request& req, std::vector<char>& thread_buffer) {
+  model_lock.lock();
+  auto sm_model_copy = *sm_model;
+  model_lock.unlock();
+  uint32_t model_size = sm_model_copy.getSerializedSize();
+
+  if (thread_buffer.size() < model_size) {
+    std::cout << "thread_buffer.size(): " << thread_buffer.size()
+      << " model_size: " << model_size << std::endl;
+    throw std::runtime_error("Thread buffer too small");
+  }
+
+  sm_model_copy.serializeTo(thread_buffer.data());
+  std::cout
+    << "Serializing mf model"
+    << " mode checksum: " << sm_model_copy.checksum()
+    << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+    << std::endl;
+  if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+  if (send_all(req.sock, thread_buffer.data(), model_size) == -1) {
+    return false;
+  }
+  return true;
+}
+
 bool PSSparseServerTask::process_get_lr_full_model(
     const Request& req, std::vector<char>& thread_buffer) {
   model_lock.lock();
@@ -327,7 +392,7 @@ void PSSparseServerTask::gradient_f() {
       continue;
     } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
                operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL) {
+               operation == GET_MF_SPARSE_MODEL || operation == SEND_SM_GRADIENT) {
       // read 4 bytes of the size of the remaining message
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
@@ -345,8 +410,16 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_lr_gradient(req, thread_buffer)) {
         break;
       }
+    } else if (req.req_id == SEND_SM_GRADIENT) {
+      if (!process_send_sm_gradient(req, thread_buffer)) {
+        break;
+      }
     } else if (req.req_id == SEND_MF_GRADIENT) {
       if (!process_send_mf_gradient(req, thread_buffer)) {
+        break;
+      }
+    }  else if (req.req_id == GET_SM_FULL_MODEL) {
+      if (!process_get_sm_full_model(req, thread_buffer)) {
         break;
       }
     } else if (req.req_id == GET_LR_SPARSE_MODEL) {
