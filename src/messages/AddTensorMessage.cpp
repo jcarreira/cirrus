@@ -3,7 +3,11 @@
 namespace cirrus {
     
 AddTensorMessage::AddTensorMessage(const std::string& tensor_name,
-                                   const SparseTensor&) {
+                                   const SparseTensor1D&) {
+}
+
+AddTensorMessage::AddTensorMessage(const std::string& tensor_name,
+                                   const SparseTensor2D&) {
 }
 
 AddTensorMessage::AddTensorMessage(const char*) {

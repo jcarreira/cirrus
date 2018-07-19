@@ -158,7 +158,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       uint64_t start_index = 0;
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(ds, start_index);
+          model->calcLoss(ds, start_index);
         total_loss += ret.first;
         total_accuracy += ret.second;
         total_num_samples += ds.num_samples();

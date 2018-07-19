@@ -71,7 +71,7 @@ class LRModel : public CirrusModel {
      * @param learning_rate Learning rate to be used
      * @param gradient Gradient to be used for the update
      */
-    void sgd_update(double learning_rate, const ModelGradient* gradient);
+    void sgdUpdate(double learning_rate, const ModelGradient* gradient);
 
     /**
      * Returns the size of the model weights serialized
@@ -87,7 +87,7 @@ class LRModel : public CirrusModel {
      * @param epsilon L2 Regularization rate
      * @return Newly computed gradient
      */
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
             const Matrix& dataset,
             FEATURE_TYPE* labels,
             uint64_t labels_size,
@@ -97,7 +97,7 @@ class LRModel : public CirrusModel {
      * @param dataset Dataset to calculate loss on
      * @return Total loss of whole dataset
      */
-    std::pair<double, double> calc_loss(Dataset& dataset) const override;
+    std::pair<double, double> calcLoss(Dataset& dataset) const override;
 
     /**
      * Return the size of the gradient when serialized

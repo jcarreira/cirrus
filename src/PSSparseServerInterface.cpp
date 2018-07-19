@@ -60,7 +60,7 @@ PSSparseServerInterface::~PSSparseServerInterface() {
   }
 }
 
-void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
+void PSSparseServerInterface::setStatus(uint32_t id, uint32_t status) {
   std::cout << "Setting status id: " << id << " status: " << status << std::endl;
   uint32_t data[3] = {SET_TASK_STATUS, id, status};
   if (send_all(sock, data, sizeof(uint32_t) * 3) == -1) {
@@ -68,7 +68,7 @@ void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
   }
 }
 
-uint32_t PSSparseServerInterface::get_status(uint32_t id) {
+uint32_t PSSparseServerInterface::getStatus(uint32_t id) {
   uint32_t data[2] = {GET_TASK_STATUS, id};
   if (send_all(sock, data, sizeof(uint32_t) * 2) == -1) {
     throw std::runtime_error("Error getting task status");
@@ -80,9 +80,11 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-bool PSSparseServerInterface::create_tensor(const std::string& tensor_name,
-    const std::vector<uint32_t>& tensor_dims) {
-  CreateTensorMessage create_msg(tensor_name, tensor_dims);
+bool PSSparseServerInterface::createTensor2D(const std::string& tensor_name,
+    std::pair<uint32_t, uint32_t> tensor_dims) {
+  CreateTensorMessage create_msg(tensor_name,
+                                 std::vector<uint32_t>{tensor_dims.first,
+                                                       tensor_dims.second});
   // 1. send operation id
   if (send_all(sock,
         &CREATE_TENSOR_MSG_VAR,
@@ -113,8 +115,41 @@ bool PSSparseServerInterface::create_tensor(const std::string& tensor_name,
   return create_msg_reply.get_bool();
 }
 
-bool PSSparseServerInterface::add_tensor(const std::string& tensor_name,
-        const SparseTensor& sparse_tensor) {
+bool PSSparseServerInterface::createTensor1D(const std::string& tensor_name,
+    uint32_t tensor_dim) {
+  CreateTensorMessage create_msg(tensor_name, tensor_dim);
+  // 1. send operation id
+  if (send_all(sock,
+        &CREATE_TENSOR_MSG_VAR,
+        sizeof(CREATE_TENSOR_MSG_VAR)) == -1) {
+    throw std::runtime_error("Error send CREATE_TENSOR_MSG");
+  }
+
+  // 2. send total size
+  uint32_t message_size = create_msg.get_data_size();
+  if (send_all(sock, &message_size, sizeof(message_size)) == -1) {
+    throw std::runtime_error("Error sending create tensor msg size");
+  }
+
+  // 3. send name and tensor dimension
+  if (send_all(sock, const_cast<char*>(create_msg.get_data()),
+        create_msg.get_data_size()) == -1) {
+    throw std::runtime_error("Error sending create tensor msg");
+  }
+
+  CreateTensorMessageReply create_msg_reply;
+  // receive boolean reply
+  if (read_all(sock,
+        const_cast<char*>(create_msg_reply.get_return_data()),
+        create_msg_reply.get_return_size()) == 0) {
+    throw std::runtime_error("Error getting create_msg_reply");
+  }
+
+  return create_msg_reply.get_bool();
+}
+
+bool PSSparseServerInterface::addTensor1D(const std::string& tensor_name,
+        const SparseTensor1D& sparse_tensor) {
   AddTensorMessage add_tensor_msg(tensor_name, sparse_tensor);
  
   // 1. send tensor size 
@@ -138,7 +173,7 @@ bool PSSparseServerInterface::add_tensor(const std::string& tensor_name,
   return add_tensor_msg_reply.get_bool();
 }
 
-Tensor PSSparseServerInterface::get_tensor(const std::string& tensor_name) {
+Tensor1D PSSparseServerInterface::getTensor1D(const std::string& tensor_name) {
   GetTensorMessage get_tensor_msg(tensor_name);
 
   // 1. send operation id
@@ -164,10 +199,10 @@ Tensor PSSparseServerInterface::get_tensor(const std::string& tensor_name) {
       throw std::runtime_error("Error getting get_tensor_msg_reply");
   }
 
-  return Tensor(get_tensor_msg_reply.get_tensor_data());
+  return Tensor1D(get_tensor_msg_reply.get_tensor_data());
 }
 
-SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tensor_name,
+SparseTensor1D PSSparseServerInterface::getSparseTensor1D(const std::string& tensor_name,
         const std::vector<uint32_t>& indexes) {
   // 1. send operation id
   if (send_all(sock, &GET_SPARSE_TENSOR_MSG_VAR, sizeof(GET_SPARSE_TENSOR_MSG_VAR)) == -1) {
@@ -187,13 +222,13 @@ SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tenso
       throw std::runtime_error("Error getting msg_reply");
   }
 
-  return SparseTensor(msg_reply.get_data());
+  return SparseTensor1D(msg_reply.get_data());
 }
 
-SparseTensor PSSparseServerInterface::get_sparse_tensor(const std::string& tensor_name,
-        const std::vector<std::tuple<uint32_t, uint32_t>>& indexes) {
+SparseTensor2D PSSparseServerInterface::getSparseTensor2D(const std::string& tensor_name,
+        const std::vector<std::pair<uint32_t, uint32_t>>& indexes) {
   throw "fix";
-  return SparseTensor(nullptr);
+  return SparseTensor2D(nullptr);
 }
 
 } // namespace cirrus

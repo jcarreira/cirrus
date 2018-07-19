@@ -60,7 +60,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   psint.reset(new PSSparseServerInterface(ps_ip, ps_port));
   uint32_t model_size = (1 << config.get_model_bits()) + 1;
-  psint->create_tensor("lr_model", std::vector<uint32_t>{model_size});
+  psint->createTensor1D("lr_model", model_size);
   
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
@@ -98,14 +98,14 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
     // compute mini batch gradient
     std::unique_ptr<ModelGradient> gradient;
-    std::unique_ptr<SparseTensor> gradient_tensor;
+    std::unique_ptr<SparseTensor1D> gradient_tensor;
 
     // we get the model subset with just the right amount of weights
 
     std::vector<uint32_t> indexes = build_indexes(*dataset);
 
     // get model as sparse tensor
-    SparseTensor model_st = psint->get_sparse_tensor("lr_model", indexes);
+    SparseTensor1D model_st = psint->getSparseTensor1D("lr_model", indexes);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -116,7 +116,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient_tensor = model.minibatch_grad_sparse_tensor(*dataset, config);
+      gradient_tensor = model.minibatchGradSparseTensor(*dataset, config);
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -132,7 +132,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      psint->add_tensor("lr_model", *gradient_tensor);
+      psint->addTensor1D("lr_model", *gradient_tensor);
       //push_gradient(lrg);
     } catch(...) {
       std::cout << "[WORKER] "

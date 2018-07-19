@@ -4,6 +4,13 @@ namespace cirrus {
 
 CreateTensorMessage::CreateTensorMessage(
     const std::string& tensor_name,
+    uint32_t tensor_dim) :
+  tensor_name(tensor_name),
+  tensor_dim(std::vector<uint32_t>{tensor_dim}) {
+}
+
+CreateTensorMessage::CreateTensorMessage(
+    const std::string& tensor_name,
     const std::vector<uint32_t>& tensor_dim) :
   tensor_name(tensor_name),
   tensor_dim(tensor_dim) {

@@ -8,7 +8,8 @@ namespace cirrus {
 
 class AddTensorMessage {
   public:
-    AddTensorMessage(const std::string& tensor_name, const SparseTensor&);
+    AddTensorMessage(const std::string& tensor_name, const SparseTensor1D&);
+    AddTensorMessage(const std::string& tensor_name, const SparseTensor2D&);
     explicit AddTensorMessage(const char*);
 
     uint32_t get_tensor_size_size() const;

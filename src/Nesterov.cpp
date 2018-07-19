@@ -5,7 +5,7 @@ namespace cirrus {
 Nesterov::Nesterov(double lr, double mb)
   : OptimizationMethod(lr), momentum_beta(mb) {}
 
-void Nesterov::sgd_update(
+void Nesterov::sgdUpdate(
     std::unique_ptr<SparseLRModel>& lr_model, 
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =

@@ -44,7 +44,7 @@ class CirrusModel {
      * @param learning_rate Learning rate
      * @param gradient Model gradient
      */
-    virtual void sgd_update(double learning_rate,
+    virtual void sgdUpdate(double learning_rate,
         const ModelGradient* gradient) = 0;
 
     /**
@@ -88,9 +88,9 @@ class CirrusModel {
      * @param dataset Dataset to be used to calculate loss
      * @return Pair <Total loss, accuracy> when applying model to dataset
      */
-    virtual std::pair<double,double> calc_loss(Dataset&) const {
+    virtual std::pair<double,double> calcLoss(Dataset&) const {
       throw std::runtime_error("not implemented"); }
-    virtual std::pair<double,double> calc_loss(SparseDataset&, uint32_t) const {
+    virtual std::pair<double,double> calcLoss(SparseDataset&, uint32_t) const {
       throw std::runtime_error("not implemented"); }
 
     /**
@@ -100,12 +100,12 @@ class CirrusModel {
      * @param epsilon L2 regularization rate
      * @returns SGD gradient
      */
-    virtual std::unique_ptr<ModelGradient> minibatch_grad(
+    virtual std::unique_ptr<ModelGradient> minibatchGrad(
         const Matrix& /*dataset*/,
         FEATURE_TYPE* /*labels*/,
         uint64_t /*labels_size*/,
         double /*epsilon*/) const  { throw std::runtime_error("not implemented"); }
-    virtual std::unique_ptr<ModelGradient> minibatch_grad(
+    virtual std::unique_ptr<ModelGradient> minibatchGrad(
         const SparseDataset& ,
         double ) const { throw std::runtime_error("not implemented"); }
 
@@ -119,7 +119,7 @@ class CirrusModel {
     uint64_t getVersion() const { return version_; }
     void setVersion(uint64_t v) { version_ = v; }
 
-    virtual FEATURE_TYPE get_nth_weight(uint64_t) const {
+    virtual FEATURE_TYPE getNthWeight(uint64_t) const {
       throw std::runtime_error("Not supported");
     }
   private:

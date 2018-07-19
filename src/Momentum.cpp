@@ -5,7 +5,7 @@ namespace cirrus {
 Momentum::Momentum(double lr, double mb) 
   : OptimizationMethod(lr), momentum_beta(mb){}
 
-void Momentum::sgd_update(
+void Momentum::sgdUpdate(
     std::unique_ptr<SparseLRModel>& lr_model, 
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =

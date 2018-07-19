@@ -8,7 +8,7 @@ namespace cirrus {
 class AdaGrad: public OptimizationMethod {
  public:
    AdaGrad(double lr, double ae);
-   void sgd_update(
+   void sgdUpdate(
           std::unique_ptr<SparseLRModel>& lr_model, 
           const ModelGradient* gradient);
  

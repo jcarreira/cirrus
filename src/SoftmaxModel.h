@@ -58,7 +58,7 @@ class SoftmaxModel : public CirrusModel {
       * @param learning_rate SGD learning rate
       * @param Gradient used for the SGD update
       */
-    void sgd_update(double learning_rate, const ModelGradient* gradient);
+    void sgdUpdate(double learning_rate, const ModelGradient* gradient);
 
     /**
       * Returns the size of the model weights serialized
@@ -73,7 +73,7 @@ class SoftmaxModel : public CirrusModel {
       * @param epsilon
       * @return
       */
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
             const Matrix& dataset,
             FEATURE_TYPE* labels,
             uint64_t labels_size,
@@ -82,7 +82,7 @@ class SoftmaxModel : public CirrusModel {
       * Compute the logistic loss of a given dataset on the current model
       * @areturn 
       */
-    std::pair<double, double> calc_loss(Dataset& dataset) const override;
+    std::pair<double, double> calcLoss(Dataset& dataset) const override;
 
     /**
       * Return the size of the gradient when serialized

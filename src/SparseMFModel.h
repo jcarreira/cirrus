@@ -11,6 +11,7 @@
 #include <ModelGradient.h>
 #include <SparseDataset.h>
 #include <Configuration.h>
+#include <SparseTensor.h>
 
 namespace cirrus {
 
@@ -29,6 +30,10 @@ class SparseMFModel : public CirrusModel {
       */
     SparseMFModel(const void* w, uint64_t minibatch_size, uint64_t num_items);
     SparseMFModel(uint64_t users, uint64_t items, uint64_t factors);
+    SparseMFModel(SparseTensor1D&& user_bias,
+                  SparseTensor1D&& item_bias,
+                  SparseTensor2D&& user_weights,
+                  SparseTensor2D&& item_weights);
 
     /**
      * Set the model weights to values between 0 and 1
@@ -73,7 +78,7 @@ class SparseMFModel : public CirrusModel {
      * @param learning_rate Learning rate to be used
      * @param gradient Gradient to be used for the update
      */
-    void sgd_update(double /*learning_rate*/, const ModelGradient* /*gradient*/) {
+    void sgdUpdate(double /*learning_rate*/, const ModelGradient* /*gradient*/) {
       throw std::runtime_error("Not implemented");
     }
 
@@ -89,19 +94,19 @@ class SparseMFModel : public CirrusModel {
      * @param epsilon L2 Regularization rate
      * @return Newly computed gradient
      */
-    //std::unique_ptr<ModelGradient> minibatch_grad(
+    //std::unique_ptr<ModelGradient> minibatchGrad(
     //        const Matrix& m,
     //        FEATURE_TYPE* labels,
     //        uint64_t labels_size,
     //        double epsilon) const;
 
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
         const SparseDataset& dataset,
         const Configuration&,
         uint64_t);
 
      
-    //void sgd_update(double learning_rate,
+    //void sgdUpdate(double learning_rate,
     //            uint64_t base_user,
     //            const SparseDataset&);
 

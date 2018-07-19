@@ -15,6 +15,13 @@ class Tensor {
   private:
 };
 
+class Tensor1D : public Tensor {
+  public:
+    Tensor1D();
+    Tensor1D(const char*);
+    explicit Tensor1D(uint32_t dims);
+};
+
 } // namespace cirrus
 
 #endif  // _TENSOR_H_

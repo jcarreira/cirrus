@@ -120,7 +120,7 @@ std::unique_ptr<CirrusModel> SoftmaxModel::copy() const {
     return new_model;
 }
 
-void SoftmaxModel::sgd_update(
+void SoftmaxModel::sgdUpdate(
         double learning_rate, const ModelGradient* gradient) {
     const SoftmaxGradient* grad =
         dynamic_cast<const SoftmaxGradient*>(gradient);
@@ -140,7 +140,7 @@ uint64_t SoftmaxModel::getSerializedSize() const {
     return sizeof(FEATURE_TYPE) * d * nclasses + sizeof(uint64_t) * 2;
 }
 
-std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
+std::unique_ptr<ModelGradient> SoftmaxModel::minibatchGrad(
             const Matrix& m,
             FEATURE_TYPE* labels,
             uint64_t labels_size,
@@ -232,7 +232,7 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     return std::make_unique<SoftmaxGradient>(ret_gradient);
 }
 
-std::pair<double, double> SoftmaxModel::calc_loss(Dataset& data) const {
+std::pair<double, double> SoftmaxModel::calcLoss(Dataset& data) const {
     const Matrix& m = data.samples_;
     // XXX Fix, there is some code repetition here
     const FEATURE_TYPE* m_data = reinterpret_cast<const FEATURE_TYPE*>(m.data.get());

@@ -8,7 +8,7 @@ namespace cirrus {
 class Momentum : public OptimizationMethod {
  public:
    Momentum(double lr, double mb);
-   void sgd_update(
+   void sgdUpdate(
        std::unique_ptr<SparseLRModel>& lr_model, 
        const ModelGradient* gradient);
 

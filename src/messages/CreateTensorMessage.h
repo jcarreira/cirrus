@@ -8,6 +8,7 @@ namespace cirrus {
 
 class CreateTensorMessage {
   public:
+    CreateTensorMessage(const std::string& tensor_name, uint32_t tensor_dim);
     CreateTensorMessage(const std::string& tensor_name, const std::vector<uint32_t>& tensor_dim);
     explicit CreateTensorMessage(const char* data);
 

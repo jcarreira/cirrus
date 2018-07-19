@@ -5,7 +5,7 @@ namespace cirrus {
 SGD::SGD(double lr)
   : OptimizationMethod(lr) {}
 
-void SGD::sgd_update(
+void SGD::sgdUpdate(
     std::unique_ptr<SparseLRModel>& lr_model, 
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =

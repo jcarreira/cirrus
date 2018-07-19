@@ -35,6 +35,11 @@ SparseMFModel::SparseMFModel(uint64_t users, uint64_t items, uint64_t nfactors) 
     initialize_weights(users , items, nfactors);
 }
 
+SparseMFModel::SparseMFModel(SparseTensor1D&& user_bias, SparseTensor1D&& item_bias,
+                             SparseTensor2D&& user_weights, SparseTensor2D&& item_weights) {
+  initialize_weights(0, 0, 0);
+}
+
 SparseMFModel::SparseMFModel(const void* data, uint64_t minibatch_size, uint64_t num_items) {
   initialize_weights(0, 0, 0);
   loadSerialized(data, minibatch_size, num_items);
@@ -162,7 +167,7 @@ FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) {
   return res;
 }
 
-std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
+std::unique_ptr<ModelGradient> SparseMFModel::minibatchGrad(
             const SparseDataset& dataset,
             const Configuration& config,
             uint64_t base_user) {
