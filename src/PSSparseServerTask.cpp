@@ -10,6 +10,8 @@
 #include "Momentum.h"
 #include "SGD.h"
 #include "Nesterov.h"
+#include "common/schemas/PSMessage_generated.h"
+#include "common/schemas/WorkerMessage_generated.h"
 
 #undef DEBUG
 
@@ -103,29 +105,9 @@ bool PSSparseServerTask::process_send_mf_gradient(
   return true;
 }
 
-bool PSSparseServerTask::process_send_lr_gradient(
-    const Request& req,
-    std::vector<char>& thread_buffer) {
-  uint32_t incoming_size = req.incoming_size;
-#ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
-            << std::endl;
-#endif
-  if (incoming_size > thread_buffer.size()) {
-    throw std::runtime_error("Not enough buffer");
-  }
-  //buffer.resize(incoming_size);
-  try {
-    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-      return false;
-    }
-  } catch (...) {
-    throw std::runtime_error("Uhandled error");
-  }
-
+bool PSSparseServerTask::process_send_lr_gradient(const unsigned char **gradient_buf) {
   LRSparseGradient gradient(0);
-  gradient.loadSerialized(thread_buffer.data());
-
+  gradient.loadSerialized(*gradient_buf);
   model_lock.lock();
   opt_method->sgd_update(
       lr_model, &gradient);
@@ -300,6 +282,42 @@ void PSSparseServerTask::gradient_f() {
 
     int sock = req.poll_fd.fd;
 
+    // Get the message size and FlatBuffer message
+    int msg_size;
+    if (read_all(sock, &msg_size, sizeof(int)) == 0) {
+      handle_failed_read(&req.poll_fd);
+      continue;
+    }
+
+    if (msg_size > thread_buffer.size()) {
+      throw std::runtime_error("Not enough buffer");
+    }
+    //buffer.resize(incoming_size);
+    try {
+      if (read_all(sock, thread_buffer.data(), msg_size) == 0) {
+        throw std::runtime_error("Error reading message");
+      }
+    } catch (...) {
+      throw std::runtime_error("Unhandled error");
+    }
+
+    auto msg = message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
+    switch (msg->payload_type()) {
+      case message::WorkerMessage::Request_GradientMessage:
+        {
+          auto gradient_msg = msg->payload_as_GradientMessage();
+          if (gradient_msg->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+            const unsigned char *gradient_buf = gradient_msg->gradient()->data();
+            process_send_lr_gradient(&gradient_buf);
+          } else {
+            // TODO: Implement MF model gradient, and change to switch case when more models are added.
+          }
+        }
+      default:
+        throw std::runtime_error("Unknown message type");
+    }
+
+    /* TODO: Replace below with FlatBuffers version.
     // first read 4 bytes for operation ID
     uint32_t operation = 0;
     if (read_all(sock, &operation, sizeof(uint32_t)) == 0) {
@@ -410,7 +428,7 @@ void PSSparseServerTask::gradient_f() {
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
-
+    */
     // We reactivate events from the client socket here
     req.poll_fd.events = POLLIN;
     //pthread_kill(main_thread, SIGUSR1);

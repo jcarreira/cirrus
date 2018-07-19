@@ -5,12 +5,16 @@
 #include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
+#include "common/schemas/PSMessage_generated.h"
+#include "common/schemas/WorkerMessage_generated.h"
 
 //#define DEBUG
 
 #define MAX_MSG_SIZE (1024*1024)
 
 namespace cirrus {
+
+static const int initial_buffer_size = 50;
 
 PSSparseServerInterface::PSSparseServerInterface(const std::string& ip, int port) :
   ip(ip), port(port) {
@@ -48,29 +52,27 @@ PSSparseServerInterface::~PSSparseServerInterface() {
 }
 
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
-  uint32_t operation = SEND_LR_GRADIENT;
+  flatbuffers::FlatBufferBuilder builder(1024);
+  int grad_size = gradient.getSerializedSize();
+  unsigned char buf[grad_size];
+  auto grad_vec = builder.CreateUninitializedVector(grad_size, (unsigned char **) &buf);
+  gradient.serialize(buf);
+  auto grad_msg = message::WorkerMessage::CreateGradientMessage(builder, 
+    grad_vec, 
+    message::WorkerMessage::ModelType_LOGISTIC_REGRESSION);
+  builder.Finish(grad_msg);
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
-  int ret = send(sock, &operation, sizeof(uint32_t), 0);
-  if (ret == -1) {
-    throw std::runtime_error("Error sending operation");
+  // TODO: Move the followng into its own function, since sending all FlatBuffer
+  // messages will be the same.
+  uint8_t *msg_buf = builder.GetBufferPointer();
+  int size = builder.GetSize();
+  if (send(sock, &size, sizeof(int), 0) < 1) {
+    throw std::runtime_error("Error sending message size");
   }
-
-  uint32_t size = gradient.getSerializedSize();
-#ifdef DEBUG
-  std::cout << "Sending gradient with size: " << size << std::endl;
-#endif
-  ret = send(sock, &size, sizeof(uint32_t), 0);
-  if (ret == -1) {
-    throw std::runtime_error("Error sending grad size");
-  }
-  
-  char data[size];
-  gradient.serialize(data);
-  ret = send_all(sock, data, size);
-  if (ret == 0) {
-    throw std::runtime_error("Error sending grad");
+  if (send(sock, msg_buf, size, 0) < 1) {
+    throw std::runtime_error("Error sending gradient");
   }
 }
 
