@@ -6,6 +6,7 @@
 #include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
+#include "SoftmaxModel.h"
 #include "SparseLRModel.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
@@ -80,6 +81,7 @@ class SoftmaxTask : public MLTask {
     void push_gradient(SoftmaxGradient*);
     std::mutex redis_lock;
     PSSparseServerInterface* psint;
+};
 
 
 class LogisticSparseTaskS3 : public MLTask {
@@ -329,6 +331,9 @@ class PSSparseServerTask : public MLTask {
                                 std::vector<char>& thread_buffer);
   bool process_get_mf_full_model(const Request& req,
                                  std::vector<char>& thread_buffer);
+  bool process_get_sm_full_model(const Request& req,
+                                 std::vector<char>& thread_buffer);
+  bool process_send_sm_gradient(const Request& req, std::vector<char>&);
 
   /**
     * Attributes

@@ -1,5 +1,7 @@
 #include <Tasks.h>
 
+#include <InputReader.h>
+
 namespace cirrus {
 void SoftmaxTask::push_gradient(SoftmaxGradient* smg) {
 #ifdef DEBUG
@@ -43,7 +45,6 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
-  SoftmaxModel model(10, 1 << config.get_model_bits());
 
   bool printed_rate = false;
   int count = 0;
@@ -53,7 +54,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    Dataset dataset = dataset_train.random_sample(20)
+    Dataset dataset = dataset_train.random_sample(20);
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
     //dataset->check();
@@ -64,7 +65,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    model = psint->get_sm_full_model();
+    SoftmaxModel model = *(psint->get_sm_full_model());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -75,7 +76,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient = model.minibatch_grad(dataset.get_samples(), dataset.get_labels(), 20, 0.0001);
+      gradient = model.minibatch_grad(dataset.get_samples(), (float*) dataset.get_labels().get(), 20, 0.0001);
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);

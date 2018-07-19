@@ -43,7 +43,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
               Checksum.cpp \
               ErrorSparseTask.cpp \
 	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
+	      MFNetflixTask.cpp SoftmaxTask.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
