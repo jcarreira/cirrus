@@ -133,6 +133,14 @@ Dataset::build_s3_obj(uint64_t l, uint64_t r) {
   return s3_obj;
 }
 
+Matrix Dataset::get_samples() const {
+  return samples_;
+}
+
+std::shared_ptr<const FEATURE_TYPE> get_labels() const {
+  return labels_;
+}
+
 Dataset Dataset::Dataset::random_sample(uint64_t n_samples) const {
   std::random_device rd;
   std::default_random_engine re(rd());

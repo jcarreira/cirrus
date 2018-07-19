@@ -54,7 +54,12 @@ void run_tasks(int rank, int nworkers,
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);
-    } else {
+    } else if (config.get_model_type() == cirrus::Configuration::SOFTMAX) {
+      cirrus::SoftmaxTask lt(features_per_sample,
+          batch_size, samples_per_batch, features_per_sample,
+          nworkers, rank, ps_ip, ps_port)
+      lt.run(config, rank - WORKERS_BASE)
+    }  else {
       exit(-1);
     }
   /**
