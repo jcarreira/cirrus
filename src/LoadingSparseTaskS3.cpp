@@ -109,7 +109,7 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
 
     std::cout << "Putting object in S3 with size: " << len << std::endl;
     std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-CRITEO";
-    s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
+    s3_client->S3PutObject(obj_id, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
   }
   check_loading(config, s3_client);

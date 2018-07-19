@@ -41,7 +41,7 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
-std::vector<uint32_t> LogisticSparseTaskS3::build_indexes(const SparseDataset& ds) {
+std::vector<uint32_t> LogisticSparseTaskS3::buildIndexes(const SparseDataset& ds) {
   std::vector<uint32_t> indexes;
   indexes.reserve(100);
   for (const auto& sample : ds.data_) {
@@ -64,7 +64,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
-  wait_for_start(worker, nworkers);
+  waitForStart(worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
@@ -102,7 +102,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
 
-    std::vector<uint32_t> indexes = build_indexes(*dataset);
+    std::vector<uint32_t> indexes = buildIndexes(*dataset);
 
     // get model as sparse tensor
     SparseTensor1D model_st = psint->getSparseTensor1D("lr_model", indexes);

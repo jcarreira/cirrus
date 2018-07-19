@@ -8,22 +8,22 @@ namespace cirrus {
 
 class AddTensorMessageReply {
   public:
-    const char* get_return_data() const {
+    const char* getReturnData() const {
       throw "fix";
       return nullptr;
     }
     
-    const char* get_return_fix() const {
+    const char* getReturnFix() const {
       throw "fix";
       return 0;
     }
     
-    uint32_t get_return_size() const {
+    uint32_t getReturnSize() const {
       throw "fix";
       return 0;
     }
 
-    bool get_bool() const {
+    bool getBool() const {
       throw "fix";
       return false;
     }

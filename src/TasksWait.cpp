@@ -5,7 +5,7 @@
 
 namespace cirrus {
 
-void MLTask::wait_for_start(int index, int nworkers) {
+void MLTask::waitForStart(int index, int nworkers) {
   return;
   std::cout << "Waiting for all workers to start (redis). index: " << index
     << std::endl;

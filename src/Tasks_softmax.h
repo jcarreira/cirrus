@@ -25,9 +25,9 @@ class MLTask {
      void run(const Configuration& config, int worker);
 
 #ifdef USE_CIRRUS
-    void wait_for_start(int index, cirrus::TCPClient& client);
+    void waitForStart(int index, cirrus::TCPClient& client);
 #elif defined(USE_REDIS)
-    void wait_for_start(int index, auto r);
+    void waitForStart(int index, auto r);
 #endif
 
  protected:

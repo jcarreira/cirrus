@@ -91,7 +91,7 @@ Dataset InputReader::read_input_criteo(const std::string& samples_input_file,
   return ds;
 }
 
-void InputReader::process_lines(
+void InputReader::processLines(
     std::vector<std::string>& thread_lines,
     const std::string& delimiter,
     uint64_t limit_cols,
@@ -164,7 +164,7 @@ void InputReader::read_csv_thread(
     // parses samples in thread_lines
     // and pushes labels and features into
     // thread_samples and thread_labels
-    process_lines(thread_lines, delimiter,
+    processLines(thread_lines, delimiter,
         limit_cols, thread_samples, thread_labels);
 
     output_mutex.lock();

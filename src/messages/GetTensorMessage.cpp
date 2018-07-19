@@ -2,12 +2,12 @@
 
 namespace cirrus {
 
-uint32_t GetTensorMessage::get_name_size() const {
+uint32_t GetTensorMessage::getNameSize() const {
   throw "fix";
   return 0;
 }
 
-char* GetTensorMessage::get_name_data() const {
+char* GetTensorMessage::getNameData() const {
   throw "fix";
   return nullptr;
 }

@@ -14,14 +14,14 @@ S3Client::S3Client() {
   s3_client.reset(new Aws::S3::S3Client(clientConfig));
 }
 
-void S3Client::s3_put_object(uint64_t id,
+void S3Client::S3PutObject(uint64_t id,
                              const std::string& bucket_name,
                              const std::string& object) {
   std::string key_name = "CIRRUS" + std::to_string(id);
-  s3_put_object(key_name, bucket_name, object);
+  S3PutObject(key_name, bucket_name, object);
 }
 
-void S3Client::s3_put_object(const std::string& key_name,
+void S3Client::S3PutObject(const std::string& key_name,
                              const std::string& bucket_name,
                              const std::string& object) {
   Model::PutObjectRequest putObjectRequest;

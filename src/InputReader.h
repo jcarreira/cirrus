@@ -140,7 +140,7 @@ class InputReader {
    */
   void print_sample(const std::vector<FEATURE_TYPE>& sample) const;
 
-  void process_lines(
+  void processLines(
       std::vector<std::string>&,
       const std::string&,
       uint64_t,

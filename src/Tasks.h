@@ -44,7 +44,7 @@ class MLTask {
      * Worker here is a value 0..nworkers - 1
      */
     void run(const Configuration& config, int worker);
-    void wait_for_start(int index, int nworkers);
+    void waitForStart(int index, int nworkers);
 
   protected:
     uint64_t model_size;
@@ -78,7 +78,7 @@ class LogisticSparseTaskS3 : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
-    std::vector<uint32_t> build_indexes(const SparseDataset&);
+    std::vector<uint32_t> buildIndexes(const SparseDataset&);
 
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
@@ -269,10 +269,10 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_add_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
-  bool process_get_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
-  bool process_get_sparse_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
-  bool process_create_tensor_msg(const Request& req, std::vector<char>& thread_buffer);
+  bool processAddTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processGetTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processGetSparseTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processCreateTensorMsg(const Request& req, std::vector<char>& thread_buffer);
 
   /**
     * Attributes
@@ -347,7 +347,7 @@ class MFNetflixTask : public MLTask {
 
   private:
     std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
-      build_indexes(const SparseDataset& ds,
+      buildIndexes(const SparseDataset& ds,
           uint64_t sample_index,
           uint32_t mb_size);
     bool get_dataset_minibatch(

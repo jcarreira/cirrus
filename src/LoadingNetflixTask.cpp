@@ -84,7 +84,7 @@ void LoadingNetflixTask::run(const Configuration& config) {
     std::cout
       << "Putting object in S3 with size: " << len
       << std::endl;
-    s3_client->s3_put_object(SAMPLE_BASE + i, config.get_s3_bucket(),
+    s3_client->S3PutObject(SAMPLE_BASE + i, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
   }
   check_loading(config, s3_client);

@@ -71,7 +71,7 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   return x.fd == -1;
 }
 
-bool PSSparseServerTask::process_add_tensor_msg(
+bool PSSparseServerTask::processAddTensorMsg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
@@ -103,7 +103,7 @@ bool PSSparseServerTask::process_add_tensor_msg(
   return true;
 }
 
-bool PSSparseServerTask::process_get_tensor_msg(
+bool PSSparseServerTask::processGetTensorMsg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
@@ -113,7 +113,7 @@ bool PSSparseServerTask::process_get_tensor_msg(
 
 }
 
-bool PSSparseServerTask::process_get_sparse_tensor_msg(
+bool PSSparseServerTask::processGetSparseTensorMsg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
@@ -123,7 +123,7 @@ bool PSSparseServerTask::process_get_sparse_tensor_msg(
 
 }
 
-bool PSSparseServerTask::process_create_tensor_msg(
+bool PSSparseServerTask::processCreateTensorMsg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
@@ -142,7 +142,8 @@ bool PSSparseServerTask::process_create_tensor_msg(
   CreateTensorMessage create_tensor_msg(thread_buffer.data());
 
   // XXX random initialize (?)
-  name_to_tensor[create_tensor_msg.get_name()] = Tensor(create_tensor_msg.get_tensor_dims());
+  name_to_tensor[create_tensor_msg.getName()] =
+    Tensor(create_tensor_msg.getTensorDims());
   
   try {
     bool t = true;
@@ -261,13 +262,13 @@ void PSSparseServerTask::gradient_f() {
 #endif
       task_to_status[data[0]] = data[1];
     } else if (req.req_id = CREATE_TENSOR_MSG) {
-      process_create_tensor_msg(req, thread_buffer);
+      processCreateTensorMsg(req, thread_buffer);
     } else if (req.req_id = ADD_TENSOR_MSG) { 
-      process_add_tensor_msg(req, thread_buffer);
+      processAddTensorMsg(req, thread_buffer);
     } else if (req.req_id = GET_TENSOR_MSG) { 
-      process_get_tensor_msg(req, thread_buffer);
+      processGetTensorMsg(req, thread_buffer);
     } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 
-      process_get_sparse_tensor_msg(req, thread_buffer);
+      processGetSparseTensorMsg(req, thread_buffer);
     } else if (operation == GET_NUM_CONNS) {
       std::cout << "Retrieve num connections: " << num_connections << std::endl;
       if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
@@ -545,7 +546,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   start_server();
 
-  //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
+  //waitForStart(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();

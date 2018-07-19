@@ -28,7 +28,7 @@ void Nesterov::sgdUpdate(
   }
 }
 
-void Nesterov::edit_weight(double& weight) {
+void Nesterov::editWeight(double& weight) {
   weight += momentum_beta * momentum_avg;
 }
 

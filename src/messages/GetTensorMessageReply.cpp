@@ -2,21 +2,21 @@
 
 namespace cirrus {
 
-char* GetTensorMessageReply::get_tensor_size_data() const {
+char* GetTensorMessageReply::getTensorSizeData() const {
   throw "fix";
   return nullptr;
 }
 
-void GetTensorMessageReply::reserve_tensor_data() {
+void GetTensorMessageReply::reserveTensorData() {
   throw "fix";
 }
 
-char* GetTensorMessageReply::get_tensor_data() const {
+char* GetTensorMessageReply::getTensorData() const {
   throw "fix";
   return nullptr;
 }
 
-uint32_t GetTensorMessageReply::get_tensor_size() const {
+uint32_t GetTensorMessageReply::getTensorSize() const {
   throw "fix";
   return 0;
 }

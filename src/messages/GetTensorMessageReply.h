@@ -9,10 +9,10 @@ namespace cirrus {
 class GetTensorMessageReply {
   public:
 
-    char* get_tensor_size_data() const;
-    void reserve_tensor_data();
-    char* get_tensor_data() const;
-    uint32_t get_tensor_size() const;
+    char* getTensorSizeData() const;
+    void reserveTensorData();
+    char* getTensorData() const;
+    uint32_t getTensorSize() const;
 
   private:
 };

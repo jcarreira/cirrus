@@ -128,7 +128,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "[ERROR_TASK] Building dataset"
     << "\n";
 
-  wait_for_start(ERROR_SPARSE_TASK_RANK, nworkers);
+  waitForStart(ERROR_SPARSE_TASK_RANK, nworkers);
   uint64_t start_time = get_time_us();
 
   std::cout << "[ERROR_TASK] Computing accuracies"

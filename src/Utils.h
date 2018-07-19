@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <random>
 #include <cfloat>
 
@@ -139,6 +140,18 @@ template<typename T, typename C>
 void single_store_value(C* data, T value) {
   T* v_ptr = reinterpret_cast<T*>(data);
   *v_ptr = value;
+}
+
+template<typename C>
+void store_value(C*& data, const std::string& str) {
+  std::copy(str.begin(), str.end(), data);
+  advance_ptr(data, str.size());
+}
+
+template<typename T, typename C>
+void store_value(C*& data, const std::vector<T>& vec) {
+  std::copy(vec.begin(), vec.end(), data);
+  advance_ptr(data, vec.size() * sizeof(T));
 }
 
 template<typename T, typename C>

@@ -93,26 +93,26 @@ bool PSSparseServerInterface::createTensor2D(const std::string& tensor_name,
   }
 
   // 2. send total size
-  uint32_t message_size = create_msg.get_data_size();
+  uint32_t message_size = create_msg.getDataSize();
   if (send_all(sock, &message_size, sizeof(message_size)) == -1) {
     throw std::runtime_error("Error sending create tensor msg size");
   }
 
   // 3. send name and tensor dimension
-  if (send_all(sock, const_cast<char*>(create_msg.get_data()),
-        create_msg.get_data_size()) == -1) {
+  if (send_all(sock, const_cast<char*>(create_msg.getData()),
+        create_msg.getDataSize()) == -1) {
     throw std::runtime_error("Error sending create tensor msg");
   }
 
   CreateTensorMessageReply create_msg_reply;
   // receive boolean reply
   if (read_all(sock,
-        const_cast<char*>(create_msg_reply.get_return_data()),
-        create_msg_reply.get_return_size()) == 0) {
+        const_cast<char*>(create_msg_reply.getReturnData()),
+        create_msg_reply.getReturnSize()) == 0) {
     throw std::runtime_error("Error getting create_msg_reply");
   }
 
-  return create_msg_reply.get_bool();
+  return create_msg_reply.getBool();
 }
 
 bool PSSparseServerInterface::createTensor1D(const std::string& tensor_name,
@@ -126,26 +126,26 @@ bool PSSparseServerInterface::createTensor1D(const std::string& tensor_name,
   }
 
   // 2. send total size
-  uint32_t message_size = create_msg.get_data_size();
+  uint32_t message_size = create_msg.getDataSize();
   if (send_all(sock, &message_size, sizeof(message_size)) == -1) {
     throw std::runtime_error("Error sending create tensor msg size");
   }
 
   // 3. send name and tensor dimension
-  if (send_all(sock, const_cast<char*>(create_msg.get_data()),
-        create_msg.get_data_size()) == -1) {
+  if (send_all(sock, const_cast<char*>(create_msg.getData()),
+        create_msg.getDataSize()) == -1) {
     throw std::runtime_error("Error sending create tensor msg");
   }
 
   CreateTensorMessageReply create_msg_reply;
   // receive boolean reply
   if (read_all(sock,
-        const_cast<char*>(create_msg_reply.get_return_data()),
-        create_msg_reply.get_return_size()) == 0) {
+        const_cast<char*>(create_msg_reply.getReturnData()),
+        create_msg_reply.getReturnSize()) == 0) {
     throw std::runtime_error("Error getting create_msg_reply");
   }
 
-  return create_msg_reply.get_bool();
+  return create_msg_reply.getBool();
 }
 
 bool PSSparseServerInterface::addTensor1D(const std::string& tensor_name,
@@ -153,24 +153,24 @@ bool PSSparseServerInterface::addTensor1D(const std::string& tensor_name,
   AddTensorMessage add_tensor_msg(tensor_name, sparse_tensor);
  
   // 1. send tensor size 
-  if (send_all(sock, add_tensor_msg.get_tensor_size_data(),
-        add_tensor_msg.get_tensor_size_size()) == -1) {
+  if (send_all(sock, add_tensor_msg.getTensorSizeData(),
+        add_tensor_msg.getTensorSizeSize()) == -1) {
       throw std::runtime_error("Error sending update tensor msg");
   }
 
   // 2. send tensor
-  if (send_all(sock, const_cast<char*>(add_tensor_msg.get_tensor_data()),
-        add_tensor_msg.get_tensor_size()) == -1) {
+  if (send_all(sock, const_cast<char*>(add_tensor_msg.getTensorData()),
+        add_tensor_msg.getTensorSize()) == -1) {
       throw std::runtime_error("Error sending update tensor msg");
   }
 
   AddTensorMessageReply add_tensor_msg_reply;
-  if (read_all(sock, const_cast<char*>(add_tensor_msg_reply.get_return_data()),
-              add_tensor_msg_reply.get_return_size()) == 0) {
+  if (read_all(sock, const_cast<char*>(add_tensor_msg_reply.getReturnData()),
+              add_tensor_msg_reply.getReturnSize()) == 0) {
       throw std::runtime_error("Error getting add_tensor_msg_reply");
   }
 
-  return add_tensor_msg_reply.get_bool();
+  return add_tensor_msg_reply.getBool();
 }
 
 Tensor1D PSSparseServerInterface::getTensor1D(const std::string& tensor_name) {
@@ -182,24 +182,24 @@ Tensor1D PSSparseServerInterface::getTensor1D(const std::string& tensor_name) {
   }
 
   // 2. send tensor name
-  if (send_all(sock, const_cast<char*>(get_tensor_msg.get_name_data()),
-        get_tensor_msg.get_name_size() + 1) == -1) {
+  if (send_all(sock, const_cast<char*>(get_tensor_msg.getNameData()),
+        get_tensor_msg.getNameSize() + 1) == -1) {
       throw std::runtime_error("Error sending tensor name");
   }
 
   GetTensorMessageReply get_tensor_msg_reply;
-  if (read_all(sock, get_tensor_msg_reply.get_tensor_size_data(),
+  if (read_all(sock, get_tensor_msg_reply.getTensorSizeData(),
               sizeof(uint32_t)) == 0) {
       throw std::runtime_error("Error getting get_tensor_msg_reply");
   }
 
-  get_tensor_msg_reply.reserve_tensor_data();
-  if (read_all(sock, get_tensor_msg_reply.get_tensor_data(),
-              get_tensor_msg_reply.get_tensor_size()) == 0) {
+  get_tensor_msg_reply.reserveTensorData();
+  if (read_all(sock, get_tensor_msg_reply.getTensorData(),
+              get_tensor_msg_reply.getTensorSize()) == 0) {
       throw std::runtime_error("Error getting get_tensor_msg_reply");
   }
 
-  return Tensor1D(get_tensor_msg_reply.get_tensor_data());
+  return Tensor1D(get_tensor_msg_reply.getTensorData());
 }
 
 SparseTensor1D PSSparseServerInterface::getSparseTensor1D(const std::string& tensor_name,
@@ -211,18 +211,18 @@ SparseTensor1D PSSparseServerInterface::getSparseTensor1D(const std::string& ten
 
   GetSparseTensorMessage msg(tensor_name, indexes);
   // 2. send tensor name
-  if (send_all(sock, const_cast<char*>(msg.get_data()),
-        msg.get_data_size()) == -1) {
+  if (send_all(sock, const_cast<char*>(msg.getData()),
+        msg.getDataSize()) == -1) {
       throw std::runtime_error("Error sending tensor name");
   }
 
   GetSparseTensorMessageReply msg_reply(indexes);
-  if (read_all(sock, msg_reply.get_data(),
-              msg_reply.get_size()) == 0) {
+  if (read_all(sock, msg_reply.getData(),
+              msg_reply.getSize()) == 0) {
       throw std::runtime_error("Error getting msg_reply");
   }
 
-  return SparseTensor1D(msg_reply.get_data());
+  return SparseTensor1D(msg_reply.getData());
 }
 
 SparseTensor2D PSSparseServerInterface::getSparseTensor2D(const std::string& tensor_name,

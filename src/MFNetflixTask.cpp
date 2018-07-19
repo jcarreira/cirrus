@@ -43,7 +43,7 @@ bool MFNetflixTask::get_dataset_minibatch(
 }
 
 std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
-MFNetflixTask::build_indexes(const SparseDataset& ds,
+MFNetflixTask::buildIndexes(const SparseDataset& ds,
                              uint64_t sample_index,
                              uint32_t mb_size) {
   std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> res;
@@ -83,7 +83,7 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
 
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
-  wait_for_start(WORKER_SPARSE_TASK_RANK + worker, nworkers);
+  waitForStart(WORKER_SPARSE_TASK_RANK + worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
   std::pair<int, int> train_range = config.get_train_range();

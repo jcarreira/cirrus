@@ -11,10 +11,10 @@ class GetSparseTensorMessageReply {
   public:
     GetSparseTensorMessageReply(const std::vector<uint32_t>&);
 
-    char* get_data() const;
-    void reserve_data(const std::vector<uint32_t>& indexes);
+    char* getData() const;
+    void reserveData(const std::vector<uint32_t>& indexes);
     //char* get_tensor_data() const;
-    uint32_t get_size() const;
+    uint32_t getSize() const;
 
   private:
     const std::vector<uint32_t>& indexes;

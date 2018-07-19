@@ -12,11 +12,11 @@ class AddTensorMessage {
     AddTensorMessage(const std::string& tensor_name, const SparseTensor2D&);
     explicit AddTensorMessage(const char*);
 
-    uint32_t get_tensor_size_size() const;
-    char* get_tensor_size_data() const;
+    uint32_t getTensorSizeSize() const;
+    char* getTensorSizeData() const;
     
-    uint32_t get_tensor_size() const;
-    char* get_tensor_data() const;
+    uint32_t getTensorSize() const;
+    char* getTensorData() const;
   private:
 
 };

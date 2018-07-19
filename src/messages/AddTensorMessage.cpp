@@ -14,22 +14,22 @@ AddTensorMessage::AddTensorMessage(const char*) {
 
 }
     
-uint32_t AddTensorMessage::get_tensor_size_size() const {
+uint32_t AddTensorMessage::getTensorSizeSize() const {
   throw "fix";
   return 0;
 }
 
-uint32_t AddTensorMessage::get_tensor_size() const {
+uint32_t AddTensorMessage::getTensorSize() const {
   throw "fix";
   return 0;
 }
 
-char* AddTensorMessage::get_tensor_size_data() const {
+char* AddTensorMessage::getTensorSizeData() const {
   throw "fix";
   return nullptr;
 }
 
-char* AddTensorMessage::get_tensor_data() const {
+char* AddTensorMessage::getTensorData() const {
   throw "fix";
   return nullptr;
 }

@@ -1,12 +1,24 @@
 #include <CreateTensorMessage.h>
+#include <Constants.h>
+#include <Utils.h>
 
 namespace cirrus {
+
+/**
+  * Format:
+  * operation id (uint32_t)
+  * tensor_name with null ptr (tensor_name.size() + 1)
+  * num_dims (uint32_t)
+  * dims (each uint32_t)
+  */
 
 CreateTensorMessage::CreateTensorMessage(
     const std::string& tensor_name,
     uint32_t tensor_dim) :
   tensor_name(tensor_name),
   tensor_dim(std::vector<uint32_t>{tensor_dim}) {
+    data.reset(new char[getDataSize()]);
+    populateData();
 }
 
 CreateTensorMessage::CreateTensorMessage(
@@ -14,29 +26,42 @@ CreateTensorMessage::CreateTensorMessage(
     const std::vector<uint32_t>& tensor_dim) :
   tensor_name(tensor_name),
   tensor_dim(tensor_dim) {
+    data.reset(new char[getDataSize()]);
+    populateData();
 }
 
 CreateTensorMessage::CreateTensorMessage(const char* data) {
+  throw "not implemented";
+}
 
+void CreateTensorMessage::populateData() {
+  char* data_ptr = data.get();
+  store_value<uint32_t>(data_ptr, CREATE_TENSOR_MSG);
+  store_value<std::string>(data_ptr, tensor_name);
+  store_value(data_ptr, static_cast<char>(0));
+  store_value(data_ptr, tensor_dim.size());
+  store_value(data_ptr, tensor_dim);
 }
     
-std::string CreateTensorMessage::get_name() const {
+std::string CreateTensorMessage::getName() const {
   return tensor_name;
 }
     
-std::vector<uint32_t> CreateTensorMessage::get_tensor_dims() const {
+std::vector<uint32_t> CreateTensorMessage::getTensorDims() const {
   return tensor_dim;
 }
     
-uint32_t CreateTensorMessage::get_data_size() const {
-  throw "fix";
-  return 0;
+uint32_t CreateTensorMessage::getDataSize() const {
+  return
+    sizeof(uint32_t) + // operation id
+    tensor_name.size() + 1 + // tensor name with null
+    sizeof(uint32_t) + // num dimensions
+    tensor_dim.size(); // dimensions
 }
     
-const char* CreateTensorMessage::get_data() const {
+const char* CreateTensorMessage::getData() const {
   throw "fix";
   return nullptr;
 }
-
 
 }  // namespace cirrus

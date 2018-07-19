@@ -9,8 +9,8 @@ class GetTensorMessage {
   public:
     GetTensorMessage(const std::string& name) { throw "fix"; }
 
-    uint32_t get_name_size() const;
-    char* get_name_data() const;
+    uint32_t getNameSize() const;
+    char* getNameData() const;
   private:
 
 };

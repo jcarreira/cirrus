@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <memory>
+#include <cstdint>
 
 namespace cirrus {
 
@@ -12,16 +14,20 @@ class CreateTensorMessage {
     CreateTensorMessage(const std::string& tensor_name, const std::vector<uint32_t>& tensor_dim);
     explicit CreateTensorMessage(const char* data);
 
-    std::string get_name() const;
-    std::vector<uint32_t> get_tensor_dims() const;
+    std::string getName() const;
+    std::vector<uint32_t> getTensorDims() const;
 
-    uint32_t get_data_size() const;
+    uint32_t getDataSize() const;
     
-    const char* get_data() const;
+    const char* getData() const;
 
   private:
+    void populateData();
+
     std::string tensor_name;
     const std::vector<uint32_t> tensor_dim;
+
+    std::shared_ptr<char[]> data;
 };
 
 } // namespace cirrus

@@ -6,18 +6,18 @@ GetSparseTensorMessageReply::GetSparseTensorMessageReply(
     const std::vector<uint32_t>& indexes)
   : indexes(indexes)
 {
-  reserve_data(indexes);
+  reserveData(indexes);
 }
 
-void GetSparseTensorMessageReply::reserve_data(const std::vector<uint32_t>& indexes) {
+void GetSparseTensorMessageReply::reserveData(const std::vector<uint32_t>& indexes) {
   data.reset(new char[indexes.size() * sizeof(uint32_t)]);
 }
 
-char* GetSparseTensorMessageReply::get_data() const {
+char* GetSparseTensorMessageReply::getData() const {
   return data.get();
 }
 
-uint32_t GetSparseTensorMessageReply::get_size() const {
+uint32_t GetSparseTensorMessageReply::getSize() const {
   return indexes.size() * sizeof(uint32_t);
 }
 

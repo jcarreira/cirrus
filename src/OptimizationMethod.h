@@ -18,7 +18,7 @@ class OptimizationMethod {
    virtual void sgdUpdate(
       std::unique_ptr<SparseLRModel>& lr_model, 
       const ModelGradient* gradient) = 0;
-   virtual void edit_weight(double& weight);
+   virtual void editWeight(double& weight);
 
  protected:
    double learning_rate;
