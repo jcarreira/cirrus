@@ -118,7 +118,7 @@ bool PSSparseServerTask::process_send_sm_gradient(
     return false;
   }
 
-  SoftmaxGradient gradient;
+  SoftmaxGradient gradient(0, 0);
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();

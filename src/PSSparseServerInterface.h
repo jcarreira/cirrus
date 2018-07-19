@@ -15,6 +15,7 @@
 #include "Utils.h"
 #include "SparseLRModel.h"
 #include "SparseMFModel.h"
+#include "SoftmaxModel.h"
 #include "Model.h"
 
 namespace cirrus {
@@ -33,7 +34,7 @@ class PSSparseServerInterface {
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
-  std::unique_ptr<CirrusModel> get_sm_full_model();
+  std::unique_ptr<SoftmaxModel> get_sm_full_model();
 
 
   void set_status(uint32_t id, uint32_t status);

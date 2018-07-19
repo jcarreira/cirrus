@@ -137,7 +137,7 @@ Matrix Dataset::get_samples() const {
   return samples_;
 }
 
-std::shared_ptr<const FEATURE_TYPE> get_labels() const {
+std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
   return labels_;
 }
 
