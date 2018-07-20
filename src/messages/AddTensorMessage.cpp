@@ -38,6 +38,10 @@ void AddTensorMessage::populateData() {
   store_value(data_ptr, tensor_dim.size());
   store_value(data_ptr, tensor_dim);
 }
+    
+char* AddTensorMessage::getData() const {
+  return data.get();
+}
 
 uint32_t AddTensorMessage::getDataSize() const {
   // all but the operation id
@@ -52,25 +56,5 @@ uint32_t AddTensorMessage::getTotalDataSize() const {
     sizeof(uint32_t) + // num dimensions
     tensor_dim.size(); // dimensions
 }
-
-//uint32_t AddTensorMessage::getTensorSizeSize() const {
-//  throw "fix";
-//  return 0;
-//}
-//
-//uint32_t AddTensorMessage::getTensorSize() const {
-//  throw "fix";
-//  return 0;
-//}
-//
-//char* AddTensorMessage::getTensorSizeData() const {
-//  throw "fix";
-//  return nullptr;
-//}
-//
-//char* AddTensorMessage::getTensorData() const {
-//  throw "fix";
-//  return nullptr;
-//}
 
 }  // namespace cirrus

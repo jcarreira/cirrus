@@ -16,19 +16,18 @@ class AddTensorMessage {
     uint32_t getTotalDataSize() const;
     uint32_t getDataSize() const;
 
-//    uint32_t getTensorSizeSize() const;
-//    char* getTensorSizeData() const;
-//    
-//    uint32_t getTensorSize() const;
-//    char* getTensorData() const;
+    char* getData() const;
 
   private:
+    /**
+      * Create message
+      */
     void populateData();
 
-    std::string tensor_name;
-    std::shared_ptr<char[]> data;
+    std::string tensor_name;           //< name of tensor
+    std::vector<uint32_t> tensor_dim;  //< dimensions of tensor
 
-    std::vector<uint32_t> tensor_dim;
+    std::shared_ptr<char[]> data;  //< message data
 };
 
 }  // namespace cirrus
