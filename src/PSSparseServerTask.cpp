@@ -142,8 +142,8 @@ bool PSSparseServerTask::processCreateTensorMsg(
   CreateTensorMessage create_tensor_msg(thread_buffer.data());
 
   // XXX random initialize (?)
-  name_to_tensor[create_tensor_msg.getName()] =
-    Tensor(create_tensor_msg.getTensorDims());
+  name_to_tensor[create_tensor_msg.getName()].reset(
+    Tensor::generateTensor(create_tensor_msg));
   
   try {
     bool t = true;

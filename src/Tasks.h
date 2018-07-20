@@ -324,7 +324,7 @@ class PSSparseServerTask : public MLTask {
   char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
   std::atomic<int> thread_count;  //< keep track of each thread's id
     
-  std::map<std::string, Tensor> name_to_tensor;
+  std::map<std::string, std::shared_ptr<Tensor>> name_to_tensor;
 };
 
 class MFNetflixTask : public MLTask {
