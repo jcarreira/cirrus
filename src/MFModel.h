@@ -68,7 +68,7 @@ class MFModel : public CirrusModel {
      * @param learning_rate Learning rate to be used
      * @param gradient Gradient to be used for the update
      */
-    void sgd_update(double learning_rate, const ModelGradient* gradient);
+    void sgdUpdate(double learning_rate, const ModelGradient* gradient);
 
     /**
      * Returns the size of the model weights serialized
@@ -82,21 +82,21 @@ class MFModel : public CirrusModel {
      * @param epsilon L2 Regularization rate
      * @return Newly computed gradient
      */
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
             const Matrix& m,
             FEATURE_TYPE* labels,
             uint64_t labels_size,
             //const SparseDataset& dataset,
             double epsilon) const;
 
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
         double learning_rate,
         uint64_t base_user,
         const SparseDataset& dataset,
         double epsilon) const;
 
      
-    void sgd_update(double learning_rate,
+    void sgdUpdate(double learning_rate,
                 uint64_t base_user,
                 const SparseDataset&,
                 double epsilon);
@@ -106,11 +106,11 @@ class MFModel : public CirrusModel {
      * @param dataset Dataset to calculate loss on
      * @return Total loss of whole dataset
      */
-    std::pair<double, double> calc_loss(Dataset& dataset) const;
+    std::pair<double, double> calcLoss(Dataset& dataset) const;
     
-    std::pair<double, double> calc_loss(SparseDataset& dataset) const;
+    std::pair<double, double> calcLoss(SparseDataset& dataset) const;
     
-    std::pair<double, double> calc_loss(SparseDataset& dataset, uint32_t start_index) const;
+    std::pair<double, double> calcLoss(SparseDataset& dataset, uint32_t start_index) const;
 
     /**
      * Return the size of the gradient when serialized

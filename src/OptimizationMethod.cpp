@@ -6,7 +6,7 @@ OptimizationMethod::OptimizationMethod(double lr)
   : learning_rate(lr)
 {}
    
-void OptimizationMethod::edit_weight(double& weight) {
+void OptimizationMethod::editWeight(double& weight) {
   return;
 }
 

@@ -17,6 +17,8 @@ namespace cirrus {
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
         const std::string& ps_ip, uint64_t ps_port) {
+  throw "fix";
+#if 0
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
@@ -27,6 +29,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   return psi->get_full_model(use_col_filtering);
+#endif
 }
 
 void ErrorSparseTask::error_response() {
@@ -125,7 +128,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "[ERROR_TASK] Building dataset"
     << "\n";
 
-  wait_for_start(ERROR_SPARSE_TASK_RANK, nworkers);
+  waitForStart(ERROR_SPARSE_TASK_RANK, nworkers);
   uint64_t start_time = get_time_us();
 
   std::cout << "[ERROR_TASK] Computing accuracies"
@@ -155,7 +158,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       uint64_t start_index = 0;
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(ds, start_index);
+          model->calcLoss(ds, start_index);
         total_loss += ret.first;
         total_accuracy += ret.second;
         total_num_samples += ds.num_samples();

@@ -75,7 +75,7 @@ std::unique_ptr<CirrusModel> LRModel::copy() const {
     return new_model;
 }
 
-void LRModel::sgd_update(double learning_rate,
+void LRModel::sgdUpdate(double learning_rate,
         const ModelGradient* gradient) {
     const LRGradient* grad = dynamic_cast<const LRGradient*>(gradient);
 
@@ -88,7 +88,7 @@ void LRModel::sgd_update(double learning_rate,
     }
 }
 
-std::unique_ptr<ModelGradient> LRModel::minibatch_grad(
+std::unique_ptr<ModelGradient> LRModel::minibatchGrad(
         const Matrix& dataset,
         FEATURE_TYPE* labels,
         uint64_t labels_size,
@@ -140,7 +140,7 @@ std::unique_ptr<ModelGradient> LRModel::minibatch_grad(
     return ret;
 }
 
-std::pair<double, double> LRModel::calc_loss(Dataset& dataset) const {
+std::pair<double, double> LRModel::calcLoss(Dataset& dataset) const {
   double total_loss = 0;
   auto w = weights_;
 

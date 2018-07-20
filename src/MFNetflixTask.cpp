@@ -12,31 +12,6 @@
 
 namespace cirrus {
 
-void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
-#ifdef DEBUG
-  auto before_push_us = get_time_us();
-  std::cout << "Publishing gradients" << std::endl;
-#endif
-  psint->send_mf_gradient(mfg);
-#ifdef DEBUG
-  std::cout << "Published gradients!" << std::endl;
-  auto elapsed_push_us = get_time_us() - before_push_us;
-  static uint64_t before = 0;
-  if (before == 0)
-    before = get_time_us();
-  auto now = get_time_us();
-  std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * mfg.getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
-  before = now;
-#endif
-}
-
 // get samples and labels data
 bool MFNetflixTask::get_dataset_minibatch(
     std::unique_ptr<SparseDataset>& dataset,
@@ -67,19 +42,48 @@ bool MFNetflixTask::get_dataset_minibatch(
   return true;
 }
 
+std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
+MFNetflixTask::buildIndexes(const SparseDataset& ds,
+                             uint64_t sample_index,
+                             uint32_t mb_size) {
+  std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> res;
+  res.resize(4); // user_bias, item_bias, user_weights, item_weights
+
+  bool seen[17770] = {false}; // fix
+  for (const auto& sample : ds.data_) {
+    for (const auto& w : sample) {
+      uint32_t movieId = w.first;
+      if (seen[movieId]) {
+        continue;
+      } else {
+        seen[movieId] = true;
+      }
+      res[1].push_back(std::make_tuple(movieId, UINT32_MAX)); // get all values
+      res[3].push_back(std::make_tuple(movieId, UINT32_MAX)); // get all values
+    }
+  }
+
+  for (uint32_t i = sample_index; i < sample_index + mb_size; ++i) {
+    res[0].push_back(std::make_tuple(i, UINT32_MAX));
+    res[2].push_back(std::make_tuple(i, UINT32_MAX));
+  }
+}
+
 void MFNetflixTask::run(const Configuration& config, int worker) {
   std::cout << "Starting MFNetflixTask"
-    << std::endl;
+            << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
   psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-
-  mf_model_get = std::make_unique<MFModelGet>(ps_ip, ps_port);
+  psint->createTensor1D("mf_item_bias", 0);
+  psint->createTensor1D("mf_user_bias", 0);
+  psint->createTensor2D("mf_item_weights", std::make_pair(0, 0));
+  psint->createTensor2D("mf_user_weights", std::make_pair(0, 0));
 
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
-  wait_for_start(WORKER_SPARSE_TASK_RANK + worker, nworkers);
+  waitForStart(WORKER_SPARSE_TASK_RANK + worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
   std::pair<int, int> train_range = config.get_train_range();
@@ -135,10 +139,27 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     // compute mini batch gradient
     std::unique_ptr<ModelGradient> gradient;
 
+#if 0
+
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> indexes =
+      build_indexes(*dataset, sample_index, config.get_minibatch_size());
     // we get the model subset with just the right amount of weights
-    SparseMFModel model =
-      mf_model_get->get_new_model(
-              *dataset, sample_index, config.get_minibatch_size());
+    SparseTensor1D mf_user_bias = psint->getSparseTensor1D("mf_user_bias",
+                                                         indexes[0]);
+    SparseTensor1D mf_item_bias = psint->getSparseTensor1D("mf_item_bias",
+                                                         indexes[1]);
+    SparseTensor2D mf_user_weights = psint->getSparseTensor2D("mf_user_weights",
+                                                            indexes[2]);
+    SparseTensor2D mf_item_weights = psint->getSparseTensor2D("mf_item_weights",
+                                                            indexes[3]);
+
+    SparseMFModel model(std::move(indexes[0]),
+                        std::move(indexes[1]),
+                        std::move(indexes[2]),
+                        std::move(indexes[3]));
+    //SparseMFModel model =
+    //  mf_model_get->get_new_model(
+    //          *dataset, sample_index, config.get_minibatch_size());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -148,17 +169,20 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      auto gradient = model.minibatch_grad(*dataset, config, sample_index);
+      auto gradient_tensor = model.minibatchGradTensor(*dataset, config, sample_index);
+      //auto gradient = model.minibatchGrad(*dataset, config, sample_index);
 #ifdef DEBUG
       auto elapsed_us = get_time_us() - now;
       std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
         << " at time: " << get_time_us() << "\n";
 #endif
-      MFSparseGradient* grad_ptr =
-        dynamic_cast<MFSparseGradient*>(gradient.get());
-      push_gradient(*grad_ptr);
-      sample_index += config.get_minibatch_size();
+      //MFSparseGradient* grad_ptr =
+      //  dynamic_cast<MFSparseGradient*>(gradient.get());
+      //push_gradient(*grad_ptr);
 
+      // XXX fix
+      //psint->add_tensor("mf_model", gradient_tensor);
+      sample_index += config.get_minibatch_size();
 
       if (sample_index + config.get_minibatch_size() > sample_high) {
           sample_index = sample_low;
@@ -167,6 +191,7 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
+#endif
   }
 }
 

@@ -4,6 +4,10 @@
 #include "Utils.h"
 #include "Constants.h"
 #include "Checksum.h"
+#include "CreateTensorMessage.h"
+#include "AddTensorMessage.h"
+#include "GetTensorMessage.h"
+
 #include <signal.h>
 #include "OptimizationMethod.h"
 #include "AdaGrad.h"
@@ -27,27 +31,26 @@ PSSparseServerTask::PSSparseServerTask(
   MLTask(model_size,
       batch_size, samples_per_batch, features_per_sample,
       nworkers, worker_id, ps_ip, ps_port) {
-    std::cout << "PSSparseServerTask is built" << std::endl;
 
-    std::atomic_init(&gradientUpdatesCount, 0UL);
-    std::atomic_init(&thread_count, 0);
+  std::cout << "PSSparseServerTask is built" << std::endl;
 
-    operation_to_name[0] = "SEND_LR_GRADIENT";
-    operation_to_name[1] = "SEND_MF_GRADIENT";
-    operation_to_name[2] = "GET_LR_FULL_MODEL";
-    operation_to_name[3] = "GET_MF_FULL_MODEL";
-    operation_to_name[4] = "GET_LR_SPARSE_MODEL";
-    operation_to_name[5] = "GET_MF_SPARSE_MODEL";
-    operation_to_name[6] = "SET_TASK_STATUS";
-    operation_to_name[7] = "GET_TASK_STATUS";
-    operation_to_name[8] = "REGISTER_TASK";
-    operation_to_name[9] = "GET_NUM_CONNS";
-    operation_to_name[10] = "GET_LAST_TIME_ERROR";
+  std::atomic_init(&gradientUpdatesCount, 0UL);
+  std::atomic_init(&thread_count, 0);
 
-    for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
-      thread_msg_buffer[i] =
-          new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
-    }
+  operation_to_name[CREATE_TENSOR_MSG] = "CREATE_TENSOR_MSG";
+  operation_to_name[ADD_TENSOR_MSG] = "ADD_TENSOR_MSG";
+  operation_to_name[GET_TENSOR_MSG] = "GET_TENSOR_MSG";
+  operation_to_name[GET_SPARSE_TENSOR_MSG] = "GET_SPARSE_TENSOR_MSG";
+  operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
+  operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
+  operation_to_name[REGISTER_TASK] = "REGISTER_TASK";
+  operation_to_name[GET_NUM_CONNS] = "GET_NUM_CONNS";
+  operation_to_name[GET_LAST_TIME_ERROR] = "GET_LAST_TIME_ERROR";
+
+  for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
+    thread_msg_buffer[i] =
+        new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
+  }
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -68,53 +71,14 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   return x.fd == -1;
 }
 
-bool PSSparseServerTask::process_send_mf_gradient(
+bool PSSparseServerTask::processAddTensorMsg(
     const Request& req,
     std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
-#ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
-            << std::endl;
-#endif
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-    return false;
-  }
 
-  MFSparseGradient gradient;
-  gradient.loadSerialized(thread_buffer.data());
-
-  model_lock.lock();
-#ifdef DEBUG
-  std::cout << "Doing sgd update" << std::endl;
-#endif
-  mf_model->sgd_update(
-      task_config.get_learning_rate(), &gradient);
-#ifdef DEBUG
-  std::cout
-    << "sgd update done"
-    << " checksum: " << mf_model->checksum()
-    << std::endl;
-#endif
-  model_lock.unlock();
-  gradientUpdatesCount++;
-  return true;
-}
-
-bool PSSparseServerTask::process_send_lr_gradient(
-    const Request& req,
-    std::vector<char>& thread_buffer) {
-  uint32_t incoming_size = req.incoming_size;
-#ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
-            << std::endl;
-#endif
-  if (incoming_size > thread_buffer.size()) {
-    throw std::runtime_error("Not enough buffer");
-  }
-  //buffer.resize(incoming_size);
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -123,75 +87,50 @@ bool PSSparseServerTask::process_send_lr_gradient(
     throw std::runtime_error("Uhandled error");
   }
 
-  LRSparseGradient gradient(0);
-  gradient.loadSerialized(thread_buffer.data());
+  AddTensorMessage add_tensor_msg(thread_buffer.data());
 
-  model_lock.lock();
-  opt_method->sgd_update(
-      lr_model, &gradient);
-  model_lock.unlock();
-  gradientUpdatesCount++;
+  // XXX implement here
+
+  try {
+    bool t = true;
+    if (send_all(req.sock, &t, sizeof(t)) == -1) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
   return true;
 }
 
-// XXX we have to refactor this ASAP
-// move this to SparseMFModel
-
-bool PSSparseServerTask::process_get_mf_sparse_model(
-    const Request& req, std::vector<char>& thread_buffer, int thread_number) {
-  uint32_t k_items = 0;
-  uint32_t base_user_id = 0;
-  uint32_t minibatch_size = 0;
-  uint32_t magic_value = 0;
-
-  read_all(req.sock, &k_items, sizeof(uint32_t));
-  read_all(req.sock, &base_user_id, sizeof(uint32_t));
-  read_all(req.sock, &minibatch_size, sizeof(uint32_t));
-  read_all(req.sock, &magic_value, sizeof(uint32_t));
-
-  assert(k_items > 0);
-  assert(minibatch_size > 0);
-  if (magic_value != MAGIC_NUMBER) {
-    throw std::runtime_error("Wrong message");
-  }
-  read_all(req.sock, thread_buffer.data(), k_items * sizeof(uint32_t));
-  uint32_t to_send_size =
-      minibatch_size *
-          (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
-#ifdef DEBUG
-  std::cout << "k_items: " << k_items << std::endl;
-  std::cout << "base_user_id: " << base_user_id << std::endl;
-  std::cout << "minibatch_size: " << minibatch_size << std::endl;
-#endif
-
-  SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
-  sparse_mf_model.serializeFromDense(
-      *mf_model, base_user_id, minibatch_size,
-      k_items, thread_buffer.data(), thread_msg_buffer[thread_number]);
-
-  //uint32_t to_send_size = data_to_send.size();
-  if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
-    return false;
-  }
-  if (send_all(req.sock, thread_msg_buffer[thread_number], to_send_size) ==
-      -1) {
-    return false;
-  }
-  return true;
-}
-
-bool PSSparseServerTask::process_get_lr_sparse_model(
-    const Request& req, std::vector<char>& thread_buffer) {
-  // need to parse the buffer to get the indices of the model we want
-  // to send back to the client
+bool PSSparseServerTask::processGetTensorMsg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-#ifdef DEBUG
-  std::cout << "GET_MODEL_REQ incoming size: " << incoming_size << std::endl;
-#endif
+
+}
+
+bool PSSparseServerTask::processGetSparseTensorMsg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+}
+
+bool PSSparseServerTask::processCreateTensorMsg(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -200,77 +139,21 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
     throw std::runtime_error("Uhandled error");
   }
 
-  const char* data = thread_buffer.data();
-  uint64_t num_entries = load_value<uint32_t>(data);
+  CreateTensorMessage create_tensor_msg(thread_buffer.data());
 
-  uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
-  assert(to_send_size < 1024 * 1024);
-  char data_to_send[1024 * 1024]; // 1MB
-  char* data_to_send_ptr = data_to_send;
-#ifdef DEBUG
-  std::cout << "Sending back: " << num_entries
-    << " weights from model. Size: " << to_send_size
-    << std::endl;
-#endif
-  for (uint32_t i = 0; i < num_entries; ++i) {
-    uint32_t entry_index = load_value<uint32_t>(data);
-    double weight = lr_model->get_nth_weight(entry_index);
-    opt_method->edit_weight(weight);
-    store_value<FEATURE_TYPE>(
-        data_to_send_ptr,
-        weight);
-  }
-  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
-    return false;
-  }
-  return true;
-}
-
-bool PSSparseServerTask::process_get_mf_full_model(
-    const Request& req, std::vector<char>& thread_buffer) {
-  model_lock.lock();
-  auto mf_model_copy = *mf_model;
-  model_lock.unlock();
-  uint32_t model_size = mf_model_copy.getSerializedSize();
-
-  if (thread_buffer.size() < model_size) {
-    std::cout << "thread_buffer.size(): " << thread_buffer.size()
-      << " model_size: " << model_size << std::endl;
-    throw std::runtime_error("Thread buffer too small");
+  // XXX random initialize (?)
+  name_to_tensor[create_tensor_msg.getName()].reset(
+    Tensor::generateTensor(create_tensor_msg));
+  
+  try {
+    bool t = true;
+    if (send_all(req.sock, &t, sizeof(t)) == -1) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
   }
 
-  mf_model_copy.serializeTo(thread_buffer.data());
-  std::cout
-    << "Serializing mf model"
-    << " mode checksum: " << mf_model_copy.checksum()
-    << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-    << std::endl;
-  if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
-    return false;
-  }
-  if (send_all(req.sock, thread_buffer.data(), model_size) == -1) {
-    return false;
-  }
-  return true;
-}
-
-bool PSSparseServerTask::process_get_lr_full_model(
-    const Request& req, std::vector<char>& thread_buffer) {
-  model_lock.lock();
-  auto lr_model_copy = *lr_model;
-  model_lock.unlock();
-  uint32_t model_size = lr_model_copy.getSerializedSize();
-
-  if (thread_buffer.size() < model_size) {
-    std::string error_str = "buffer with size " +
-                            std::to_string(thread_buffer.size()) +
-                            "too small: " + std::to_string(model_size);
-    throw std::runtime_error(error_str);
-  }
-
-  lr_model_copy.serializeTo(thread_buffer.data());
-  if (send_all(req.sock, thread_buffer.data(), model_size) == -1)
-    return false;
   return true;
 }
 
@@ -307,6 +190,7 @@ void PSSparseServerTask::gradient_f() {
       continue;
     }
 
+    // read the incoming_size value from the client
     req.req_id = operation;
 
     if (operation == REGISTER_TASK) {
@@ -325,53 +209,29 @@ void PSSparseServerTask::gradient_f() {
       }
       send_all(sock, &task_reg, sizeof(uint32_t));
       continue;
-    } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-               operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL) {
-      // read 4 bytes of the size of the remaining message
+    } else if (operation == CREATE_TENSOR_MSG || operation == ADD_TENSOR_MSG ||
+        GET_TENSOR_MSG || operation == GET_SPARSE_TENSOR_MSG) {
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
-        handle_failed_read(&req.poll_fd);
+        if (close(req.poll_fd.fd) != 0) {
+          std::cout << "Error closing socket. errno: " << errno << std::endl;
+        }
+        num_connections--;
+        std::cout << "PS closing connection after process(): " << num_connections << std::endl;
+        req.poll_fd.fd = -1;
+        req.poll_fd.revents = 0;
         continue;
       }
       req.incoming_size = incoming_size;
+    } else {
+      throw std::runtime_error("Unknown operation");
     }
 
 #ifdef DEBUG
     std::cout << "Processing request: " << req.req_id << std::endl;
 #endif
 
-    if (req.req_id == SEND_LR_GRADIENT) {
-      if (!process_send_lr_gradient(req, thread_buffer)) {
-        break;
-      }
-    } else if (req.req_id == SEND_MF_GRADIENT) {
-      if (!process_send_mf_gradient(req, thread_buffer)) {
-        break;
-      }
-    } else if (req.req_id == GET_LR_SPARSE_MODEL) {
-#ifdef DEBUG
-      std::cout << "process_get_lr_sparse_model" << std::endl;
-      auto before = get_time_us();
-#endif
-      if (!process_get_lr_sparse_model(req, thread_buffer)) {
-        break;
-      }
-#ifdef DEBUG
-      auto elapsed = get_time_us() - before;
-      std::cout << "GET_LR_SPARSE_MODEL Elapsed(us): " << elapsed << std::endl;
-#endif
-    } else if (req.req_id == GET_MF_SPARSE_MODEL) {
-      if (!process_get_mf_sparse_model(req, thread_buffer, thread_number)) {
-        break;
-      }
-    } else if (req.req_id == GET_LR_FULL_MODEL) {
-      if (!process_get_lr_full_model(req, thread_buffer))
-        break;
-    } else if (req.req_id == GET_MF_FULL_MODEL) {
-      if (!process_get_mf_full_model(req, thread_buffer))
-        break;
-    } else if (req.req_id == GET_TASK_STATUS) {
+    if (req.req_id == GET_TASK_STATUS) {
       uint32_t task_id;
       if (read_all(sock, &task_id, sizeof (uint32_t)) == 0) {
         break;
@@ -401,7 +261,14 @@ void PSSparseServerTask::gradient_f() {
                 << std::endl;
 #endif
       task_to_status[data[0]] = data[1];
-
+    } else if (req.req_id = CREATE_TENSOR_MSG) {
+      processCreateTensorMsg(req, thread_buffer);
+    } else if (req.req_id = ADD_TENSOR_MSG) { 
+      processAddTensorMsg(req, thread_buffer);
+    } else if (req.req_id = GET_TENSOR_MSG) { 
+      processGetTensorMsg(req, thread_buffer);
+    } else if (req.req_id = GET_SPARSE_TENSOR_MSG) { 
+      processGetSparseTensorMsg(req, thread_buffer);
     } else if (operation == GET_NUM_CONNS) {
       std::cout << "Retrieve num connections: " << num_connections << std::endl;
       if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
@@ -679,7 +546,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   start_server();
 
-  //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
+  //waitForStart(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();

@@ -5,7 +5,7 @@ namespace cirrus {
 AdaGrad::AdaGrad(double lr, double ae):
   OptimizationMethod(lr), adagrad_epsilon(ae) {}
 
-void AdaGrad::sgd_update(
+void AdaGrad::sgdUpdate(
     std::unique_ptr<SparseLRModel>& lr_model, 
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =

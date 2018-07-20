@@ -11,32 +11,6 @@
 
 namespace cirrus {
 
-void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
-#ifdef DEBUG
-  auto before_push_us = get_time_us();
-  std::cout << "Publishing gradients" << std::endl;
-#endif
-  psint->send_lr_gradient(*lrg);
-#ifdef DEBUG
-  std::cout << "Published gradients!" << std::endl;
-  auto elapsed_push_us = get_time_us() - before_push_us;
-  static uint64_t before = 0;
-  if (before == 0)
-    before = get_time_us();
-  auto now = get_time_us();
-  std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " with version: " << lrg->getVersion()
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * lrg->getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
-  before = now;
-#endif
-}
-
 // get samples and labels data
 bool LogisticSparseTaskS3::get_dataset_minibatch(
     std::unique_ptr<SparseDataset>& dataset,
@@ -67,18 +41,30 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
+std::vector<uint32_t> LogisticSparseTaskS3::buildIndexes(const SparseDataset& ds) {
+  std::vector<uint32_t> indexes;
+  indexes.reserve(100);
+  for (const auto& sample : ds.data_) {
+    for (const auto& w : sample) {
+      indexes.push_back(w.first);
+    }
+  }
+  return indexes;
+}
+
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3"
     << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
-  psint = new PSSparseServerInterface(ps_ip, ps_port);
-  sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
+  psint.reset(new PSSparseServerInterface(ps_ip, ps_port));
+  uint32_t model_size = (1 << config.get_model_bits()) + 1;
+  psint->createTensor1D("lr_model", model_size);
   
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
-  wait_for_start(worker, nworkers);
+  waitForStart(worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
@@ -112,9 +98,14 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
     // compute mini batch gradient
     std::unique_ptr<ModelGradient> gradient;
+    std::unique_ptr<SparseTensor1D> gradient_tensor;
 
     // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(*dataset, model, config);
+
+    std::vector<uint32_t> indexes = buildIndexes(*dataset);
+
+    // get model as sparse tensor
+    SparseTensor1D model_st = psint->getSparseTensor1D("lr_model", indexes);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -125,7 +116,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient = model.minibatch_grad_sparse(*dataset, config);
+      gradient_tensor = model.minibatchGradSparseTensor(*dataset, config);
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -139,11 +130,10 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
       << " at time: " << get_time_us()
       << " version " << version << "\n";
 #endif
-    gradient->setVersion(version++);
 
     try {
-      LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
-      push_gradient(lrg);
+      psint->addTensor1D("lr_model", *gradient_tensor);
+      //push_gradient(lrg);
     } catch(...) {
       std::cout << "[WORKER] "
         << "Worker task error doing put of gradient" << "\n";

@@ -188,7 +188,7 @@ std::unique_ptr<CirrusModel> MFModel::copy() const {
     return new_model;
 }
 
-void MFModel::sgd_update(double learning_rate,
+void MFModel::sgdUpdate(double learning_rate,
         const ModelGradient* gradient) {
   const MFSparseGradient* grad_ptr = dynamic_cast<const MFSparseGradient*>(gradient);
   assert(grad_ptr);
@@ -241,7 +241,7 @@ FEATURE_TYPE MFModel::predict(uint32_t userId, uint32_t itemId) const {
   return res;
 }
 
-std::unique_ptr<ModelGradient> MFModel::minibatch_grad(
+std::unique_ptr<ModelGradient> MFModel::minibatchGrad(
         const Matrix&,
         FEATURE_TYPE*,
         uint64_t,
@@ -268,7 +268,7 @@ const FEATURE_TYPE& MFModel::get_item_weights(uint64_t itemId, uint64_t factor) 
   return item_weights_.at(itemId * nfactors_ + factor);
 }
 
-void MFModel::sgd_update(
+void MFModel::sgdUpdate(
             double learning_rate,
             uint64_t base_user,
             const SparseDataset& dataset,
@@ -344,12 +344,12 @@ void MFModel::sgd_update(
   }
 }
 
-std::pair<double, double> MFModel::calc_loss(Dataset& /*dataset*/) const {
+std::pair<double, double> MFModel::calcLoss(Dataset& /*dataset*/) const {
   throw std::runtime_error("Not implemented");
   return std::make_pair(0.0, 0.0);
 }
 
-std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t start_index) const {
+std::pair<double, double> MFModel::calcLoss(SparseDataset& dataset, uint32_t start_index) const {
   double error = 0;
   uint64_t count = 0;
 
@@ -393,7 +393,7 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
 //        << std::endl;
 //#endif
       if (std::isnan(e) || std::isnan(error)) {
-        std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
+        std::string error = std::string("nan in calcLoss rating: ") + std::to_string(rating) +
           " prediction: " + std::to_string(prediction);
         throw std::runtime_error(error);
       }

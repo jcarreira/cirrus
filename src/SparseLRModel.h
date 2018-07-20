@@ -4,6 +4,7 @@
 #include <vector>
 #include <utility>
 #include <Model.h>
+#include <SparseTensor.h>
 #include <SparseDataset.h>
 #include <ModelGradient.h>
 #include <Configuration.h>
@@ -81,14 +82,14 @@ class SparseLRModel : public CirrusModel {
      * @param learning_rate Learning rate to be used
      * @param gradient Gradient to be used for the update
      */
-    void sgd_update(double learning_rate, const ModelGradient* gradient);
+    void sgdUpdate(double learning_rate, const ModelGradient* gradient);
 
     /**
      * Performs an SGD update using ADAGRAD
      * @param learning_rate Learning rate to be used
      * @param gradient Gradient to be used for the update
      */
-    void sgd_update_adagrad(
+    void sgdUpdateAdagrad(
         double learning_rate, const ModelGradient* gradient);
 
     /**
@@ -97,7 +98,7 @@ class SparseLRModel : public CirrusModel {
       * @param gradient Gradient to be used for the update
       */
 
-    void sgd_update_momentum(
+    void sgdUpdateMomentum(
 	double learning_rate, double momentum_beta, const ModelGradient* gradient);
 
     /**
@@ -106,7 +107,7 @@ class SparseLRModel : public CirrusModel {
      */
     uint64_t getSerializedSize() const override;
 
-    double dot_product(
+    double dotProduct(
         const std::vector<std::pair<int, FEATURE_TYPE>>& v1,
         const std::vector<FEATURE_TYPE>& weights_) const;
 
@@ -118,11 +119,15 @@ class SparseLRModel : public CirrusModel {
      * @param epsilon L2 Regularization rate
      * @return Newly computed gradient
      */
-    std::unique_ptr<ModelGradient> minibatch_grad(
+    std::unique_ptr<ModelGradient> minibatchGrad(
             const SparseDataset& dataset,
             double epsilon) const override;
 
-    std::unique_ptr<ModelGradient> minibatch_grad_sparse(
+    std::unique_ptr<ModelGradient> minibatchGradSparse(
+        const SparseDataset& dataset,
+        const Configuration& config) const;
+    
+    std::unique_ptr<SparseTensor1D> minibatchGradSparseTensor(
         const SparseDataset& dataset,
         const Configuration& config) const;
     /**
@@ -130,7 +135,7 @@ class SparseLRModel : public CirrusModel {
      * @param dataset Dataset to calculate loss on
      * @return Total loss of whole dataset
      */
-    std::pair<double, double> calc_loss(SparseDataset& dataset, uint32_t) const override;
+    std::pair<double, double> calcLoss(SparseDataset& dataset, uint32_t) const override;
 
     /**
      * Return the size of the gradient when serialized
@@ -166,28 +171,28 @@ class SparseLRModel : public CirrusModel {
       */
     void check() const;
 
-    FEATURE_TYPE get_nth_weight(uint64_t n) const override {
+    FEATURE_TYPE getNthWeight(uint64_t n) const override {
       return weights_[n];
     }
 
-    FEATURE_TYPE get_nth_weight_nesterov(
+    FEATURE_TYPE getNthWeightNesterov(
             uint64_t n, double nesterov_beta) const {
       return weights_[n] + (nesterov_beta * momentum_avg);
     }
 
-    void update_weights(std::vector<FEATURE_TYPE> weights) {
+    void updateWeights(std::vector<FEATURE_TYPE> weights) {
       weights_ = weights;
     }
 
-    std::vector<FEATURE_TYPE> get_weights() {
+    std::vector<FEATURE_TYPE> getWeights() {
       return weights_;
     }
 
-    std::vector<FEATURE_TYPE> get_weight_history() {
+    std::vector<FEATURE_TYPE> getWeightHistory() {
       return weights_hist_;
     }
 
-    void update_weight_history(std::vector<FEATURE_TYPE> weight_hist) {
+    void updateWeightHistory(std::vector<FEATURE_TYPE> weight_hist) {
       weights_hist_ = weight_hist;
     }
  protected:
@@ -195,7 +200,7 @@ class SparseLRModel : public CirrusModel {
     std::vector<FEATURE_TYPE> weights_hist_;
 
  private:
-    void ensure_preallocated_vectors(const Configuration&) const;
+    void ensurePreallocatedVectors(const Configuration&) const;
     /**
       * Check whether value n is an integer
       */

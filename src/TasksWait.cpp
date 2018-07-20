@@ -5,7 +5,7 @@
 
 namespace cirrus {
 
-void MLTask::wait_for_start(int index, int nworkers) {
+void MLTask::waitForStart(int index, int nworkers) {
   return;
   std::cout << "Waiting for all workers to start (redis). index: " << index
     << std::endl;
@@ -14,13 +14,13 @@ void MLTask::wait_for_start(int index, int nworkers) {
 
   PSSparseServerInterface psi(ps_ip, ps_port);
 
-  psi.set_status(index, 1);
+  psi.setStatus(index, 1);
 
   int num_waiting_tasks = WORKERS_BASE + nworkers;
   while (1) {
     int i = 1;
     for (; i < num_waiting_tasks; ++i) {
-      uint32_t is_done = psi.get_status(i);
+      uint32_t is_done = psi.getStatus(i);
       if (i != 1 && !is_done)
         break;
     }

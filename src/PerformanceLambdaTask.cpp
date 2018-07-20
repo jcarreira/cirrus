@@ -71,7 +71,7 @@ void PerformanceLambdaTask::run(const Configuration& config) {
     // compute gradient
     //std::cout << "computing gradient" << std::endl;
     std::unique_ptr<ModelGradient> gradient;
-    gradient = lr_model->minibatch_grad(dataset.samples_,
+    gradient = lr_model->minibatchGrad(dataset.samples_,
         const_cast<FEATURE_TYPE*>(dataset.labels_.get()), samples_per_batch, config.get_epsilon());
         //labels.get(), samples_per_batch, config.get_epsilon());
     

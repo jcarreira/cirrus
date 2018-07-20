@@ -9,10 +9,10 @@ class Nesterov : public OptimizationMethod {
  public:
    Nesterov(double lr, double mb);
 
-   void sgd_update(
+   void sgdUpdate(
        std::unique_ptr<SparseLRModel>& lr_model, 
        const ModelGradient* gradient);
-   void edit_weight(double& weight);
+   void editWeight(double& weight);
 
  private:
    double momentum_beta;

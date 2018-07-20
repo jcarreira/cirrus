@@ -1,4 +1,5 @@
 #include <SparseLRModel.h>
+#include <SparseTensor.h>
 #include <Utils.h>
 #include <MlUtils.h>
 #include <Eigen/Dense>
@@ -105,7 +106,7 @@ std::unique_ptr<CirrusModel> SparseLRModel::copy() const {
     return new_model;
 }
 
-void SparseLRModel::sgd_update_adagrad(double learning_rate,
+void SparseLRModel::sgdUpdateAdagrad(double learning_rate,
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =
     dynamic_cast<const LRSparseGradient*>(gradient);
@@ -128,7 +129,7 @@ void SparseLRModel::sgd_update_adagrad(double learning_rate,
   }
 }
 
-void SparseLRModel::sgd_update_momentum(double learning_rate, double momentum_beta,
+void SparseLRModel::sgdUpdateMomentum(double learning_rate, double momentum_beta,
         const ModelGradient* gradient) {
     const LRSparseGradient* grad =
         dynamic_cast<const LRSparseGradient*>(gradient);
@@ -150,7 +151,7 @@ void SparseLRModel::sgd_update_momentum(double learning_rate, double momentum_be
 }
    
 
-void SparseLRModel::sgd_update(double learning_rate,
+void SparseLRModel::sgdUpdate(double learning_rate,
     const ModelGradient* gradient) {
   const LRSparseGradient* grad =
     dynamic_cast<const LRSparseGradient*>(gradient);
@@ -166,7 +167,7 @@ void SparseLRModel::sgd_update(double learning_rate,
   }
 }
 
-double SparseLRModel::dot_product(
+double SparseLRModel::dotProduct(
     const std::vector<std::pair<int, FEATURE_TYPE>>& v1,
     const std::vector<FEATURE_TYPE>& weights_) const {
   double res = 0;
@@ -191,7 +192,7 @@ double SparseLRModel::dot_product(
   return res;
 }
 
-std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
+std::unique_ptr<ModelGradient> SparseLRModel::minibatchGrad(
         const SparseDataset& dataset,
         double epsilon) const {
   if (is_sparse_) {
@@ -207,7 +208,7 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
     // For each sample compute the dot product with the model
     FEATURE_TYPE part2[dataset.num_samples()];
     for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-      double part1_i = dot_product(dataset.get_row(i), weights_);
+      double part1_i = dotProduct(dataset.get_row(i), weights_);
       part2[i] = dataset.labels_[i] - s_1(part1_i);
     }
 #ifdef DEBUG
@@ -269,7 +270,7 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
     return ret;
 }
 
-std::pair<double, double> SparseLRModel::calc_loss(SparseDataset& dataset, uint32_t) const {
+std::pair<double, double> SparseLRModel::calcLoss(SparseDataset& dataset, uint32_t) const {
   double total_loss = 0;
   auto w = weights_;
 
@@ -391,7 +392,7 @@ void SparseLRModel::loadSerializedSparse(const FEATURE_TYPE* weights,
   }
 }
 
-void SparseLRModel::ensure_preallocated_vectors(const Configuration& config) const {
+void SparseLRModel::ensurePreallocatedVectors(const Configuration& config) const {
   if (unique_indices.capacity() == 0) {
     unique_indices.reserve(500);
   } else {
@@ -409,14 +410,67 @@ void SparseLRModel::ensure_preallocated_vectors(const Configuration& config) con
   }
 }
 
-std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
+std::unique_ptr<SparseTensor1D> SparseLRModel::minibatchGradSparseTensor(
         const SparseDataset& dataset,
         const Configuration& config) const {
   if (!is_sparse_) {
     throw std::runtime_error("This model is not sparse");
   }
 
-  ensure_preallocated_vectors(config);
+  ensurePreallocatedVectors(config);
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    double part1_i = 0;
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+#ifdef DEBUG
+      if (weights_sparse_.find(index) == weights_sparse_.end()) {
+        std::cout << "Needed weight with index: " << index << std::endl;
+        throw std::runtime_error("Weight not found");
+      }
+#endif
+      part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
+    }
+    part2[i] = dataset.labels_[i] - s_1(part1_i);
+  }
+
+  for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
+    for (const auto& feat : dataset.get_row(i)) {
+      int index = feat.first;
+      FEATURE_TYPE value = feat.second;
+      unique_indices.push_back(index);
+      part3[index] += value * part2[i];
+    }
+  }
+
+  std::vector<std::pair<int, FEATURE_TYPE>> res;
+  res.reserve(unique_indices.size());
+  for (auto& v : unique_indices) {
+    uint64_t index = v;//.first;
+    FEATURE_TYPE value = part3[index];
+    if (value == 0)
+      continue;
+    // we set this to 0 so that next iteration part3 is all 0s
+    else part3[index] = 0;
+    double final_grad = value + weights_sparse_[index] * 2 * config.get_epsilon();
+    if (!config.get_grad_threshold_use()
+        || (config.get_grad_threshold_use() && std::abs(final_grad) > config.get_grad_threshold())) {
+      res.push_back(std::make_pair(index, final_grad));
+    }
+  }
+  std::unique_ptr<SparseTensor1D> ret = std::make_unique<SparseTensor1D>(std::move(res));
+  return ret;
+}
+
+std::unique_ptr<ModelGradient> SparseLRModel::minibatchGradSparse(
+        const SparseDataset& dataset,
+        const Configuration& config) const {
+  if (!is_sparse_) {
+    throw std::runtime_error("This model is not sparse");
+  }
+
+  ensurePreallocatedVectors(config);
 
   for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
     double part1_i = 0;

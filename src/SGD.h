@@ -9,7 +9,7 @@ class SGD : public OptimizationMethod {
   public:
     SGD(double lr);
 
-    void sgd_update(
+    void sgdUpdate(
         std::unique_ptr<SparseLRModel>& lr_model, 
         const ModelGradient* gradient);
 };

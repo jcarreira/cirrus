@@ -9,6 +9,7 @@
 #include "SparseLRModel.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
+#include "Tensor.h"
 #include "OptimizationMethod.h"
 
 #include <string>
@@ -43,7 +44,7 @@ class MLTask {
      * Worker here is a value 0..nworkers - 1
      */
     void run(const Configuration& config, int worker);
-    void wait_for_start(int index, int nworkers);
+    void waitForStart(int index, int nworkers);
 
   protected:
     uint64_t model_size;
@@ -77,38 +78,13 @@ class LogisticSparseTaskS3 : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
-    class SparseModelGet {
-      public:
-        SparseModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-        }
-
-        SparseLRModel get_new_model(const SparseDataset& ds,
-                                    const Configuration& config) {
-          return std::move(psi->get_lr_sparse_model(ds, config));
-        }
-        void get_new_model_inplace(const SparseDataset& ds,
-                                   SparseLRModel& model,
-                                   const Configuration& config) {
-          psi->get_lr_sparse_model_inplace(ds, model, config);
-        }
-
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
-    };
+    std::vector<uint32_t> buildIndexes(const SparseDataset&);
 
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
-    void push_gradient(LRSparseGradient*);
 
-    std::mutex redis_lock;
-  
-    std::unique_ptr<SparseModelGet> sparse_model_get;
-    PSSparseServerInterface* psint;
+    std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class PSSparseTask : public MLTask {
@@ -293,17 +269,10 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-  bool process_get_mf_sparse_model(const Request& req,
-                                   std::vector<char>&,
-                                   int tn);
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
+  bool processAddTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processGetTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processGetSparseTensorMsg(const Request& req, std::vector<char>& thread_buffer);
+  bool processCreateTensorMsg(const Request& req, std::vector<char>& thread_buffer);
 
   /**
     * Attributes
@@ -354,6 +323,8 @@ class PSSparseServerTask : public MLTask {
 
   char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
   std::atomic<int> thread_count;  //< keep track of each thread's id
+    
+  std::map<std::string, std::shared_ptr<Tensor>> name_to_tensor;
 };
 
 class MFNetflixTask : public MLTask {
@@ -375,32 +346,15 @@ class MFNetflixTask : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
-    class MFModelGet {
-      public:
-        MFModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-        }
-
-        SparseMFModel get_new_model(const SparseDataset& ds,
-                                    uint64_t user_base_index,
-                                    uint64_t mb_size) {
-          return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
-        }
-
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
-    };
-
-  private:
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t>>>
+      buildIndexes(const SparseDataset& ds,
+          uint64_t sample_index,
+          uint32_t mb_size);
     bool get_dataset_minibatch(
         std::unique_ptr<SparseDataset>& dataset,
         S3SparseIterator& s3_iter);
     void push_gradient(MFSparseGradient&);
 
-    std::unique_ptr<MFModelGet> mf_model_get;
     std::unique_ptr<PSSparseServerInterface> psint;
 };
 
