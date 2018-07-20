@@ -7,10 +7,10 @@ namespace cirrus {
 /**
   * Format:
   * operation id (uint32_t)
-  * message size
+  * message size (uint32_t)
   * tensor_name with null ptr (tensor_name.size() + 1)
   * num_dims (uint32_t)
-  * dims (each uint32_t)
+  * dims (each FEATURE_TYPE)
   */
 
 CreateTensorMessage::CreateTensorMessage(
@@ -61,6 +61,7 @@ uint32_t CreateTensorMessage::getDataSize() const {
 uint32_t CreateTensorMessage::getTotalDataSize() const {
   return
     sizeof(uint32_t) + // operation id
+    sizeof(uint32_t) + // message size
     tensor_name.size() + 1 + // tensor name with null
     sizeof(uint32_t) + // num dimensions
     tensor_dim.size(); // dimensions

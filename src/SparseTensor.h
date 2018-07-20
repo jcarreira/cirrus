@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <vector>
+#include <cstdint>
 
 namespace cirrus {
 
@@ -12,6 +13,8 @@ class SparseTensor1D {
     
     //SparseTensor(std::vector<int, FEATURE_TYPE>&);
     SparseTensor1D(std::vector<std::pair<int, FEATURE_TYPE>>&&);
+
+    uint32_t getSize() const { return tensor.size(); }
   private:
     std::vector<std::pair<int, FEATURE_TYPE>> tensor;
 };

@@ -26,7 +26,7 @@ class CreateTensorMessage {
     uint32_t getDataSize() const;
 
     std::string tensor_name;
-    const std::vector<uint32_t> tensor_dim;
+    std::vector<uint32_t> tensor_dim;
 
     std::shared_ptr<char[]> data;
 };

@@ -113,17 +113,17 @@ bool PSSparseServerInterface::addTensor1D(const std::string& tensor_name,
         const SparseTensor1D& sparse_tensor) {
   AddTensorMessage add_tensor_msg(tensor_name, sparse_tensor);
  
-  // 1. send tensor size 
-  if (send_all(sock, add_tensor_msg.getTensorSizeData(),
-        add_tensor_msg.getTensorSizeSize()) == -1) {
-      throw std::runtime_error("Error sending update tensor msg");
-  }
-
-  // 2. send tensor
-  if (send_all(sock, const_cast<char*>(add_tensor_msg.getTensorData()),
-        add_tensor_msg.getTensorSize()) == -1) {
-      throw std::runtime_error("Error sending update tensor msg");
-  }
+//  // 1. send tensor size 
+//  if (send_all(sock, add_tensor_msg.getTensorSizeData(),
+//        add_tensor_msg.getTensorSizeSize()) == -1) {
+//      throw std::runtime_error("Error sending update tensor msg");
+//  }
+//
+//  // 2. send tensor
+//  if (send_all(sock, const_cast<char*>(add_tensor_msg.getTensorData()),
+//        add_tensor_msg.getTensorSize()) == -1) {
+//      throw std::runtime_error("Error sending update tensor msg");
+//  }
 
   AddTensorMessageReply add_tensor_msg_reply;
   if (read_all(sock, const_cast<char*>(add_tensor_msg_reply.getReturnData()),
