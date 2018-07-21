@@ -120,7 +120,7 @@ bool PSSparseServerTask::process_send_sm_gradient(
     return false;
   }
 
-  SoftmaxGradient gradient(0, 0);
+  SoftmaxGradient gradient(10, 784);
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
@@ -399,6 +399,7 @@ void PSSparseServerTask::gradient_f() {
         handle_failed_read(&req.poll_fd);
         continue;
       }
+      std::cout << "incoming size: " << incoming_size << std::endl;
       req.incoming_size = incoming_size;
     }
 
@@ -532,6 +533,8 @@ void PSSparseServerTask::start_server() {
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
   mf_model->randomize();
+  sm_model.reset(new SoftmaxModel(10, 784));
+  sm_model->randomize();
 
   sem_init(&sem_new_req, 0, 0);
 

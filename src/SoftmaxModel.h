@@ -103,7 +103,7 @@ class SoftmaxModel : public CirrusModel {
       */
     double checksum() const override;
 
- private:
+ public:
     uint64_t nclasses;  //< number of classes in the dataset
     uint64_t d;         //< number of features for each sample
 

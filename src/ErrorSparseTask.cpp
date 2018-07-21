@@ -23,9 +23,13 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
     first_time = false;
     psi = new PSSparseServerInterface(ps_ip, ps_port);
   }
-
+  bool use_softmax = 
+    config.get_model_type() == Configuration::SOFTMAX;
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+  if (use_softmax) {
+    return psi->get_sm_full_model();
+  }
   return psi->get_full_model(use_col_filtering);
 }
 
@@ -94,7 +98,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   } else {
     exit(-1);
   }
-
+  
   S3SparseIterator s3_iter(left, right, config,
       config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
