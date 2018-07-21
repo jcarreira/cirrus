@@ -46,36 +46,44 @@ void ErrorSparseTask::run(const Configuration& config) {
   } else {
     exit(-1);
   }
-  
-  S3SparseIterator s3_iter(left, right, config,
-      config.get_s3_size(), config.get_minibatch_size(),
-      // use_label true for LR
-      config.get_model_type() == Configuration::LOGISTICREGRESSION,
-      0, false);
+
+  if (config.get_model_type() != Configuration::SOFTMAX) {
+    S3SparseIterator s3_iter(left, right, config,
+        config.get_s3_size(), config.get_minibatch_size(),
+        // use_label true for LR
+        config.get_model_type() == Configuration::LOGISTICREGRESSION,
+        0, false);
+  }
 
   // get data first
   // what we are going to use as a test set
-  std::vector<SparseDataset> minibatches_vec;
-  std::cout << "[ERROR_TASK] getting minibatches from "
-    << config.get_train_range().first << " to "
-    << config.get_train_range().second
-    << std::endl;
+  if (config.get_model_type() != Configuration::SOFTMAX) {
+    std::vector<SparseDataset> minibatches_vec;
+    std::cout << "[ERROR_TASK] getting minibatches from "
+      << config.get_train_range().first << " to "
+      << config.get_train_range().second
+      << std::endl;
 
-  uint32_t minibatches_per_s3_obj =
-    config.get_s3_size() / config.get_minibatch_size();
-  for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
-    const void* minibatch_data = s3_iter.get_next_fast();
-    SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
-        config.get_minibatch_size(),
-        config.get_model_type() == Configuration::LOGISTICREGRESSION);
-    minibatches_vec.push_back(ds);
+    uint32_t minibatches_per_s3_obj =
+      config.get_s3_size() / config.get_minibatch_size();
+    for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
+      const void* minibatch_data = s3_iter.get_next_fast();
+      SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
+          config.get_minibatch_size(),
+          config.get_model_type() == Configuration::LOGISTICREGRESSION);
+      minibatches_vec.push_back(ds);
+    }
+
+    std::cout << "[ERROR_TASK] Got "
+      << minibatches_vec.size() << " minibatches"
+      << "\n";
+    std::cout << "[ERROR_TASK] Building dataset"
+      << "\n";
+  } else {
+    std::vector<Dataset> minibatches_vec;
+    InputReader input;
+    minibatches_vec.push_back(input.read_input_csv('test_data/train_mnist.csv', ',', 10, 50000, 800, true))
   }
-
-  std::cout << "[ERROR_TASK] Got "
-    << minibatches_vec.size() << " minibatches"
-    << "\n";
-  std::cout << "[ERROR_TASK] Building dataset"
-    << "\n";
 
   wait_for_start(ERROR_SPARSE_TASK_RANK, nworkers);
   uint64_t start_time = get_time_us();
@@ -106,8 +114,13 @@ void ErrorSparseTask::run(const Configuration& config) {
       uint64_t total_num_features = 0;
       uint64_t start_index = 0;
       for (auto& ds : minibatches_vec) {
-        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(ds, start_index);
+        if (config.get_model_type() != Configuration::SOFTMAX) {
+          std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
+            model->calc_loss(ds, start_index);
+        } else {
+          std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
+            model->calc_loss(ds);
+        }
         total_loss += ret.first;
         total_accuracy += ret.second;
         total_num_samples += ds.num_samples();
