@@ -242,6 +242,7 @@ class PSSparseServerTask : public MLTask {
         uint32_t incoming_size;
         struct pollfd& poll_fd;
     };
+    void compute_loglikelihood();
 
   private:
     void thread_fn();

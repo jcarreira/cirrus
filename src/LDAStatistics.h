@@ -75,6 +75,8 @@ namespace cirrus{
       */
     int pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat);
 
+    void get_ndt(std::vector<std::vector<int> >& ndt) {ndt = ndt_;}
+
   private:
     int K_, slice_size = 500, cur = 0;
     std::vector<std::vector<int> > ndt_;

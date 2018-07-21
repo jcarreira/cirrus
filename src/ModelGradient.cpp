@@ -590,5 +590,4 @@ char* LDAUpdates::get_partial_model(const char* slice, uint32_t& to_send_size){
   return mem_begin;
 }
 
-
 } // namespace cirrus

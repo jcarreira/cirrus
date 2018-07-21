@@ -79,10 +79,16 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       << std::endl;
     wait_for_start(worker, nworkers);
 
-    // Create iterator that goes from 0 to num_s3_batches
     auto train_range = config.get_train_range();
+    int range_per_worker = (train_range.second - train_range.first + 1) / nworkers;
+    int start = worker * range_per_worker, end = (worker + 1) * range_per_worker;
+    if(end > train_range.second){
+      end = train_range.second;
+    }
+
+    // Create iterator that goes from 0 to num_s3_batches
     S3SparseIterator s3_iter(
-        train_range.first, train_range.second,
+        start, end,
         config, config.get_s3_size(), config.get_minibatch_size(),
         true, worker);
 

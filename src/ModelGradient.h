@@ -210,6 +210,9 @@ class LDAUpdates {
     void update(const LDAUpdates& gradient);
     char* get_partial_model(const char* slice, uint32_t& to_send_size);
 
+    void get_nvt(std::vector<int>& nvt) {nvt = change_nvt;}
+    void get_nt(std::vector<int>& nt) {nt = change_nt;}
+
     void setVersion(int v) {version = v;}
     int getVersion() const {return version;}
 

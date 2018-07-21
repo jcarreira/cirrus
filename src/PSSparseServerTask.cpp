@@ -11,6 +11,7 @@
 #include "SGD.h"
 #include "Nesterov.h"
 #include "S3.h"
+#include "gamma.h"
 
 #undef DEBUG
 
@@ -18,17 +19,6 @@
 #define THREAD_MSG_BUFFER_SIZE 5000000
 
 namespace cirrus {
-
-  SEND_LR_GRADIENT,
-  SEND_MF_GRADIENT,
-  SEND_LDA_UPDATE,
-  GET_LR_FULL_MODEL,
-  GET_MF_FULL_MODEL,
-  GET_LR_SPARSE_MODEL,
-  GET_MF_SPARSE_MODEL,
-  GET_LDA_MODEL,
-  SET_TASK_STATUS,
-  GET_TASK_STATUS
 
 PSSparseServerTask::PSSparseServerTask(
     uint64_t model_size,
@@ -503,6 +493,8 @@ void PSSparseServerTask::start_server() {
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(), NUM_FACTORS));
   mf_model->randomize();
   if(task_config.get_model_type() == cirrus::Configuration::LDA){
+
+    std::cout << "Getting initial LDA statistics from S3\n";
     // Get the global stats from S3
     s3_initialize_aws();
     auto s3_client = s3_create_client();
@@ -513,6 +505,8 @@ void PSSparseServerTask::start_server() {
 
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
+    std::cout << "Finished getting initial statistics.\n";
+    compute_loglikelihood();
   }
 
   sem_init(&sem_new_req, 0, 0);
@@ -776,6 +770,52 @@ void PSSparseServerTask::checkpoint_model_file(const std::string& filename) cons
   std::ofstream fout(filename.c_str(), std::ofstream::binary);
   fout.write(data.get(), model_size);
   fout.close();
+}
+
+void PSSparseServerTask::compute_loglikelihood(){
+  std::vector<int> nvt, nt;
+  lda_global_vars->get_nvt(nvt);
+  lda_global_vars->get_nt(nt);
+
+  double alpha = 0.1, eta = .01;
+  int V = nvt.size(), K = nt.size();
+  double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
+  double ll = K * lda_lgamma(eta * V);
+
+  for(int i=0; i<K; ++i){
+    ll -= lda_lgamma(eta * V + nt[i]);
+    for(int v=0; v<V; ++v){
+      if(nvt[v * K + i] > 0)
+        ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+    }
+  }
+
+  s3_initialize_aws();
+  auto s3_client = s3_create_client();
+
+  auto train_range = task_config.get_train_range();
+  for(int i = train_range.first; i < train_range.second; ++i){
+    std::string obj_id_str = std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
+    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, task_config.get_s3_bucket());
+    const char* s3_data = s3_obj->str().c_str();
+    LDAStatistics ndt_partial(s3_data);
+
+    std::vector<std::vector<int>> ndt;
+    ndt_partial.get_ndt(ndt);
+    for(int j=0; j<ndt.size(); ++j){
+      int ndj = 0;
+      for(int k=0; k<K; ++k){
+        ndj += ndt[j][k];
+        if(ndt[j][j] > 0){
+          ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+        }
+      }
+      ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+    }
+  }
+
+  std::cout << "loglikelihood: " << ll << std::endl;
+
 }
 
 } // namespace cirrus

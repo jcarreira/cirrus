@@ -123,7 +123,7 @@ namespace cirrus{
   }
 
   int LDAStatistics::get_receive_size(){
-    return (1 + (slice_.size() + 1) * K_) * sizeof(int);
+    return (4 + (slice_.size() + 1) * K_ + slice_.size()) * sizeof(int);
   }
 
   char* LDAStatistics::pop_partial_docs(int minibatch_size){
