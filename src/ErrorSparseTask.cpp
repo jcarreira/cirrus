@@ -1,5 +1,6 @@
 #include <Tasks.h>
 
+#include "InputReader.h"
 #include "Serializers.h"
 #include "config.h"
 #include "S3SparseIterator.h"
@@ -44,31 +45,30 @@ void ErrorSparseTask::run(const Configuration& config) {
     left = config.get_train_range().first;
     right = config.get_train_range().second;
   } else {
-    exit(-1);
   }
-  
-  S3SparseIterator s3_iter(left, right, config,
-      config.get_s3_size(), config.get_minibatch_size(),
-      // use_label true for LR
-      config.get_model_type() == Configuration::LOGISTICREGRESSION,
-      0, false);
+  std::vector<SparseDataset> minibatches_vec;
+  if (config.get_model_type() != Configuration::SOFTMAX) {
+    S3SparseIterator s3_iter(left, right, config,
+        config.get_s3_size(), config.get_minibatch_size(),
+        // use_label true for LR
+        config.get_model_type() == Configuration::LOGISTICREGRESSION,
+        0, false);
 
   // get data first
   // what we are going to use as a test set
-  std::vector<SparseDataset> minibatches_vec;
-  std::cout << "[ERROR_TASK] getting minibatches from "
-    << config.get_train_range().first << " to "
-    << config.get_train_range().second
-    << std::endl;
-
-  uint32_t minibatches_per_s3_obj =
-    config.get_s3_size() / config.get_minibatch_size();
-  for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
-    const void* minibatch_data = s3_iter.get_next_fast();
-    SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
-        config.get_minibatch_size(),
-        config.get_model_type() == Configuration::LOGISTICREGRESSION);
-    minibatches_vec.push_back(ds);
+    std::cout << "[ERROR_TASK] getting minibatches from "
+      << config.get_train_range().first << " to "
+      << config.get_train_range().second
+      << std::endl;
+    uint32_t minibatches_per_s3_obj =
+      config.get_s3_size() / config.get_minibatch_size();
+    for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
+      const void* minibatch_data = s3_iter.get_next_fast();
+      SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
+          config.get_minibatch_size(),
+          config.get_model_type() == Configuration::LOGISTICREGRESSION);
+      minibatches_vec.push_back(ds);
+    }
   }
 
   std::cout << "[ERROR_TASK] Got "
@@ -82,6 +82,8 @@ void ErrorSparseTask::run(const Configuration& config) {
 
   std::cout << "[ERROR_TASK] Computing accuracies"
     << "\n";
+  InputReader input;
+  Dataset t_data = input.read_input_csv("test_data/test_mnist.csv", ",", 10, 20000, 1000, true);
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
@@ -91,31 +93,52 @@ void ErrorSparseTask::run(const Configuration& config) {
       std::cout << "[ERROR_TASK] getting the full model"
         << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, ps_ip, ps_port);
-
-#ifdef DEBUG
-      std::cout << "[ERROR_TASK] received the model" << std::endl;
-#endif
-
-      std::cout
-        << "[ERROR_TASK] computing loss."
-        << std::endl;
       FEATURE_TYPE total_loss = 0;
       FEATURE_TYPE total_accuracy = 0;
       uint64_t total_num_samples = 0;
       uint64_t total_num_features = 0;
       uint64_t start_index = 0;
-      for (auto& ds : minibatches_vec) {
-        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(ds, start_index);
-        total_loss += ret.first;
-        total_accuracy += ret.second;
-        total_num_samples += ds.num_samples();
-        total_num_features += ds.num_features();
-        start_index += config.get_minibatch_size();
+      if (config.get_model_type() != Configuration::SOFTMAX) {
+        std::unique_ptr<CirrusModel> model = get_model(config, ps_ip, ps_port);
+
+#ifdef DEBUG
+        std::cout << "[ERROR_TASK] received the model" << std::endl;
+#endif
+        std::cout
+          << "[ERROR_TASK] computing loss."
+          << std::endl;
+        FEATURE_TYPE total_loss = 0;
+        FEATURE_TYPE total_accuracy = 0;
+        uint64_t total_num_samples = 0;
+        uint64_t total_num_features = 0;
+        uint64_t start_index = 0;
+        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
+        for (auto& ds : minibatches_vec) {
+          ret = model->calc_loss(ds, start_index);
+          total_loss += ret.first;
+          total_accuracy += ret.second;
+          total_num_samples += ds.num_samples();
+          total_num_features += ds.num_features();
+          start_index += config.get_minibatch_size();
+        }
+      } else {
+        static PSSparseServerInterface* psi;
+        static bool first_time = true;
+        if (first_time) {
+          first_time = false;
+          psi = new PSSparseServerInterface(ps_ip, ps_port);
+        }
+        std::unique_ptr<SoftmaxModel> model = psi->get_sm_full_model();
+        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret = model->calc_loss(t_data);
+        total_loss = ret.first;
+        total_accuracy = ret.second;
+        total_num_samples = 20000;
+        total_num_features = 784;
+        start_index = 20;
       }
 
-      if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+      if (config.get_model_type() == Configuration::LOGISTICREGRESSION || 
+          config.get_model_type() == Configuration::SOFTMAX) {
         std::cout
           << "[ERROR_TASK] Loss (Total/Avg): " << total_loss
           << "/" << (total_loss / total_num_samples)
@@ -137,6 +160,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       std::cout << "run_compute_error_task unknown id" << std::endl;
     }
   }
+  exit(-1);
 }
 
 } // namespace cirrus

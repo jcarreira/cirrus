@@ -245,9 +245,7 @@ std::pair<double, double> SoftmaxModel::calc_loss(Dataset& data) const {
             W(d, k) = weights[d][k];
         }
     }
-
     auto scores = dataset * W;
-
     // we exponentiate those scores
     // [N * K]
     auto exp_scores = scores.unaryExpr([](FEATURE_TYPE v) {

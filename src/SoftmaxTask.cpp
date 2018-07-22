@@ -66,8 +66,6 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     SoftmaxModel model = *(psint->get_sm_full_model());
-    model.d = 784;
-    model.nclasses = 10;
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;
