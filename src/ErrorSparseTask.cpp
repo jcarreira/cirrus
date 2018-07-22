@@ -27,7 +27,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   if (use_softmax) {
-    return psi->get_sm_full_model();
+    return psi->get_sm_full_model(config);
   }
   return psi->get_full_model(use_col_filtering);
 }
@@ -83,7 +83,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "[ERROR_TASK] Computing accuracies"
     << "\n";
   InputReader input;
-  Dataset t_data = input.read_input_csv("test_data/test_mnist.csv", ",", 10, 20000, 1000, true);
+  Dataset t_data = input.read_input_csv("test_data/test_mnist.csv", ",", 10,
+      config.get_limit_samples(), config.get_limit_cols(), true);
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
@@ -128,13 +129,12 @@ void ErrorSparseTask::run(const Configuration& config) {
           first_time = false;
           psi = new PSSparseServerInterface(ps_ip, ps_port);
         }
-        std::unique_ptr<SoftmaxModel> model = psi->get_sm_full_model();
+        std::unique_ptr<SoftmaxModel> model = psi->get_sm_full_model(config);
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret = model->calc_loss(t_data);
         total_loss = ret.first;
         total_accuracy = ret.second;
-        total_num_samples = 20000;
-        total_num_features = 784;
-        start_index = 20;
+        total_num_samples = t_data.num_samples();
+        total_num_features = t_data.num_features();
       }
 
       if (config.get_model_type() == Configuration::LOGISTICREGRESSION || 

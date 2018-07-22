@@ -34,7 +34,8 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
     << std::endl;
   this->config = config;
   InputReader input;
-  Dataset dataset_train = input.read_input_csv("test_data/train_mnist.csv", ",", 10, 50000, 1000, true);
+  Dataset dataset_train = input.read_input_csv("test_data/train_mnist.csv", ",", 10,
+      config.get_limit_samples(), config.get_limit_cols(), true);
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
   
@@ -54,7 +55,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    Dataset dataset = dataset_train.random_sample(20);
+    Dataset dataset = dataset_train.random_sample(config.get_minibatch_size());
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
     //dataset->check();
@@ -65,7 +66,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    SoftmaxModel model = *(psint->get_sm_full_model());
+    SoftmaxModel model = *(psint->get_sm_full_model(config));
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;
@@ -75,7 +76,8 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #endif
     dataset.print_info();
     try {
-      gradient = model.minibatch_grad(dataset.get_samples(), (float*) dataset.get_labels().get(), 20, 0.0001);
+      gradient = model.minibatch_grad(dataset.get_samples(),
+          (float*) dataset.get_labels().get(), 20, config.get_learning_rate());
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);

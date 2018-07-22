@@ -118,7 +118,7 @@ bool PSSparseServerTask::process_send_sm_gradient(
     return false;
   }
 
-  SoftmaxGradient gradient(10, 784);
+  SoftmaxGradient gradient(task_config.get_num_classes(), task_config.get_num_features());
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
@@ -526,7 +526,7 @@ void PSSparseServerTask::start_server() {
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
   mf_model->randomize();
-  sm_model.reset(new SoftmaxModel(10, 784));
+  sm_model.reset(new SoftmaxModel(task_config.get_num_classes(), task_config.get_num_features()));
   sm_model->randomize();
 
   sem_init(&sem_new_req, 0, 0);
