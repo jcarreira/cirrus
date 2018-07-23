@@ -150,6 +150,10 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     //Eigen::MatrixXd dataset(m.rows, m.cols);
     for (unsigned int row = 0; row < m.rows; ++row) {
         for (unsigned int col = 0; col < m.cols; ++col) {
+            if (std::isnan(m_data[row * m.cols + col])) {
+              std::cout << row << ", " << col << std::endl;
+              throw std::runtime_error("Dataset nan");
+            }
             dataset(row, col) = m_data[row * m.cols + col];
         }
     }
@@ -157,6 +161,9 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     //Eigen::MatrixXd W(dataset.cols(), nclasses);
     for (unsigned int d = 0; d < dataset.cols(); ++d) {
         for (unsigned int k = 0; k < nclasses; ++k) {
+           //if (std::isnan(weights[d][k])) {
+               //throw std::runtime_error("Weights nan");
+            //}
             W(d, k) = weights[d][k];
         }
     }
