@@ -16,7 +16,7 @@ setuptools.setup(
     packages=find_packages(exclude=('tests', 'docs')),
     classifiers=(
         "Programming Language :: C++",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         "Operating System :: Unix",
     ),
 )
