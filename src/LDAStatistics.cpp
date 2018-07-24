@@ -40,17 +40,25 @@ namespace cirrus{
       const int* w = reinterpret_cast<const int*>(msg);
       msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
       w_.push_back(*w);
+
+    }
+
+    const int* slice_size_ = reinterpret_cast<const int*>(msg);
+    slice_.clear();
+    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
+    for(int i=0; i<*slice_size_; ++i){
+
+      const int* slice_i = reinterpret_cast<const int*>(msg);
+      msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
+      slice_.push_back(*slice_i);
+
     }
 
     const int* num_docs = reinterpret_cast<const int*>(msg);
     msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
     for(int i=0; i<*num_docs; ++i){
-
-      const int* num_words = reinterpret_cast<const int*>(msg);
-      msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
-
-      std::vector<int> ndt_row(*num_words);
-      for(int j=0; j<*num_words; ++j){
+      std::vector<int> ndt_row;
+      for(int j=0; j<*K; ++j){
         const int* ndt_ij = reinterpret_cast<const int*>(msg);
         msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
         ndt_row.push_back(*ndt_ij);
@@ -58,15 +66,19 @@ namespace cirrus{
       ndt_.push_back(ndt_row);
     }
 
-    const int* slice_size = reinterpret_cast<const int*>(msg);
-    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
-    for(int i=0; i<*slice_size; ++i){
+    current = 0;
 
-      const int* slice_i = reinterpret_cast<const int*>(msg);
-      msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +  sizeof(int));
-      slice_.push_back(*slice_i);
 
-    }
+    // std::cout << *K << " ------------" << std::endl;
+    // std::cout << ndt_.size() << " ------------" << std::endl;
+    // std::cout << ndt_[ndt_.size()-1].size() << " ------------" << std::endl;
+    // std::cout << t_.size() << " ------------" << std::endl;
+    // for(auto i: ndt_[0]){
+    //   std::cout << i << " ";
+    // }
+    // std::cout << std::endl;
+    // std::cout << slice_.size() << " ------------" << std::endl;
+    // std::cout << *slice_size << " ------------" << std::endl;
   }
 
   char* LDAStatistics::serialize(){
@@ -83,6 +95,11 @@ namespace cirrus{
       store_value<int>(msg, w_[i]);
     }
 
+    store_value<int>(msg, slice_.size());
+    for(const auto& v: slice_){
+      store_value<int>(msg, v);
+    }
+
     // ndt should be sparse
     // TODO: can be improved
     store_value<int>(msg, ndt_.size());
@@ -93,10 +110,15 @@ namespace cirrus{
       }
     }
 
-    store_value<int>(msg, slice_.size());
-    for(const auto& v: slice_){
-      store_value<int>(msg, v);
-    }
+    // std::cout << K_ << " ------------" << std::endl;
+    // std::cout << ndt_.size() << " ------------" << std::endl;
+    // std::cout << ndt_[0].size() << " ------------" << std::endl;
+    // std::cout << t_.size() << " ------------" << std::endl;
+    // for(auto i: ndt_[0]){
+    //   std::cout << i << " ";
+    // }
+    // std::cout << std::endl;
+    // std::cout << slice_.size() << " ------------" << std::endl;
 
     return msg_begin;
   }
@@ -123,27 +145,28 @@ namespace cirrus{
   }
 
   int LDAStatistics::get_receive_size(){
-    return (4 + (slice_.size() + 1) * K_ + slice_.size()) * sizeof(int);
+    return sizeof(uint32_t) * (1 + (slice_.size() + 1) * K_);
+    // return (4 + (slice_.size() + 1) * K_ + slice_.size()) * sizeof(int);
   }
 
   char* LDAStatistics::pop_partial_docs(int minibatch_size){
+
     std::vector<std::vector<int> > ndt_partial;
     std::vector<int> t_partial, d_partial, w_partial;
     std::set<int> slice_partial;
 
-    int start = d_.front(), cur = d_.front();
-    while(cur - start < minibatch_size){
-      if(get_num_docs() == 0)
-        break;
+    int start = d_.front(), cur = d_.front(), count = 1;
+    while(count < minibatch_size){
 
-      if(d_.front() != cur ){
+      if(d_.front() != cur){
         cur = d_.front();
+        count += 1;
         ndt_partial.push_back(ndt_.front());
         ndt_.erase(ndt_.begin());
       }else{
         int gindex = w_.front();
         t_partial.push_back(t_.front());
-        d_partial.push_back(d_.front());
+        d_partial.push_back(d_.front() - start);
         w_partial.push_back(w_.front());
         t_.erase(t_.begin());
         d_.erase(d_.begin());
@@ -151,24 +174,61 @@ namespace cirrus{
         if(slice_partial.find(gindex) == slice_partial.end())
           slice_partial.insert(slice_partial.end(), gindex);
       }
+      if(d_.size() == 0)
+        break;
     }
 
     std::vector<int> slice_partial_vec(slice_partial.begin(), slice_partial.end());
+
+    // std::cout << "popping docs size: " << ndt_partial.size() << std::endl;
     LDAStatistics partial(K_, ndt_partial, slice_partial_vec, t_partial, d_partial, w_partial);
     return partial.serialize();
   }
 
   int LDAStatistics::pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat){
     std::vector<int> slice;
-    if(cur+slice_size < slice_.size())
-      slice = std::vector<int>(slice_.begin()+cur, slice_.begin()+cur+slice_size);
-    else
-      slice = std::vector<int>(slice_.begin()+cur, slice_.end());
-    partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
-    cur += slice_size;
-    if(slice_.size() - cur < slice_size)
+    // std::cout << slice.size() << " " << current << " " << slice_.size() << " " << slice_size  << " " << int(slice_.size()) - current << " ------\n";
+    // std::cout << "slice_size: " << slice_size << std::endl;
+    // std::cout << "When popping: " << slice_size << std::endl;
+
+
+    if(int(slice_.size()) - current < slice_size && current != 0){
+
+      // std::cout << slice_.size() << " " << current << " " << slice_size << std::endl;
       return -1;
+    }
+
+    if(current+slice_size < int(slice_.size()))
+      slice = std::vector<int>(slice_.begin()+current, slice_.begin()+current+slice_size);
+    else{
+      slice = std::vector<int>(slice_.begin()+current, slice_.end());
+      // std::cout << "wereraesrase\n";
+    }
+
+
+    partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
+    // std::cout << slice_.size() << " " << current << " " << slice_size << std::endl;
     return 1;
+  }
+
+  void LDAStatistics::store_new_stats(LDAModel model){
+
+    // std::cout << "b4 ndt[0]: ";
+    // for(int i=0; i<K_; ++i){
+    //   std::cout << ndt_[0][i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    ndt_ = model.ndt;
+    t_ = model.t;
+
+    // std::cout << "after ndt[0]: ";
+    // for(int i=0; i<K_; ++i){
+    //   std::cout << ndt_[0][i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    current += slice_size;
   }
 
 }

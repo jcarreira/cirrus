@@ -21,19 +21,19 @@ namespace cirrus{
 
   LDAModel::LDAModel(const char* buffer, const char* info){
 
-    const int* V = reinterpret_cast<const int*>(buffer);
+    const int* V_by_K = reinterpret_cast<const int*>(buffer);
     buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
-    V_ = *V;
 
     const int* K = reinterpret_cast<const int*>(info);
     K_ = *K;
+    V_ = *V_by_K / K_;
 
     info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
 
     nvt.clear();
     std::vector<int> nt_vi;
-    for(int i=0; i<*V; ++i){
-      for(int j=0; j<*K; ++j){
+    for(int i=0; i<V_; ++i){
+      for(int j=0; j<K_; ++j){
         const int* temp = reinterpret_cast<const int*>(buffer);
         buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
         nt_vi.push_back(*temp);
@@ -44,7 +44,7 @@ namespace cirrus{
 
 
     nt.clear();
-    for(int i=0; i<*K; ++i){
+    for(int i=0; i<K_; ++i){
       const int* temp = reinterpret_cast<const int*>(buffer);
       buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +  sizeof(int));
       nt.push_back(*temp);
@@ -68,22 +68,6 @@ namespace cirrus{
       w.push_back(*word);
     }
 
-
-    ndt.clear();
-    std::vector<int> nt_di;
-    const int* D = reinterpret_cast<const int*>(info);
-    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
-    for(int i=0; i<*D; ++i){
-      for(int j=0; j<*K; ++j){
-        const int* temp = reinterpret_cast<const int*>(info);
-        info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
-        nt_di.push_back(*temp);
-      }
-      ndt.push_back(nt_di);
-      nt_di.clear();
-    }
-
-
     slice.clear();
     const int* S = reinterpret_cast<const int*>(info);
     info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
@@ -92,13 +76,46 @@ namespace cirrus{
       info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
       slice.push_back(*s);
     }
+
+    ndt.clear();
+    std::vector<int> nt_di;
+    const int* D = reinterpret_cast<const int*>(info);
+    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
+    for(int i=0; i<*D; ++i){
+      for(int j=0; j<K_; ++j){
+        const int* temp = reinterpret_cast<const int*>(info);
+        info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +  sizeof(int));
+        nt_di.push_back(*temp);
+      }
+      ndt.push_back(nt_di);
+      nt_di.clear();
+    }
+
+    // std::cout << "nvt size: " << nvt.size() << " ----------- " << std::endl;
+    // std::cout << "K size: " << nvt[0].size() << " ----------- " << std::endl;
+    // std::cout << "ndt size: " << ndt.size() << " ----------- " << std::endl;
+    // std::cout << "K (ndt) size: " << ndt[0].size() << " ----------- " << std::endl;
   }
 
   std::unique_ptr<LDAUpdates> LDAModel::sample_model(){
 
+    // std::cout << "b4 sampling ndt[0]: ";
+    // for(int i=0; i<K_; ++i){
+    //   std::cout << ndt[0][i] << " ";
+    // }
+    // std::cout << std::endl;
+
     return sample_thread(std::ref(t), std::ref(d),
                       std::ref(w), std::ref(nt), std::ref(nvt), // std::ref(nvt),
                       std::ref(ndt), std::ref(slice));
+
+    // std::cout << "adter sampling ndt[0]: ";
+    // for(int i=0; i<K_; ++i){
+    //   std::cout << ndt[0][i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    // return rst;
   }
 
   std::unique_ptr<LDAUpdates> LDAModel::sample_thread(std::vector<int>& t,
@@ -117,6 +134,15 @@ namespace cirrus{
       ++ idx;
     }
 
+    // for(int i=0; i<10; ++i){
+    //   std::cout << slice[i] << " ";
+    // }
+    // std::cout << std::endl;
+    // for(int i=0; i<10; ++i){
+    //   std::cout << slice_map[slice[i]] << " ";
+    // }
+    // std::cout << std::endl;
+
     double* rate = new double[K_];
     double r, rate_cum, linear;
     int top, new_top, doc, gindex, lindex, j;//, lindex, j;
@@ -125,17 +151,45 @@ namespace cirrus{
     std::vector<int> change_nvt(nvt.size() * K_);
     std::vector<int> change_nt(K_);
 
+    // std::cout << "b4 t: ";
+    // for(int i=0; i<10; ++i){
+    //   std::cout << t[i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    // if(slice[0] == 1004){
+    //   std::cout << "nvt[0] b4: ";
+    //   for(int i=0; i<K_; ++i){
+    //     std::cout << nvt[0][i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
+
+    // std::cout << "t.size(): " << t.size() << std::endl;
+
+    // for(int i=0; i<nvt[nvt.size()-1].size(); ++i){
+    //   std::cout << nvt[0][i] << " ";
+    // }
+    // std::cout << std::endl;
+
     for(int i=0; i<t.size(); i++){
 
-      top = t[i], doc = d[i], gindex = w[i] - 1;
+      // std::cout << i << std::endl;
 
+      top = t[i], doc = d[i], gindex = w[i];
+      // if(std::find(slice.begin(), slice.end(), gindex) == slice.end())
+      //   continue;
       if(slice_map.find(gindex) == slice_map.end())
         continue;
       lindex = slice_map[gindex];
 
+      // std::cout << i << " | " <<  "topic: " << top << " doc: " << doc << " gindex: " << gindex << " lindex: " << lindex << " | " << " V: " << nvt.size() << " D: " << ndt.size() << std::endl;
+
       nvt[lindex][top] -= 1;
       ndt[doc][top] -= 1;
       nt[top] -= 1;
+
+
 
       rate_cum = 0.0;
       for(int j=0; j<K_; ++j){
@@ -149,6 +203,10 @@ namespace cirrus{
       linear = rand()*rate_cum/RAND_MAX;
       new_top = (std::lower_bound(rate, rate+K_, linear)) - rate;
 
+      // if(i < 10){
+      //   std::cout << i << " " << top << " " << new_top << std::endl;
+      // }
+
       t[i] = new_top;
       nvt[lindex][new_top] += 1;
       ndt[doc][new_top] += 1;
@@ -161,80 +219,39 @@ namespace cirrus{
 
     }
 
+    // if(slice[0] == 1004){
+    //   std::cout << "update[0] b4: ";
+    //   for(int i=0; i<K_; ++i){
+    //     std::cout << change_nvt[i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    //
+    //   std::cout << "nvt[0] after: ";
+    //   for(int i=0; i<K_; ++i){
+    //     std::cout << nvt[0][i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
+
     delete[] rate;
+
+    // std::cout << "after t: ";
+    // for(int i=0; i<10; ++i){
+    //   std::cout << t[i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    // for(int i=0; i<change_nt.size(); ++i){
+    //   std::cout << change_nt[i] << " ";
+    // }
+    // std::cout << std::endl;
+    //
+    // std::cout << "change_nvt size: " << change_nvt.size() << " ----------- " << std::endl;
+    // std::cout << "change_nt size: " << change_nt.size() << " ----------- " << std::endl;
+    // std::cout << "slice size: " << slice.size() << " ----------- " << std::endl;
 
     std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice);
     return ret;
   }
-
-
-  // double LDAModel::loglikelihood(){
-  //
-  //   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
-  //   double ll = 0;
-  //   ll += K_ * lda_lgamma(eta * V_);
-  //   for(int i=0; i<nworkers_; i++){
-  //     for(int j=0; j<ndts[i].size(); j++){
-  //       int ndj = 0;
-  //       for(int k=0; k<K_; k++){
-  //         ndj += ndts[i][j][k];
-  //         if(ndts[i][j][k] > 0)
-  //           ll += lda_lgamma(alpha + ndts[i][j][k]) - lgamma_alpha;
-  //       }
-  //       ll += lda_lgamma(alpha * K_) - lda_lgamma(alpha * K_ + ndj);
-  //     }
-  //   }
-  //   for(int i=0; i<K_; i++){
-  //     ll -= lda_lgamma(eta * V_ + global_nt[i]);
-  //     for(int v=0; v<V_; ++v){
-  //       if(global_nvt[v][i] > 0)
-  //         ll += lda_lgamma(eta + global_nvt[v][i]) - lgamma_eta;
-  //     }
-  //   }
-  //   return ll;
-  // }
-
-
-  // char* LDAModel::get_partial_model(const char* slice){
-  //
-  //   std::vector<std::vector<int>> partial_nvt;
-  //
-  //   const int* len = reinterpret_cast<const int*>(slice);
-  //   slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
-  //   for(int i=0; i<*len; ++i){
-  //     const int* word_idx = reinterpret_cast<const int*>(slice);
-  //     partial_nvt.push_back(global_nvt[*word_idx]);
-  //     slice = reinterpret_cast<const char*>(reinterpret_cast<const char*>(slice) +  sizeof(int));
-  //   }
-  //
-  //   char* mem = new char[MAX_MSG_SIZE];
-  //   char* mem_begin = mem;
-  //   store_value<int>(mem, total vocab dim) //TODO
-  //   store_value<int>(mem, partial_nvt.size());
-  //   for(const auto& nt_vi: partial_nvt){
-  //     for(const auto& n: nt_vi){
-  //       store_value<int>(mem, n);
-  //     }
-  //   }
-  //
-  //   for(int i=0; i<K_; ++i){
-  //     store_value<int>(mem, global_nt[i]);
-  //   }
-  //
-  //   return mem_begin;
-  // }
-
-  // void LDAModel::update_globals(const LDAUpdates* update){
-  //
-  //   for(int i=0; i<update->slice.size(); ++i){
-  //     for(int j=0; j<K_; ++j){
-  //       global_nvt[update->slice[i]][j] += update->change_nvt[i*K_ + j];
-  //     }
-  //   }
-  //
-  //   for(int i=0; i<K_; ++i){
-  //     global_nt[i] += update->change_nt[i];
-  //   }
-  // }
 
 }

@@ -32,9 +32,11 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   std::vector<int> t, d, w;
   std::vector<std::vector<int>> ndt;
   std::set<int> local_vocab;
-  std::vector<int> ndt_row(K);
 
   for(const auto& doc: docs){
+
+    std::vector<int> ndt_row(K);
+
     for(const auto& feat: doc){
       int gindex = feat.first, count = feat.second;
       if(local_vocab.find(gindex) == local_vocab.end())
@@ -54,9 +56,9 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
       }
     }
     ndt.push_back(ndt_row);
-    ndt_row.clear();
   }
   std::vector<int> local_vocab_vec(local_vocab.begin(), local_vocab.end());
+
   return LDAStatistics(K, ndt, local_vocab_vec, t, d, w);
 }
 
@@ -89,11 +91,25 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-    std::cout << "[LOADER] Building s3 batch #" << (i + 1) << std::endl;
+    std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
     // Only get corpus of size s3_obj_num_samples
     dataset.get_some_docs(partial_docs);
     LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, K, global_vocab);
+
+    // std::vector<std::vector<int>> test;
+    // to_save.get_ndt(test);
+    // std::cout << test.size() << " -----------\n";
+    // for(int j=0; j<10; ++j){
+    //   std::cout << test[j].size() << std::endl;
+    // }
+
+    // for(int i=0; i<5; ++i){
+    //   for(int j=0; j<K; ++j){
+    //     std::cout << test[i][j] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
     std::cout << "Putting object(LDAStatistics) in S3 with size: " << to_save.get_serialize_size() << std::endl;
     std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-LDA";
@@ -107,8 +123,13 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
   std::cout << "Putting object(initial global var) in S3 with size: " << initial_global_var.getSerializedSize() << std::endl;
   std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
+
+  uint64_t len;
+  std::shared_ptr<char> s3_obj =
+    initial_global_var.serialize(&len);
+
   s3_put_object(obj_id, s3_client, config.get_s3_bucket(),
-      std::string(initial_global_var.serialize(), initial_global_var.getSerializedSize()));
+      std::string(s3_obj.get(), len));
 
   std::cout << "LOADER-LDA terminated successfully" << std::endl;
 }

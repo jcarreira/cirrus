@@ -24,7 +24,7 @@ Aws::S3::S3Client s3_create_client() {
 Aws::S3::S3Client* s3_create_client_ptr() {
   Aws::Client::ClientConfiguration clientConfig;
   clientConfig.region = Aws::Region::US_WEST_2;
-  
+
   // try big timeout
   clientConfig.connectTimeoutMs = 30000;
   clientConfig.requestTimeoutMs = 60000;
@@ -62,7 +62,7 @@ void s3_put_object(const std::string& key_name, Aws::S3::S3Client& s3_client,
   std::cout << "checking success" << std::endl;
 #endif
   if (put_object_outcome.IsSuccess()) {
-      std::cout << "Done!" << std::endl;
+      // std::cout << "Done!" << std::endl;
   } else {
       std::cout << "PutObject error: " <<
           put_object_outcome.GetError().GetExceptionName() << " " <<
@@ -121,4 +121,3 @@ std::ostringstream* s3_get_object_ptr(const std::string& key_name, Aws::S3::S3Cl
 void s3_shutdown_aws() {
   Aws::ShutdownAPI(options);
 }
-

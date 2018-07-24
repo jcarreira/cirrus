@@ -18,21 +18,10 @@ libdir = os.path.join(os.getcwd(), 'local', 'lib')
 
 def launch_ps(num_workers, num_task, ps_ip, ps_port, use_softmax):
 
-    if use_softmax:
-       command =  \
-          "./parameter_server_softmax configs/mnist_lambdas.cfg" \
-          " --nworkers {} --rank {} --ps_ip {}" \
-          .format(num_workers, num_task, ps_ip)
-    else:
-       if ps_ip == "":
-           command =  \
-              './parameter_server --config {} --nworkers {} --rank {}' \
-              .format(CONFIG_PATH, num_workers, num_task)
-       else:
-           command =  \
-              "./parameter_server --config {} --nworkers {}" \
-              " --rank {} --ps_ip {} --ps_port {}" \
-              .format(CONFIG_PATH, num_workers, num_task, ps_ip, ps_port)
+    command =  \
+      "./parameter_server --config {} --nworkers {}" \
+      " --rank {} --ps_ip {} --ps_port {}" \
+      .format(CONFIG_PATH, num_workers, num_task, ps_ip, ps_port)
 
     print("Command: ", command)
 
@@ -74,7 +63,7 @@ def cpu_benchmark():
     return ''.join(output)
 
 def iperf_benchmark():
-    command =  './iperf3 -c 172.31.4.190 -t 5'
+    command =  './iperf3 -c 172.31.12.171 -t 5'
 
     output = ""
     print("Command: ", command)
@@ -135,7 +124,7 @@ def register_task_id(ps_ip, ps_port, task_id):
 
         success = struct.unpack("I", s)[0]
     except:
-        raise "Error registering with the parameter server"
+        raise Exception('Error registering with the parameter server')
 
     return success > 0
 
@@ -172,5 +161,5 @@ def handler(event, context):
 
     return []
 
-handler({"num_task":"2", "num_workers":"1", "ps_ip": "172.31.12.171", \
-       "ps_port": 12, "task_id": 1}, 0)
+handler({"num_task":"5", "num_workers":"2", "ps_ip": "172.31.12.171", \
+       "ps_port": 1337, 'task_id':"1"}, 0)

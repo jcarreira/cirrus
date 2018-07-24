@@ -129,6 +129,7 @@ bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vecto
 }
 
 bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector<char>& thread_buffer) {
+
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
   std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size << std::endl;
@@ -137,6 +138,7 @@ bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector
     throw std::runtime_error("Not enough buffer");
   }
   //buffer.resize(incoming_size);
+  // std::cout  << "1111111\n";
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -145,10 +147,15 @@ bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector
     throw std::runtime_error("Uhandled error");
   }
 
+  // std::cout  << "1111111\n";
+
+  const char* data = thread_buffer.data();
+
   LDAUpdates gradient;
-  gradient.loadSerialized(reinterpret_cast<const char*>(thread_buffer.data()));
+  gradient.loadSerialized(data);
 
   model_lock.lock();
+  // std::cout  << "1111111\n";
   lda_global_vars->update(gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
@@ -247,6 +254,8 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 
 bool PSSparseServerTask::process_get_lda_model(
     const Request& req, std::vector<char>& thread_buffer) {
+
+  // std::cout << "Sending lda model\n";
   // need to parse the buffer to get the indices of the model we want
   // to send back to the client
   uint32_t incoming_size = req.incoming_size;
@@ -263,7 +272,6 @@ bool PSSparseServerTask::process_get_lda_model(
   } catch (...) {
     throw std::runtime_error("Uhandled error");
   }
-
   const char* data = thread_buffer.data();
   uint32_t to_send_size;
   auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size);
@@ -333,7 +341,6 @@ void PSSparseServerTask::gradient_f() {
 
     to_process.pop();
     to_process_lock.unlock();
-
     int sock = req.poll_fd.fd;
 
     uint32_t operation = 0;
@@ -498,10 +505,10 @@ void PSSparseServerTask::start_server() {
     // Get the global stats from S3
     s3_initialize_aws();
     auto s3_client = s3_create_client();
-
     std::string obj_id_str = std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
-    const char* s3_data = s3_obj->str().c_str();
+    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, task_config.get_s3_bucket());
+    const std::string tmp = s3_obj->str();
+    const char* s3_data = tmp.c_str();
 
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
@@ -577,7 +584,8 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     fdses[0].at(1).fd = pipefds[poll_id][0];
     fdses[0].at(1).events = POLLIN;
     curr_indexes[poll_id] = 2;
-  } else {
+  }
+  else {
     std::cout << "Starting secondary poll thread: " << poll_id << std::endl;
     fdses[poll_id].at(0).fd = pipefds[poll_id][0];
     fdses[poll_id].at(0).events = POLLIN;
@@ -746,6 +754,10 @@ void PSSparseServerTask::run(const Configuration& config) {
         << " #conns: " << num_connections
         << std::endl;
       gradientUpdatesCount = 0;
+      // compute_loglikelihood();
+      if((int)since_start_sec % 10 == 0 && since_start_sec != 0){
+        compute_loglikelihood();
+      }
     }
     sleep(1);
   }
@@ -774,21 +786,47 @@ void PSSparseServerTask::checkpoint_model_file(const std::string& filename) cons
 
 void PSSparseServerTask::compute_loglikelihood(){
   std::vector<int> nvt, nt;
+
   lda_global_vars->get_nvt(nvt);
   lda_global_vars->get_nt(nt);
 
   double alpha = 0.1, eta = .01;
-  int V = nvt.size(), K = nt.size();
+  int K = nt.size();
+  int V = nvt.size() / K;
   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
   double ll = K * lda_lgamma(eta * V);
 
+  // std::cout << lda_global_vars->slice_map[76] << " " << V << std::endl;
+
+
+  // std::cout << "nvt[78]: ";
+  // for(int i=0; i<nt.size(); ++i){
+  //   // std::cout << nvt[lda_global_vars->get_vocab_map(78) * nt.size() + i] << " ";
+  //   // std::cout << test[i] << " ";
+  //   // 3007
+  //   std::cout << nvt[78 * nt.size() + i] << " ";
+  // }
+  // std::cout << std::endl;
+  //
+  // for(int i=0; i<nt.size(); ++i){
+  //   std::cout << nt[i] << " ";
+  // }
+  // std::cout << std::endl;
+
   for(int i=0; i<K; ++i){
+    int nti = 0;
     ll -= lda_lgamma(eta * V + nt[i]);
     for(int v=0; v<V; ++v){
-      if(nvt[v * K + i] > 0)
+      if(nvt[v * K + i] > 0){
         ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+        nti += nvt[v*K + i];
+      }
     }
+    // std::cout << nt[i] << " " << nti << std::endl;
+    // ll -= lda_lgamma(eta * V + nti);
   }
+
+  // std::cout << "ll: " << ll << std::endl;
 
   s3_initialize_aws();
   auto s3_client = s3_create_client();
@@ -797,18 +835,47 @@ void PSSparseServerTask::compute_loglikelihood(){
   for(int i = train_range.first; i < train_range.second; ++i){
     std::string obj_id_str = std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
     std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, task_config.get_s3_bucket());
-    const char* s3_data = s3_obj->str().c_str();
+
+    const std::string tmp = s3_obj->str();
+    const char* s3_data = tmp.c_str();
     LDAStatistics ndt_partial(s3_data);
 
     std::vector<std::vector<int>> ndt;
+    std::vector<int> slice;
     ndt_partial.get_ndt(ndt);
+    ndt_partial.get_slice(slice);
+
+    // std::cout << "ndt[0-4]: ";
+    // for(int p = 0; p < 5; p ++){
+    //   for(int j=0; j<K; ++j){
+    //     std::cout << ndt[p][j] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
+
+    // for(int j=0; j<10; ++j){
+    //   std::cout << slice[j] << " ";
+    // }
+    // std::cout << std::endl;
+
+    // for(int j=0; j<ndt.size(); ++j){
+      // for(int k=0; k<K; ++k){
+      //   if (ndt[0][k] != 0)
+      //     std::cout << ndt[0][k] << " ";
+      // }
+      // std::cout << std::endl;
+    // }
+
     for(int j=0; j<ndt.size(); ++j){
       int ndj = 0;
       for(int k=0; k<K; ++k){
         ndj += ndt[j][k];
-        if(ndt[j][j] > 0){
+        if(ndt[j][k] > 0){
           ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
         }
+        // else{
+        //   std::cout << j << " ----- \n";
+        // }
       }
       ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
     }

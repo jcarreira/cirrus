@@ -35,6 +35,7 @@ PSSparseServerInterface::PSSparseServerInterface(const std::string& ip, int port
   serv_addr.sin_port = htons(port);
   std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
+  std::cout << ip << " " << port << std::endl;
   // Connect to the server
   if (::connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
     throw std::runtime_error(
@@ -315,7 +316,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
+void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
   uint32_t operation = SEND_LDA_UPDATE;
 #ifdef DEBUG
   std::cout << "Sending LDA updates" << std::endl;
@@ -325,7 +326,8 @@ void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
     throw std::runtime_error("Error sending operation");
   }
 
-  uint32_t size = gradient.getSerializedSize();
+  uint64_t size;
+  std::shared_ptr<char> mem = gradient.serialize(&size);
 #ifdef DEBUG
   std::cout << "Sending LDA updates with size: " << size << std::endl;
 #endif
@@ -334,9 +336,9 @@ void PSSparseServerInterface::send_lda_update(const LDAUpdates& gradient) {
     throw std::runtime_error("Error sending grad size");
   }
 
-  void* data = reinterpret_cast<void*>(gradient.serialize());
-  ret = send_all(sock, data, size);
-  if (ret == 0) {
+  // void* data = reinterpret_cast<void*>(mem.get());
+  ret = send_all(sock, mem.get(), size);
+  if (ret == -1 || ret == 0) {
     throw std::runtime_error("Error sending grad");
   }
 }
@@ -358,15 +360,15 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
   }
 
   // 2. Send the size of vocab slise
-  int msg_size = info.get_serialize_slice_size();
+  uint32_t msg_size = info.get_serialize_slice_size();
 #ifdef DEBUG
   std::cout << "msg_size: " << msg_size << std::endl;
 #endif
-  send_all(sock, &msg_size, sizeof(int));
+  send_all(sock, &msg_size, sizeof(uint32_t));
 
   // 3. Send slice
   if (send_all(sock, info.serialize_slice(), msg_size) == -1) {
-    throw std::runtime_error("Error getting sparse lr model");
+    throw std::runtime_error("Error getting lda model");
   }
 
   //4. receive partial_nvt from server
@@ -375,7 +377,7 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
   char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+  read_all(sock, buffer, to_receive_size); //XXX
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;

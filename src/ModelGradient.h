@@ -7,6 +7,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <config.h>
+#include <memory>
+#include <map>
 
 namespace cirrus {
 
@@ -204,7 +206,7 @@ class LDAUpdates {
     LDAUpdates& operator=(LDAUpdates&& other);
 
     void loadSerialized(const char* mem);
-    char* serialize() const;
+    std::shared_ptr<char> serialize(uint64_t*);
     uint64_t getSerializedSize() const ;
 
     void update(const LDAUpdates& gradient);
@@ -212,11 +214,15 @@ class LDAUpdates {
 
     void get_nvt(std::vector<int>& nvt) {nvt = change_nvt;}
     void get_nt(std::vector<int>& nt) {nt = change_nt;}
+    int get_vocab_map(int key) {return slice_map[key];}
 
     void setVersion(int v) {version = v;}
     int getVersion() const {return version;}
 
     void print() const;
+
+    std::map<int, int> slice_map;
+    
     // void check_values() const;
  protected:
     std::vector<int> change_nvt, change_nt;  //< weights of the LDA update

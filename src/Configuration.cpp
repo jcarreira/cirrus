@@ -54,6 +54,8 @@ void Configuration::print() const {
     std::cout << "limit_samples: " << get_limit_samples() << std::endl;
     std::cout << "S3 size: " << get_s3_size() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
+    std::cout << "s3_bucket_name: " << s3_bucket_name << std::endl;
+    std::cout << "slice size: " << get_slice_size() << std::endl;
   } else {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "input_path: " << get_input_path() << std::endl;
@@ -145,6 +147,8 @@ void Configuration::parse_line(const std::string& line) {
         iss >> doc_path;
     }else if (s == "labels_path:") {
         iss >> labels_path;
+    }else if(s == "slice_size:") {
+        iss >> slice_size;
     } else if (s == "n_workers:") {
         iss >> n_workers;
     } else if (s == "K:") {
@@ -303,6 +307,12 @@ uint64_t Configuration::get_s3_size() const {
     if (s3_size == 0)
         throw std::runtime_error("Minibatch size not loaded");
     return s3_size;
+}
+
+uint32_t Configuration::get_slice_size() const {
+  if (slice_size == 0)
+      throw std::runtime_error("Slice size not loaded");
+  return slice_size;
 }
 
 std::string Configuration::get_input_type() const {

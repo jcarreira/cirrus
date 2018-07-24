@@ -40,6 +40,8 @@ class Configuration {
       */
     uint64_t get_s3_size() const;
 
+    uint32_t get_slice_size() const;
+
     /**
       * Get number of classes in the dataset
       * @returns Number of sample classes
@@ -170,6 +172,8 @@ class Configuration {
 
     uint64_t minibatch_size = 0;  //< size of minibatch
     uint64_t s3_size = 0;  //< size of samples chunk stored in each s3 object
+
+    uint32_t slice_size = 0;
 
     double learning_rate = 0;     //< sgd learning rate
     double epsilon = 0;           //< regularization rate

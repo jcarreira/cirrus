@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 #include <set>
-
+#include "LDAModel.h"
 namespace cirrus{
   /**
     * This class is used to hold local variables
@@ -75,10 +75,13 @@ namespace cirrus{
       */
     int pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat);
 
+    void store_new_stats(LDAModel model);
+
     void get_ndt(std::vector<std::vector<int> >& ndt) {ndt = ndt_;}
+    void get_slice(std::vector<int>& slice) {slice = slice_;}
 
   private:
-    int K_, slice_size = 500, cur = 0;
+    int K_, slice_size = 1000, current = 0;
     std::vector<std::vector<int> > ndt_;
     std::vector<int> slice_, t_, d_, w_;
   };

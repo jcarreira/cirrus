@@ -65,6 +65,7 @@ S3SparseIterator::S3SparseIterator(
 }
 
 const void* S3SparseIterator::get_next_fast() {
+
   // we need to delete entry
   if (to_delete != -1) {
 #ifdef DEBUG
@@ -81,7 +82,6 @@ const void* S3SparseIterator::get_next_fast() {
   //std::cout << "sem_wait" << std::endl;
   sem_wait(&semaphore);
   ring_lock.lock();
-
   // first discard empty queue
   while (minibatches_list.front()->size() == 0) {
     auto queue_ptr = minibatches_list.pop();
@@ -192,7 +192,7 @@ void S3SparseIterator::push_samples_lda(std::ostringstream* oss) {
 #endif
 
   auto str_iter = list_strings.find(str_version);
-  print_progress(str_iter->second);
+  // print_progress(str_iter->second);
   // create a pointer to each minibatch within s3 object and push it
 
   const char* s3_data = reinterpret_cast<const char*>(str_iter->second.c_str());
@@ -212,7 +212,7 @@ void S3SparseIterator::push_samples_lda(std::ostringstream* oss) {
     char* minibatch_s3_data = s3_lda_stat.pop_partial_docs(minibatch_rows);
     new_queue->push(std::make_pair(reinterpret_cast<const void*>(minibatch_s3_data), is_last));
 
-    }
+  }
 
   ring_lock.lock();
   minibatches_list.add(new_queue);
@@ -260,10 +260,12 @@ void S3SparseIterator::print_progress(const std::string& s3_obj) {
   count++;
 
   double elapsed_sec = (get_time_us() - start_time) / 1000.0 / 1000.0;
+  std::cout << total_received << " " << elapsed_sec << std::endl;
   std::cout
     << "Getting object count: " << count
     << " s3 e2e bw (MB/s): " << total_received / elapsed_sec / 1024.0 / 1024
     << std::endl;
+
 }
 
 static int sstream_size(std::ostringstream& ss) {
@@ -275,6 +277,7 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     << std::endl;
 
   uint64_t count = 0;
+  std::cout << "left: " << left_id << " " << "right:" << right_id << std::endl;
   while (1) {
     // if we can go it means there is a slot
     // in the ring
@@ -296,6 +299,7 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     std::ostringstream* s3_obj;
 try_start:
     try {
+      std::cout << obj_id << std::endl;
       std::cout << "S3SparseIterator: getting object " << obj_id_str << std::endl;
       uint64_t start = get_time_us();
       s3_obj = s3_get_object_ptr(obj_id_str, *s3_client, config.get_s3_bucket());

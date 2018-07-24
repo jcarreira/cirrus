@@ -44,7 +44,6 @@ bool LDATaskS3::get_dataset_minibatch(
   #ifdef DEBUG
     auto start = get_time_us();
   #endif
-
     const void* minibatch = s3_iter.get_next_fast();
   #ifdef DEBUG
     auto finish1 = get_time_us();
@@ -81,16 +80,18 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     auto train_range = config.get_train_range();
     int range_per_worker = (train_range.second - train_range.first + 1) / nworkers;
-    int start = worker * range_per_worker, end = (worker + 1) * range_per_worker;
+    int start = worker * range_per_worker + 1, end = (worker + 1) * range_per_worker + 1;
     if(end > train_range.second){
       end = train_range.second;
     }
 
     // Create iterator that goes from 0 to num_s3_batches
-    S3SparseIterator s3_iter(
-        start, end,
-        config, config.get_s3_size(), config.get_minibatch_size(),
-        true, worker);
+    // S3SparseIterator s3_iter(
+    //     start, end,
+    //     config, config.get_s3_size(), config.get_minibatch_size(),
+    //     true, worker, false);
+
+    int cur_train_idx = start;
 
     std::cout << "[WORKER] starting loop" << std::endl;
 
@@ -100,9 +101,22 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     bool printed_rate = false;
     int count = 0;
     auto start_time = get_time_ms();
-
     std::unique_ptr<LDAStatistics> s3_local_vars;
-    get_dataset_minibatch(s3_local_vars, s3_iter);
+    // get_dataset_minibatch(s3_local_vars, s3_iter);
+
+    s3_initialize_aws();
+    auto s3_client = s3_create_client();
+    std::string obj_id_str = std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
+    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
+    const std::string tmp = s3_obj->str();
+    const char* s3_data = tmp.c_str();
+    s3_local_vars.reset(new LDAStatistics(s3_data));
+    s3_local_vars->set_slice_size(config.get_slice_size());
+
+    // std::vector<int> s;
+    // s3_local_vars->get_slice(s);
+    // std::cout << s.size() << " ------\n";
+
     while (1) {
       // get data, labels and model
   #ifdef DEBUG
@@ -111,8 +125,27 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::unique_ptr<LDAStatistics> local_vars;
       // only gets partial LDAStatistics corresponding to one vocabulary slice
       if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
-        if(!get_dataset_minibatch(s3_local_vars, s3_iter))
-          continue;
+
+        // std::cout << obj_id_str << std::endl;
+        s3_put_object(obj_id_str, s3_client, config.get_s3_bucket(),
+            std::string(s3_local_vars->serialize(), s3_local_vars->get_serialize_size()));
+
+        cur_train_idx += 1;
+        if(cur_train_idx == end){
+          cur_train_idx = start;
+        }
+
+        obj_id_str = std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
+        // std::cout << obj_id_str << std::endl;
+        s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
+        const std::string tmp = s3_obj->str();
+        const char* s3_data = tmp.c_str();
+        s3_local_vars.reset(new LDAStatistics(s3_data));
+        continue;
+
+        s3_local_vars->set_slice_size(config.get_slice_size());
+        // if(!get_dataset_minibatch(s3_local_vars, s3_iter))
+        //   continue;
       }
   #ifdef DEBUG
       std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
@@ -123,8 +156,19 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       // compute mini batch gradient
       std::unique_ptr<LDAUpdates> gradient;
 
+      // std::cout << "doc number: " << local_vars->get_num_docs() << std::endl;
+
+      // std::cout << "-------- b4 getting model \n";
+
+      // std::vector<int> s;
+      // local_vars->get_slice(s);
+      // std::cout << cur_train_idx << " : " << s.size() << std::endl;
+
       // we get the model subset with just the right amount of weights
+      // TODO can be improved a lot
       model = std::move(lda_model_get->get_new_model(*local_vars, config));
+
+      // std::cout << "-------- finished getting model \n";
 
   #ifdef DEBUG
       std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -143,6 +187,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         std::cout << "There was an error computing the gradient" << std::endl;
         exit(-1);
       }
+      // std::cout << "-------- finished computing gradient \n";
+
+      // std::vector<std::vector<int>> ndt;
+      // std::vector<int> nt;
+      // model.get_ndt(ndt);
+      // model.get_nt(nt);
+      s3_local_vars->store_new_stats(model);
+
   #ifdef DEBUG
       auto elapsed_us = get_time_us() - now;
       std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
@@ -152,8 +204,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       gradient->setVersion(version++);
 
       try {
-        LDAUpdates* lrg = dynamic_cast<LDAUpdates*>(gradient.get());
-        push_gradient(lrg);
+        // LDAUpdates* lrg = dynamic_cast<LDAUpdates*>(gradient.get());
+        // push_gradient(lrg);
+        push_gradient(gradient.get());
       } catch(...) {
         std::cout << "[WORKER] "
           << "Worker task error doing put of gradient" << "\n";
@@ -172,6 +225,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         }
       }
 
+      // std::cout << "-------- finished sending gradient \n";
       // TODO: need some method to store all the local changes
     }
 

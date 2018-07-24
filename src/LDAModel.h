@@ -31,6 +31,9 @@ namespace cirrus{
           */
         std::unique_ptr<LDAUpdates> sample_model();
 
+        void get_ndt(std::vector<std::vector<int>>& ndt_) {ndt_ = ndt;}
+        void get_nt(std::vector<int>& nt_) {nt_ = nt;}
+
         /**
           * LDA loglikelihood method
           * TODO: would be moved to the server side
@@ -52,7 +55,7 @@ namespace cirrus{
           */
         // char* get_partial_model(const char* slice);
 
-      private:
+      // private:
         std::unique_ptr<LDAUpdates> sample_thread(std::vector<int>& t,
                                     std::vector<int>& d,
                                     std::vector<int>& w,
