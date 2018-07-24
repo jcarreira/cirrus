@@ -26,9 +26,10 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
   }
 
   // READ the kaggle criteo dataset
-  return input.read_input_csv(
+  return input.read_input_criteo_kaggle_sparse(
       config.get_input_path(),
-      ",", 10, config.get_limit_samples(), config.get_limit_cols(), true).to_sparse();
+      delimiter,
+      config);
 }
 
 void LoadingSparseTaskS3::check_label(FEATURE_TYPE label) {
