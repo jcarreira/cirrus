@@ -295,10 +295,10 @@ std::pair<double, double> SoftmaxModel::calc_loss(Dataset& data) const {
     }
 
     FEATURE_TYPE accuracy = (1.0 - (1.0 * count_wrong / dataset.rows()));
-    std::cout
-        << "Accuracy: " << accuracy
-        << " wrong: " << count_wrong << " samples: " << dataset.rows()
-        << std::endl;
+    //std::cout
+        //<< "Accuracy: " << accuracy
+        //<< " wrong: " << count_wrong << " samples: " << dataset.rows()
+        //<< std::endl;
 
     // constant
     FEATURE_TYPE data_loss = sum / dataset.rows();

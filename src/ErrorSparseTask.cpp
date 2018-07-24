@@ -27,6 +27,9 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
     config.get_model_type() == Configuration::SOFTMAX;
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+  if (use_softmax) {
+    return psi->get_sm_full_model(config);
+  }
   return psi->get_full_model(use_col_filtering);
 }
 
@@ -160,7 +163,6 @@ void ErrorSparseTask::run(const Configuration& config) {
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
         if (config.get_model_type() == Configuration::SOFTMAX) {
-          std::cout << "softmax" << std::endl;
           Dataset intermediate = ds.to_dataset(config);
           ret = model->calc_loss(intermediate);
         } else {
