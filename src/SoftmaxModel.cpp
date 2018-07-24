@@ -150,14 +150,14 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     //Eigen::MatrixXd dataset(m.rows, m.cols);
     for (unsigned int row = 0; row < m.rows; ++row) {
         for (unsigned int col = 0; col < m.cols; ++col) {
-            dataset(row, col) = m_data[row * m.cols + col];
+          dataset(row, col) = m_data[row * m.cols + col];
         }
     }
     Eigen::Matrix<FEATURE_TYPE, -1, -1> W(dataset.cols(), nclasses);
     //Eigen::MatrixXd W(dataset.cols(), nclasses);
     for (unsigned int d = 0; d < dataset.cols(); ++d) {
         for (unsigned int k = 0; k < nclasses; ++k) {
-            W(d, k) = weights[d][k];
+          W(d, k) = weights[d][k];
         }
     }
     
