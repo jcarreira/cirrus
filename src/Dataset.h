@@ -126,7 +126,7 @@ class Dataset {
 
   // SparseDataset to_sparse() const;
 
-public:
+ public:
   Matrix samples_;  //< dataset in matrix format
   std::shared_ptr<const FEATURE_TYPE> labels_;  //< vector of labels
 };

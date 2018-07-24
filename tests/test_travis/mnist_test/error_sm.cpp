@@ -31,7 +31,7 @@ int main() {
   // get data first
   // what we are going to use as a test set
   InputReader input;
-  Dataset test_data = input.read_input_csv("tests/test_data/test_mnist.csv", 
+  Dataset test_data = input.read_input_csv("tests/test_data/test_mnist.csv",
                                            ",", 10, config.get_limit_samples(),
                                            config.get_limit_cols(), true);
 

@@ -28,8 +28,7 @@ void SoftmaxTask::push_gradient(SoftmaxGradient* smg) {
             << "Worker task published gradient"
             << " with version: " << smg->getVersion()
             << " at time (us): " << get_time_us()
-            << " took(us): " << elapsed_push_us
-            << " bw(MB/s): " << std::fixed 
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed 
             << (1.0 * smg->getSerializedSize() / elapsed_push_us / 1024 / 1024 *
                 1000 * 1000)
             << " since last(us): " << (now - before) << "\n";
@@ -50,11 +49,11 @@ bool SoftmaxTask::get_dataset_minibatch(std::unique_ptr<SparseDataset>& dataset,
 #endif
   dataset.reset(
       new SparseDataset(reinterpret_cast<const char*>(minibatch),
-                        config.get_minibatch_size())); // this takes 11 us
+                        config.get_minibatch_size()));  // this takes 11 us
 
 #ifdef DEBUG
   auto finish2 = get_time_us();
-  double bw = 1.0 * dataset->getSizeBytes() / (finish2-start) * 1000.0 *
+  double bw = 1.0 * dataset->getSizeBytes() / (finish2 - start) * 1000.0 *
               1000 / 1024 / 1024;
   std::cout << "[WORKER] Get Sample Elapsed (S3) "
             << " minibatch size: " << config.get_minibatch_size()
@@ -77,8 +76,8 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
-  S3SparseIterator s3_iter(train_range.first, train_range.second,
-                           config, config.get_s3_size(), config.get_minibatch_size(),
+  S3SparseIterator s3_iter(train_range.first, train_range.second, config,
+                           config.get_s3_size(), config.get_minibatch_size(),
                            true, worker);
 
   std::cout << "[WORKER] starting loop" << std::endl;
@@ -144,8 +143,8 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
       push_gradient(smg);
     } catch (...) {
       std::cout << "[WORKER] "
-        << "Worker task error doing put of gradient"
-        << "\n";
+                << "Worker task error doing put of gradient"
+                << "\n";
       exit(-1);
     }
 #ifdef DEBUG

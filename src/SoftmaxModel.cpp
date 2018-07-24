@@ -160,7 +160,7 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
           W(d, k) = weights[d][k];
         }
     }
- 
+
     auto scores = dataset * W;
     // we exponentiate those scores
     // [N * K]

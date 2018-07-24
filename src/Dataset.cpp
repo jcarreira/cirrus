@@ -142,7 +142,8 @@ std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
 }
 
 // SparseDataset Dataset::to_sparse() const {
-// const FEATURE_TYPE* m_data = reinterpret_cast<const FEATURE_TYPE*>(samples_.data.get());
+// const FEATURE_TYPE* m_data = reinterpret_cast<const
+// FEATURE_TYPE*>(samples_.data.get());
 // std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data;
 // for (int i = 0; i < samples_.rows; i++) {
 // std::vector<std::pair<int, FEATURE_TYPE>> row;
@@ -155,7 +156,7 @@ std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
 // for (size_t i = 0; i < samples_.rows; i++) {
 // labels.push_back(labels_.get()[i]);
 //}
-// return SparseDataset(std::move(sparse_data), std::move(labels));  
+// return SparseDataset(std::move(sparse_data), std::move(labels));
 //}
 
 Dataset Dataset::Dataset::random_sample(uint64_t n_samples) const {

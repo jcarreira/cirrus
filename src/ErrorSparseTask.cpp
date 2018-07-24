@@ -89,7 +89,7 @@ void ErrorSparseTask::run(const Configuration& config) {
 
   uint32_t left, right;
   if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
-          config.get_model_type() == Configuration::SOFTMAX) {
+      config.get_model_type() == Configuration::SOFTMAX) {
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
@@ -190,7 +190,7 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-    } catch(...) {
+    } catch (...) {
       std::cout << "run_compute_error_task unknown id" << std::endl;
     }
   }

@@ -68,15 +68,15 @@ class SoftmaxTask : public MLTask {
               uint64_t worker_id,
               const std::string& ps_ip,
               uint64_t ps_port)
-     : MLTask(model_size,
-              batch_size,
-              samples_per_batch,
-              features_per_sample,
-              nworkers,
-              worker_id,
-              ps_ip,
-              ps_port),
-       psint(nullptr) {}
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port),
+        psint(nullptr) {}
 
   /**
     * Worker here is a value 0..nworkers - 1
