@@ -94,7 +94,6 @@ SparseDataset::SparseDataset(const char* data, bool from_s3, bool has_labels) {
     FEATURE_TYPE label;
     if (has_labels) {
       label = load_value<FEATURE_TYPE>(data);
-      assert(label == 0.0 || label == 1.0);
     }
     int num_sample_values = load_value<int>(data);
 
@@ -118,6 +117,22 @@ SparseDataset::SparseDataset(const char* data, bool from_s3, bool has_labels) {
 
 uint64_t SparseDataset::num_samples() const {
     return data_.size();
+}
+
+Dataset SparseDataset::to_dataset() const {
+    std::vector<std::vector<FEATURE_TYPE>> data;
+    for (int i = 0; i < data_.size()) {
+      std::vector<FEATURE_TYPE> row;
+      for (int j = 0; j < data_[i].size(); j++) {
+        if (j == data_[i][j].first) {
+          row.push_back(data_[i][j].second;
+        } else {
+          row.push_back(0);
+        }
+      }
+      data.push_back(row);
+    }
+    return Dataset(data, labels_);
 }
 
 void SparseDataset::check() const {

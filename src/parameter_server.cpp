@@ -72,7 +72,8 @@ void run_tasks(int rank, int nworkers,
     et.run(config);
     cirrus::sleep_forever();
   } else if (rank == LOADING_SPARSE_TASK_RANK) {
-    if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION) {
+    if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION ||
+        config.get_model_type() == cirrus::Configuration::SOFTMAX) {
       cirrus::LoadingSparseTaskS3 lt((1 << config.get_model_bits()),
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);

@@ -141,6 +141,25 @@ std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
   return labels_;
 }
 
+SparseDataset Dataset::to_sparse() const {
+  const FEATURE_TYPE* m_data = reinterpret_cast<const FEATURE_TYPE*>(samples_.data.get());
+  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data;
+  for (int i = 0; i < samples_.rows; i++) {
+    std::vector<std::pair<int, FEATURE_TYPE>> row;
+    for (int j = 0; j < samples_.cols; j++) {
+      if (m_data[i * samples_.cols + j] != 0) {
+         row.push_back(std::make_pair(j, m_data[i * samples_.cols + j]));
+      }
+    }
+    sparse_data.push_back(row);
+  }
+  std::vector<FEATURE_TYPE> labels;
+  for (size_t i = 0; i < samples_.rows; i++) {
+    labels.push_back(labels_.get()[i]);
+  }
+  return SparseDataset(std::move(sparse_data), std::move(labels));  
+}
+
 Dataset Dataset::Dataset::random_sample(uint64_t n_samples) const {
   std::random_device rd;
   std::default_random_engine re(rd());
