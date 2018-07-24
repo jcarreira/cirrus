@@ -79,6 +79,9 @@ class SoftmaxTask : public MLTask {
 
   private:
     void push_gradient(SoftmaxGradient*);
+    bool get_dataset_minibatch(
+      std::unique_ptr<SparseDataset>& dataset,
+        S3SparseIterator& s3_iter);
     std::mutex redis_lock;
     PSSparseServerInterface* psint;
 };

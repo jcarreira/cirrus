@@ -1,16 +1,8 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "Utils.h"
-#include "S3SparseIterator.h"
-#include "PSSparseServerInterface.h"
-
-#include <pthread.h>
-
-#undef DEBUG
+#include <InputReader.h>
 
 namespace cirrus {
-
 void SoftmaxTask::push_gradient(SoftmaxGradient* smg) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
@@ -37,54 +29,19 @@ void SoftmaxTask::push_gradient(SoftmaxGradient* smg) {
 #endif
 }
 
-// get samples and labels data
-bool SoftmaxTask::get_dataset_minibatch(
-    std::unique_ptr<SparseDataset>& dataset,
-    S3SparseIterator& s3_iter) {
-#ifdef DEBUG
-  auto start = get_time_us();
-#endif
-
-  const void* minibatch = s3_iter.get_next_fast();
-#ifdef DEBUG
-  auto finish1 = get_time_us();
-#endif
-  dataset.reset(new SparseDataset(reinterpret_cast<const char*>(minibatch),
-        config.get_minibatch_size())); // this takes 11 us
-
-#ifdef DEBUG
-  auto finish2 = get_time_us();
-  double bw = 1.0 * dataset->getSizeBytes() /
-    (finish2-start) * 1000.0 * 1000 / 1024 / 1024;
-  std::cout << "[WORKER] Get Sample Elapsed (S3) "
-    << " minibatch size: " << config.get_minibatch_size()
-    << " part1(us): " << (finish1 - start)
-    << " part2(us): " << (finish2 - finish1)
-    << " BW (MB/s): " << bw
-    << " at time: " << get_time_us()
-    << "\n";
-#endif
-  return true;
-}
-
 void SoftmaxTask::run(const Configuration& config, int worker) {
-  std::cout << "Starting LogisticSparseTaskS3"
+  std::cout << "Starting SoftmaxTask"
     << std::endl;
-  uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
+  InputReader input;
+  Dataset dataset_train = input.read_input_csv("test_data/train_mnist.csv", ",", 10,
+      config.get_limit_samples(), config.get_limit_cols(), true);
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
   
-  std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
-    << std::endl;
   wait_for_start(worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
-  auto train_range = config.get_train_range();
-  S3SparseIterator s3_iter(
-      train_range.first, train_range.second,
-      config, config.get_s3_size(), config.get_minibatch_size(),
-      true, worker);
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
@@ -98,10 +55,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    std::unique_ptr<SparseDataset> dataset;
-    if (!get_dataset_minibatch(dataset, s3_iter)) {
-      continue;
-    }
+    Dataset dataset = dataset_train.random_sample(config.get_minibatch_size());
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
     //dataset->check();
@@ -113,7 +67,6 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     SoftmaxModel model = *(psint->get_sm_full_model(config));
-
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;
@@ -121,9 +74,9 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
     std::cout << "Computing gradient" << "\n";
     now = get_time_us();
 #endif
-
+    dataset.print_info();
     try {
-      gradient = model.minibatch_grad(dataset.to_dataset(config).get_samples(),
+      gradient = model.minibatch_grad(dataset.get_samples(),
           (float*) dataset.get_labels().get(), 20, config.get_learning_rate());
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
@@ -162,6 +115,4 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
     }
   }
 }
-
-} // namespace cirrus
-
+}

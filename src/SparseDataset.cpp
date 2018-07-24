@@ -119,11 +119,11 @@ uint64_t SparseDataset::num_samples() const {
     return data_.size();
 }
 
-Dataset SparseDataset::to_dataset() const {
+Dataset SparseDataset::to_dataset(const Configuration& config) const {
     std::vector<std::vector<FEATURE_TYPE>> data;
     for (int i = 0; i < data_.size(); i++) {
       std::vector<FEATURE_TYPE> row;
-      for (int j = 0; j < data_[i].size(); j++) {
+      for (int j = 0; j < config.get_num_features(); j++) {
         if (j == data_[i][j].first) {
           row.push_back(data_[i][j].second);
         } else {
