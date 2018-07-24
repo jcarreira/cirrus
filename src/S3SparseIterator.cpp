@@ -234,9 +234,10 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     if (config.get_s3_bucket() == "cirrus-criteo-kaggle-19b-random" ||
       config.get_s3_bucket() == "cirrus-criteo-kaggle-20b-random") {
       obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-CRITEO";
-    }  else if (config.get_s3_bucket() == "cirrus-mnist") {
-      obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-MNIST";
-    }  else {
+    } else if (config.get_s3_bucket() == "cirrus-mnist") {
+      obj_id_str =
+          std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-MNIST";
+    } else {
       obj_id_str = "CIRRUS" + std::to_string(obj_id);
     }
 

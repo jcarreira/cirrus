@@ -74,7 +74,8 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   }
 }
 
-void PSSparseServerInterface::send_sm_gradient(const SoftmaxGradient& gradient) {
+void PSSparseServerInterface::send_sm_gradient(
+    const SoftmaxGradient& gradient) {
   uint32_t operation = SEND_SM_GRADIENT;
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
@@ -92,7 +93,7 @@ void PSSparseServerInterface::send_sm_gradient(const SoftmaxGradient& gradient) 
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
   }
-  
+
   char data[size];
   gradient.serialize(data);
   ret = send_all(sock, data, size);
@@ -224,25 +225,27 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   }
 }
 
-std::unique_ptr<SoftmaxModel> PSSparseServerInterface::get_sm_full_model(const Configuration& config) {
+std::unique_ptr<SoftmaxModel> PSSparseServerInterface::get_sm_full_model(
+    const Configuration& config) {
   // 1. Send operation
   uint32_t operation = GET_SM_FULL_MODEL;
   send_all(sock, &operation, sizeof(uint32_t));
 
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
-  //std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" << std::endl;
+  // std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" <<
+  // std::endl;
 
   char* buffer = new char[to_receive_size];
   read_all(sock, buffer, to_receive_size);
-  
- // std::cout
-    //<< " buffer checksum: " << crc32(buffer, to_receive_size)
-    //<< std::endl;
+  // std::cout
+  //<< " buffer checksum: " << crc32(buffer, to_receive_size)
+  //<< std::endl;
 
   // build a sparse model and return
   std::unique_ptr<SoftmaxModel> model = std::make_unique<SoftmaxModel>(
-      (FEATURE_TYPE*)buffer, config.get_num_classes(), config.get_num_features()); //XXX fix this
+      (FEATURE_TYPE*)buffer, config.get_num_classes(),
+      config.get_num_features()); //XXX fix this
   delete[] buffer;
   return model;
 }

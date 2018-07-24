@@ -59,33 +59,37 @@ class MLTask {
 };
 
 class SoftmaxTask : public MLTask {
-  public:
-    SoftmaxTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id,
-        const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
-  {}
+ public:
+  SoftmaxTask(uint64_t model_size,
+              uint64_t batch_size,
+              uint64_t samples_per_batch,
+              uint64_t features_per_sample,
+              uint64_t nworkers,
+              uint64_t worker_id,
+              const std::string& ps_ip,
+              uint64_t ps_port)
+     : MLTask(model_size,
+              batch_size,
+              samples_per_batch,
+              features_per_sample,
+              nworkers,
+              worker_id,
+              ps_ip,
+              ps_port),
+       psint(nullptr) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker);
+  /**
+    * Worker here is a value 0..nworkers - 1
+    */
+  void run(const Configuration& config, int worker);
 
-  private:
-    void push_gradient(SoftmaxGradient*);
-    bool get_dataset_minibatch(
-      std::unique_ptr<SparseDataset>& dataset,
-        S3SparseIterator& s3_iter);
-    std::mutex redis_lock;
-    PSSparseServerInterface* psint;
+ private:
+  void push_gradient(SoftmaxGradient*);
+  bool get_dataset_minibatch(std::unique_ptr<SparseDataset>& dataset,
+                             S3SparseIterator& s3_iter);
+  std::mutex redis_lock;
+  PSSparseServerInterface* psint;
 };
-
 
 class LogisticSparseTaskS3 : public MLTask {
   public:

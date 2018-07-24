@@ -23,8 +23,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
     first_time = false;
     psi = new PSSparseServerInterface(ps_ip, ps_port);
   }
-  bool use_softmax =
-    config.get_model_type() == Configuration::SOFTMAX;
+  bool use_softmax = config.get_model_type() == Configuration::SOFTMAX;
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   if (use_softmax) {
@@ -90,7 +89,7 @@ void ErrorSparseTask::run(const Configuration& config) {
 
   uint32_t left, right;
   if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
-      config.get_model_type() == Configuration::SOFTMAX) {
+          config.get_model_type() == Configuration::SOFTMAX) {
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
@@ -100,8 +99,8 @@ void ErrorSparseTask::run(const Configuration& config) {
     exit(-1);
   }
 
-  S3SparseIterator s3_iter(left, right, config,
-      config.get_s3_size(), config.get_minibatch_size(),
+  S3SparseIterator s3_iter(
+      left, right, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION ||
       config.get_model_type() == Configuration::SOFTMAX,
@@ -119,10 +118,11 @@ void ErrorSparseTask::run(const Configuration& config) {
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
     const void* minibatch_data = s3_iter.get_next_fast();
-    SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
+    SparseDataset ds(
+        reinterpret_cast<const char*>(minibatch_data),
         config.get_minibatch_size(),
         config.get_model_type() == Configuration::LOGISTICREGRESSION ||
-        config.get_model_type() == Configuration::SOFTMAX);
+            config.get_model_type() == Configuration::SOFTMAX);
     minibatches_vec.push_back(ds);
   }
 
@@ -140,7 +140,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
-    //try {
+    try {
       // first we get the model
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] getting the full model"
@@ -190,9 +190,9 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-    //} //catch(...) {
-      //std::cout << "run_compute_error_task unknown id" << std::endl;
-    //}
+    } catch(...) {
+      std::cout << "run_compute_error_task unknown id" << std::endl;
+    }
   }
 }
 

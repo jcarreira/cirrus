@@ -16,8 +16,8 @@ using namespace cirrus;
 Configuration config = Configuration("configs/softmax_config.cfg");
 
 std::unique_ptr<SoftmaxModel> get_model(const Configuration& config,
-                                       const std::string& ps_ip,
-                                       uint64_t ps_port) {
+                                        const std::string& ps_ip,
+                                        uint64_t ps_port) {
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
@@ -31,8 +31,9 @@ int main() {
   // get data first
   // what we are going to use as a test set
   InputReader input;
-  Dataset test_data = input.read_input_csv(
-      "tests/test_data/test_mnist.csv", ",", 10, config.get_limit_samples(), config.get_limit_cols(), true);
+  Dataset test_data = input.read_input_csv("tests/test_data/test_mnist.csv", 
+                                           ",", 10, config.get_limit_samples(),
+                                           config.get_limit_cols(), true);
 
   uint64_t start_time = get_time_us();
 
@@ -46,7 +47,8 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<SoftmaxModel> model = get_model(config, "127.0.0.1", 1337);
+      std::unique_ptr<SoftmaxModel> model =
+          get_model(config, "127.0.0.1", 1337);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -58,8 +60,7 @@ int main() {
       uint64_t total_num_samples = 0;
       uint64_t total_num_features = 0;
       uint64_t start_index = 0;
-      std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(test_data);
+      std::pair<FEATURE_TYPE, FEATURE_TYPE> ret = model->calc_loss(test_data);
       total_loss += ret.first;
       total_accuracy = ret.second;
       total_num_samples += test_data.num_samples();

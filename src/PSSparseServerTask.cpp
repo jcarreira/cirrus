@@ -120,20 +120,18 @@ bool PSSparseServerTask::process_send_sm_gradient(
     return false;
   }
 
-  SoftmaxGradient gradient(task_config.get_num_classes(), task_config.get_num_features());
+  SoftmaxGradient gradient(task_config.get_num_classes(),
+                           task_config.get_num_features());
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
 #ifdef DEBUG
   std::cout << "Doing sgd update" << std::endl;
 #endif
-  sm_model->sgd_update(
-      task_config.get_learning_rate(), &gradient);
+  sm_model->sgd_update(task_config.get_learning_rate(), &gradient);
 #ifdef DEBUG
-  std::cout
-    << "sgd update done"
-    << " checksum: " << sm_model->checksum()
-    << std::endl;
+  std::cout << "sgd update done"
+            << " checksum: " << sm_model->checksum() << std::endl;
 #endif
   model_lock.unlock();
   gradientUpdatesCount++;
@@ -292,7 +290,8 @@ bool PSSparseServerTask::process_get_mf_full_model(
 }
 
 bool PSSparseServerTask::process_get_sm_full_model(
-    const Request& req, std::vector<char>& thread_buffer) {
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   model_lock.lock();
   auto sm_model_copy = *sm_model;
   model_lock.unlock();
@@ -300,16 +299,16 @@ bool PSSparseServerTask::process_get_sm_full_model(
 
   if (thread_buffer.size() < model_size) {
     std::cout << "thread_buffer.size(): " << thread_buffer.size()
-      << " model_size: " << model_size << std::endl;
+              << " model_size: " << model_size << std::endl;
     throw std::runtime_error("Thread buffer too small");
   }
 
   sm_model_copy.serializeTo(thread_buffer.data());
-  //std::cout
-    //<< "Serializing mf model"
-    //<< " mode checksum: " << sm_model_copy.checksum()
-    //<< " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-    //<< std::endl;
+  // std::cout
+  //<< "Serializing mf model"
+  //<< " mode checksum: " << sm_model_copy.checksum()
+  //<< " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+  //<< std::endl;
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -392,14 +391,15 @@ void PSSparseServerTask::gradient_f() {
       continue;
     } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
                operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL || operation == SEND_SM_GRADIENT) {
+               operation == GET_MF_SPARSE_MODEL ||
+               operation == SEND_SM_GRADIENT) {
       // read 4 bytes of the size of the remaining message
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
         handle_failed_read(&req.poll_fd);
         continue;
       }
-      //std::cout << "incoming size: " << incoming_size << std::endl;
+      // std::cout << "incoming size: " << incoming_size << std::endl;
       req.incoming_size = incoming_size;
     }
 
@@ -419,7 +419,7 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_mf_gradient(req, thread_buffer)) {
         break;
       }
-    }  else if (req.req_id == GET_SM_FULL_MODEL) {
+    } else if (req.req_id == GET_SM_FULL_MODEL) {
       if (!process_get_sm_full_model(req, thread_buffer)) {
         break;
       }
@@ -533,7 +533,8 @@ void PSSparseServerTask::start_server() {
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
   mf_model->randomize();
-  sm_model.reset(new SoftmaxModel(task_config.get_num_classes(), task_config.get_num_features()));
+  sm_model.reset(new SoftmaxModel(task_config.get_num_classes(),
+                                  task_config.get_num_features()));
   sm_model->randomize();
 
   sem_init(&sem_new_req, 0, 0);
