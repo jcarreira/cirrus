@@ -123,8 +123,9 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient = model.minibatch_grad(dataset.to_dataset(config).get_samples(),
-          (float*) dataset.get_labels().get(), 20, config.get_learning_rate());
+      Dataset ds = dataset->to_dataset(config);
+      gradient = model.minibatch_grad(ds.get_samples(),
+          (float*) ds.get_labels().get(), 20, config.get_learning_rate());
     } catch(const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);

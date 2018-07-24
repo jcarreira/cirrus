@@ -147,9 +147,7 @@ std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
   //for (int i = 0; i < samples_.rows; i++) {
     //std::vector<std::pair<int, FEATURE_TYPE>> row;
     //for (int j = 0; j < samples_.cols; j++) {
-      //if (m_data[i * samples_.cols + j] != 0) {
-         //row.push_back(std::make_pair(j, m_data[i * samples_.cols + j]));
-      //}
+      //row.push_back(std::make_pair(j, m_data[i * samples_.cols + j]));
     //}
     //sparse_data.push_back(row);
   //}
