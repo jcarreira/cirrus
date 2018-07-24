@@ -305,11 +305,11 @@ bool PSSparseServerTask::process_get_sm_full_model(
   }
 
   sm_model_copy.serializeTo(thread_buffer.data());
-  std::cout
-    << "Serializing mf model"
-    << " mode checksum: " << sm_model_copy.checksum()
-    << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-    << std::endl;
+  //std::cout
+    //<< "Serializing mf model"
+    //<< " mode checksum: " << sm_model_copy.checksum()
+    //<< " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+    //<< std::endl;
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -399,7 +399,7 @@ void PSSparseServerTask::gradient_f() {
         handle_failed_read(&req.poll_fd);
         continue;
       }
-      std::cout << "incoming size: " << incoming_size << std::endl;
+      //std::cout << "incoming size: " << incoming_size << std::endl;
       req.incoming_size = incoming_size;
     }
 
