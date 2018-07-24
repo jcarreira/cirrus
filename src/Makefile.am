@@ -6,7 +6,7 @@ CXX = g++
 
 bin_PROGRAMS = parameter_server ps_test csv_to_libsvm $(TOP_DIR)/tests/test_travis/test_lr \
 	       $(TOP_DIR)/tests/test_travis/test_ps $(TOP_DIR)/tests/test_travis/worker \
-	       $(TOP_DIR)/tests/test_travis/error
+	       $(TOP_DIR)/tests/test_travis/error softmax_error
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
@@ -71,3 +71,5 @@ __TOP_DIR__tests_test_travis_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis/ps_t
 __TOP_DIR__tests_test_travis_worker_SOURCES = $(TOP_DIR)/tests/test_travis/worker.cpp $(CPP_SOURCES)
 
 __TOP_DIR__tests_test_travis_error_SOURCES = $(TOP_DIR)/tests/test_travis/error.cpp $(CPP_SOURCES)
+
+softmax_error_SOURCES = error_softmax.cpp $(CPP_SOURCES)
