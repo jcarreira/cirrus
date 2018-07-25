@@ -68,17 +68,6 @@ namespace cirrus{
 
     current = 0;
 
-
-    // std::cout << *K << " ------------" << std::endl;
-    // std::cout << ndt_.size() << " ------------" << std::endl;
-    // std::cout << ndt_[ndt_.size()-1].size() << " ------------" << std::endl;
-    // std::cout << t_.size() << " ------------" << std::endl;
-    // for(auto i: ndt_[0]){
-    //   std::cout << i << " ";
-    // }
-    // std::cout << std::endl;
-    // std::cout << slice_.size() << " ------------" << std::endl;
-    // std::cout << *slice_size << " ------------" << std::endl;
   }
 
   char* LDAStatistics::serialize(){
@@ -110,16 +99,6 @@ namespace cirrus{
       }
     }
 
-    // std::cout << K_ << " ------------" << std::endl;
-    // std::cout << ndt_.size() << " ------------" << std::endl;
-    // std::cout << ndt_[0].size() << " ------------" << std::endl;
-    // std::cout << t_.size() << " ------------" << std::endl;
-    // for(auto i: ndt_[0]){
-    //   std::cout << i << " ";
-    // }
-    // std::cout << std::endl;
-    // std::cout << slice_.size() << " ------------" << std::endl;
-
     return msg_begin;
   }
 
@@ -146,7 +125,6 @@ namespace cirrus{
 
   int LDAStatistics::get_receive_size(){
     return sizeof(uint32_t) * (1 + (slice_.size() + 1) * K_);
-    // return (4 + (slice_.size() + 1) * K_ + slice_.size()) * sizeof(int);
   }
 
   char* LDAStatistics::pop_partial_docs(int minibatch_size){
@@ -180,21 +158,13 @@ namespace cirrus{
 
     std::vector<int> slice_partial_vec(slice_partial.begin(), slice_partial.end());
 
-    // std::cout << "popping docs size: " << ndt_partial.size() << std::endl;
     LDAStatistics partial(K_, ndt_partial, slice_partial_vec, t_partial, d_partial, w_partial);
     return partial.serialize();
   }
 
   int LDAStatistics::pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat){
     std::vector<int> slice;
-    // std::cout << slice.size() << " " << current << " " << slice_.size() << " " << slice_size  << " " << int(slice_.size()) - current << " ------\n";
-    // std::cout << "slice_size: " << slice_size << std::endl;
-    // std::cout << "When popping: " << slice_size << std::endl;
-
-
     if(int(slice_.size()) - current < slice_size && current != 0){
-
-      // std::cout << slice_.size() << " " << current << " " << slice_size << std::endl;
       return -1;
     }
 
@@ -202,31 +172,17 @@ namespace cirrus{
       slice = std::vector<int>(slice_.begin()+current, slice_.begin()+current+slice_size);
     else{
       slice = std::vector<int>(slice_.begin()+current, slice_.end());
-      // std::cout << "wereraesrase\n";
     }
 
 
     partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
-    // std::cout << slice_.size() << " " << current << " " << slice_size << std::endl;
     return 1;
   }
 
   void LDAStatistics::store_new_stats(LDAModel model){
 
-    // std::cout << "b4 ndt[0]: ";
-    // for(int i=0; i<K_; ++i){
-    //   std::cout << ndt_[0][i] << " ";
-    // }
-    // std::cout << std::endl;
-
     ndt_ = model.ndt;
     t_ = model.t;
-
-    // std::cout << "after ndt[0]: ";
-    // for(int i=0; i<K_; ++i){
-    //   std::cout << ndt_[0][i] << " ";
-    // }
-    // std::cout << std::endl;
 
     current += slice_size;
   }

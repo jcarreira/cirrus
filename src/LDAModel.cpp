@@ -90,32 +90,13 @@ namespace cirrus{
       ndt.push_back(nt_di);
       nt_di.clear();
     }
-
-    // std::cout << "nvt size: " << nvt.size() << " ----------- " << std::endl;
-    // std::cout << "K size: " << nvt[0].size() << " ----------- " << std::endl;
-    // std::cout << "ndt size: " << ndt.size() << " ----------- " << std::endl;
-    // std::cout << "K (ndt) size: " << ndt[0].size() << " ----------- " << std::endl;
   }
 
   std::unique_ptr<LDAUpdates> LDAModel::sample_model(){
 
-    // std::cout << "b4 sampling ndt[0]: ";
-    // for(int i=0; i<K_; ++i){
-    //   std::cout << ndt[0][i] << " ";
-    // }
-    // std::cout << std::endl;
-
     return sample_thread(std::ref(t), std::ref(d),
                       std::ref(w), std::ref(nt), std::ref(nvt), // std::ref(nvt),
                       std::ref(ndt), std::ref(slice));
-
-    // std::cout << "adter sampling ndt[0]: ";
-    // for(int i=0; i<K_; ++i){
-    //   std::cout << ndt[0][i] << " ";
-    // }
-    // std::cout << std::endl;
-
-    // return rst;
   }
 
   std::unique_ptr<LDAUpdates> LDAModel::sample_thread(std::vector<int>& t,
@@ -134,15 +115,6 @@ namespace cirrus{
       ++ idx;
     }
 
-    // for(int i=0; i<10; ++i){
-    //   std::cout << slice[i] << " ";
-    // }
-    // std::cout << std::endl;
-    // for(int i=0; i<10; ++i){
-    //   std::cout << slice_map[slice[i]] << " ";
-    // }
-    // std::cout << std::endl;
-
     double* rate = new double[K_];
     double r, rate_cum, linear;
     int top, new_top, doc, gindex, lindex, j;//, lindex, j;
@@ -151,39 +123,12 @@ namespace cirrus{
     std::vector<int> change_nvt(nvt.size() * K_);
     std::vector<int> change_nt(K_);
 
-    // std::cout << "b4 t: ";
-    // for(int i=0; i<10; ++i){
-    //   std::cout << t[i] << " ";
-    // }
-    // std::cout << std::endl;
-
-    // if(slice[0] == 1004){
-    //   std::cout << "nvt[0] b4: ";
-    //   for(int i=0; i<K_; ++i){
-    //     std::cout << nvt[0][i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-
-    // std::cout << "t.size(): " << t.size() << std::endl;
-
-    // for(int i=0; i<nvt[nvt.size()-1].size(); ++i){
-    //   std::cout << nvt[0][i] << " ";
-    // }
-    // std::cout << std::endl;
-
     for(int i=0; i<t.size(); i++){
 
-      // std::cout << i << std::endl;
-
       top = t[i], doc = d[i], gindex = w[i];
-      // if(std::find(slice.begin(), slice.end(), gindex) == slice.end())
-      //   continue;
       if(slice_map.find(gindex) == slice_map.end())
         continue;
       lindex = slice_map[gindex];
-
-      // std::cout << i << " | " <<  "topic: " << top << " doc: " << doc << " gindex: " << gindex << " lindex: " << lindex << " | " << " V: " << nvt.size() << " D: " << ndt.size() << std::endl;
 
       nvt[lindex][top] -= 1;
       ndt[doc][top] -= 1;
@@ -203,10 +148,6 @@ namespace cirrus{
       linear = rand()*rate_cum/RAND_MAX;
       new_top = (std::lower_bound(rate, rate+K_, linear)) - rate;
 
-      // if(i < 10){
-      //   std::cout << i << " " << top << " " << new_top << std::endl;
-      // }
-
       t[i] = new_top;
       nvt[lindex][new_top] += 1;
       ndt[doc][new_top] += 1;
@@ -219,37 +160,8 @@ namespace cirrus{
 
     }
 
-    // if(slice[0] == 1004){
-    //   std::cout << "update[0] b4: ";
-    //   for(int i=0; i<K_; ++i){
-    //     std::cout << change_nvt[i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    //
-    //   std::cout << "nvt[0] after: ";
-    //   for(int i=0; i<K_; ++i){
-    //     std::cout << nvt[0][i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-
     delete[] rate;
-
-    // std::cout << "after t: ";
-    // for(int i=0; i<10; ++i){
-    //   std::cout << t[i] << " ";
-    // }
-    // std::cout << std::endl;
-
-    // for(int i=0; i<change_nt.size(); ++i){
-    //   std::cout << change_nt[i] << " ";
-    // }
-    // std::cout << std::endl;
-    //
-    // std::cout << "change_nvt size: " << change_nvt.size() << " ----------- " << std::endl;
-    // std::cout << "change_nt size: " << change_nt.size() << " ----------- " << std::endl;
-    // std::cout << "slice size: " << slice.size() << " ----------- " << std::endl;
-
+    
     std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice);
     return ret;
   }

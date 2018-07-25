@@ -97,20 +97,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     dataset.get_some_docs(partial_docs);
     LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, K, global_vocab);
 
-    // std::vector<std::vector<int>> test;
-    // to_save.get_ndt(test);
-    // std::cout << test.size() << " -----------\n";
-    // for(int j=0; j<10; ++j){
-    //   std::cout << test[j].size() << std::endl;
-    // }
-
-    // for(int i=0; i<5; ++i){
-    //   for(int j=0; j<K; ++j){
-    //     std::cout << test[i][j] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-
     std::cout << "Putting object(LDAStatistics) in S3 with size: " << to_save.get_serialize_size() << std::endl;
     std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-LDA";
     s3_put_object(obj_id, s3_client, config.get_s3_bucket(),
