@@ -25,7 +25,7 @@ class CostModel:
         self.worker_size = worker_size
 
     def get_total_cost(self, num_secs):
-      return num_exps * get_cost_per_exp(num_secs)
+      return self.num_exps * get_cost_per_exp(self.num_secs)
 
     # compute cos ($) of running worload
     # with given number of vms of specific type,
