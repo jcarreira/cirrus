@@ -573,7 +573,9 @@ void PSSparseServerTask::start_server() {
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
     std::cout << "Finished getting initial statistics.\n";
+    s3_shutdown_aws();
     compute_loglikelihood();
+    // s3_shutdown_aws();
   }
 
   sem_init(&sem_new_req, 0, 0);
