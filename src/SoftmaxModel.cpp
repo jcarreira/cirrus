@@ -182,7 +182,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
 
     std::vector<FEATURE_TYPE> logprobs(dataset.rows());
     FEATURE_TYPE sum = 0;
-    std::cout << probs(0, labels[0]) << std::endl;
     for (unsigned int i = 0; i < dataset.rows(); ++i) {
         if (probs(i, labels[i]) < 1e-10) {
             logprobs[i] -= 1e-10;
@@ -209,7 +208,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     // [D * N] * [N * K] = [D * K]
     dW.noalias() = dataset.transpose() * dscores;
     dW += epsilon * W;
-    std::cout << dW.rows() << std::endl;
     assert(static_cast<uint64_t>(dW.rows()) == d &&
            static_cast<uint64_t>(dW.cols()) == nclasses);
 
