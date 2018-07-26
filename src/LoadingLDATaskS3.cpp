@@ -67,7 +67,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
   s3_initialize_aws();
-  auto s3_client = s3_create_client();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   int K = config.get_k();
 
@@ -99,7 +99,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
     std::cout << "Putting object(LDAStatistics) in S3 with size: " << to_save.get_serialize_size() << std::endl;
     std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-LDA";
-    s3_put_object(obj_id, s3_client, config.get_s3_bucket(),
+    s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
         std::string(to_save.serialize(), to_save.get_serialize_size()));
   }
   // check_loading(config, s3_client);
@@ -114,8 +114,10 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   std::shared_ptr<char> s3_obj =
     initial_global_var.serialize(&len);
 
-  s3_put_object(obj_id, s3_client, config.get_s3_bucket(),
+  s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
       std::string(s3_obj.get(), len));
+
+  s3_shutdown_aws();
 
   std::cout << "LOADER-LDA terminated successfully" << std::endl;
 }

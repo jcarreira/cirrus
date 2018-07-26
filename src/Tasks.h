@@ -85,12 +85,15 @@ class LogisticSparseTaskS3 : public MLTask {
         SparseModelGet(const std::string& ps_ip, int ps_port) :
           ps_ip(ps_ip), ps_port(ps_port) {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-          }
+        }
 
-        SparseLRModel get_new_model(const SparseDataset& ds, const Configuration& config) {
+        SparseLRModel get_new_model(const SparseDataset& ds,
+                                    const Configuration& config) {
           return std::move(psi->get_lr_sparse_model(ds, config));
         }
-        void get_new_model_inplace(const SparseDataset& ds, SparseLRModel& model, const Configuration& config) {
+        void get_new_model_inplace(const SparseDataset& ds,
+                                   SparseLRModel& model,
+                                   const Configuration& config) {
           psi->get_lr_sparse_model_inplace(ds, model, config);
         }
 
@@ -145,19 +148,32 @@ class PSSparseTask : public MLTask {
 
 class ErrorSparseTask : public MLTask {
   public:
-    ErrorSparseTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
-    void run(const Configuration& config);
+   ErrorSparseTask(uint64_t model_size,
+                   uint64_t batch_size,
+                   uint64_t samples_per_batch,
+                   uint64_t features_per_sample,
+                   uint64_t nworkers,
+                   uint64_t worker_id,
+                   const std::string& ps_ip,
+                   uint64_t ps_port)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                ps_ip,
+                ps_port) {
+     this->ps_port = ps_port;
+   }
+   void run(const Configuration& config);
+   void error_response();
 
   private:
+   // Stores last recorded time/loss values
+   double last_time = 0.0;
+   double last_error = 0.0;
+   std::atomic<double> curr_error;
 };
 
 class PerformanceLambdaTask : public MLTask {
@@ -195,133 +211,172 @@ class LoadingSparseTaskS3 : public MLTask {
   {}
     void run(const Configuration& config);
     SparseDataset read_dataset(const Configuration& config);
-    void check_loading(const Configuration&, Aws::S3::S3Client& s3_client);
+    void check_loading(const Configuration&,
+                       std::unique_ptr<S3Client>& s3_client);
     void check_label(FEATURE_TYPE label);
 
   private:
 };
 
 class LoadingNetflixTask : public MLTask {
-  public:
-    LoadingNetflixTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
-    void run(const Configuration& config);
-    SparseDataset read_dataset(const Configuration& config, int&, int&);
-    void check_loading(const Configuration&, Aws::S3::S3Client& s3_client);
+ public:
+  LoadingNetflixTask(uint64_t model_size,
+                     uint64_t batch_size,
+                     uint64_t samples_per_batch,
+                     uint64_t features_per_sample,
+                     uint64_t nworkers,
+                     uint64_t worker_id,
+                     const std::string& ps_ip,
+                     uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port) {}
+  void run(const Configuration& config);
+  SparseDataset read_dataset(const Configuration& config, int&, int&);
+  void check_loading(const Configuration&,
+                     std::unique_ptr<S3Client>& s3_client);
 
-  private:
+ private:
 };
 
 class PSSparseServerTask : public MLTask {
-  public:
-    PSSparseServerTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port);
+ public:
+  PSSparseServerTask(uint64_t model_size,
+                     uint64_t batch_size,
+                     uint64_t samples_per_batch,
+                     uint64_t features_per_sample,
+                     uint64_t nworkers,
+                     uint64_t worker_id,
+                     const std::string& ps_ip,
+                     uint64_t ps_port);
 
-    void run(const Configuration& config);
+  void run(const Configuration& config);
 
-    struct Request {
-      public:
-        Request(int req_id, int sock, int id, uint32_t incoming_size, struct pollfd& poll_fd) :
-          req_id(req_id), sock(sock), id(id), incoming_size(incoming_size), poll_fd(poll_fd){}
+  struct Request {
+   public:
+    Request(int req_id,
+            int sock,
+            int id,
+            uint32_t incoming_size,
+            struct pollfd& poll_fd)
+        : req_id(req_id),
+          sock(sock),
+          id(id),
+          incoming_size(incoming_size),
+          poll_fd(poll_fd) {}
 
-        int req_id;
-        int sock;
-        int id;
-        uint32_t incoming_size;
-        struct pollfd& poll_fd;
-    };
-    void compute_loglikelihood();
+    int req_id;
+    int sock;
+    int id;
+    uint32_t incoming_size;
+    struct pollfd& poll_fd;
+  };
 
-  private:
-    void thread_fn();
-    void checkpoint_model_loop();
+  void compute_loglikelihood();
 
-    // network related methods
-    void start_server();
-    void main_poll_thread_fn(int id);
+ private:
+  /**
+    * Handle the situation when a socket read fails within worker threads
+    */
+  void handle_failed_read(struct pollfd* pfd);
+  void checkpoint_model_loop();      //< periodically checkpoint model
+  void start_server();               //< start server thread
+  void main_poll_thread_fn(int id);  //< setup polling thread and call poll()
 
-    bool testRemove(struct pollfd x, int id);
-    void loop(int id);
-    bool process(struct pollfd&, int id);
+  bool testRemove(struct pollfd x, int id);  //< clean dead connections
+  void loop(int id);                         //< listen for requests
+  bool process(struct pollfd&, int id);      //< process a request
 
-    // Model/ML related methods
-    void checkpoint_model_file(const std::string&) const;
-    std::shared_ptr<char> serialize_lr_model(
-        const SparseLRModel&, uint64_t* model_size) const;
-    void gradient_f();
+  /**
+    * Model/ML related methods
+    */
 
-    // message handling
-    bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-    bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-    bool process_get_mf_sparse_model(
-        const Request& req, std::vector<char>&, int tn);
-    bool process_get_lr_full_model(
-        const Request& req, std::vector<char>& thread_buffer);
-    bool process_send_mf_gradient(
-        const Request& req, std::vector<char>& thread_buffer);
-    bool process_get_mf_full_model(
-        const Request& req, std::vector<char>& thread_buffer);
-    bool process_send_lda_update(
-        const Request& req, std::vector<char>& thread_buffer);
-    bool process_get_lda_model(
-        const Request& req, std::vector<char>& thread_buffer);
+  // checkpoint model to file
+  void checkpoint_model_file(const std::string&) const;
 
-    /**
-      * Attributes
-      */
-    std::unique_ptr<OptimizationMethod> opt_method;
+  // serialize lr model
+  std::shared_ptr<char> serialize_lr_model(const SparseLRModel&,
+                                           uint64_t* model_size) const;
 
-    std::vector<uint64_t> curr_indexes = std::vector<uint64_t>(NUM_POLL_THREADS);
-#if 0
-    uint64_t server_clock = 0;  // minimum of all worker clocks
-#endif
-    //std::unique_ptr<std::thread> thread; // worker threads
-    std::vector<std::unique_ptr<std::thread>> server_threads;
-    std::vector<std::unique_ptr<std::thread>> gradient_thread;
-    std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
-    pthread_t poll_thread;
-    pthread_t main_thread;
-    std::mutex to_process_lock;
-    sem_t sem_new_req;
-    std::queue<Request> to_process;
-    std::mutex model_lock; // used to coordinate access to the last computed model
+  // worker thread function
+  void gradient_f();
 
-    int pipefds[NUM_POLL_THREADS][2] = { {0} };
+  // message handling
+  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
+  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
+  bool process_get_mf_sparse_model(const Request& req,
+                                   std::vector<char>&,
+                                   int tn);
+  bool process_get_lr_full_model(const Request& req,
+                                 std::vector<char>& thread_buffer);
+  bool process_send_mf_gradient(const Request& req,
+                                std::vector<char>& thread_buffer);
+  bool process_get_mf_full_model(const Request& req,
+                                 std::vector<char>& thread_buffer);
 
-    int port_ = 1337;
-    int server_sock_ = 0;
-    const uint64_t max_fds = 1000;
-    int timeout = 1; // 1 ms
-    std::vector<std::vector<struct pollfd>> fdses =
-        std::vector<std::vector<struct pollfd>>(NUM_POLL_THREADS);
+  bool process_send_lda_update( const Request& req, std::vector<char>& thread_buffer);
+  bool process_get_lda_model( const Request& req, std::vector<char>& thread_buffer);
 
-    std::vector<char> buffer; // we use this buffer to hold data from workers
+  void kill_server();
 
-    volatile uint64_t gradientUpdatesCount = 0;
+  /**
+    * Attributes
+    */
+  std::unique_ptr<OptimizationMethod> opt_method;  //< SGD optimization method
 
-    std::unique_ptr<SparseLRModel> lr_model; // last computed model
-    std::unique_ptr<MFModel> mf_model; // last computed model
-    std::unique_ptr<LDAUpdates> lda_global_vars; // nvt + nt
-    Configuration task_config;
-    uint32_t num_connections = 0;
+  // keep track of per-worker connections
+  std::vector<uint64_t> curr_indexes = std::vector<uint64_t>(NUM_POLL_THREADS);
 
-    std::map<int, bool> task_to_status;
-    std::map<int, std::string> operation_to_name;
+  // threads to handle connections and messages
+  std::vector<std::unique_ptr<std::thread>> server_threads;
 
-    char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
-    std::atomic<int> thread_count;
+  // threads to handle requests
+  std::vector<std::unique_ptr<std::thread>> gradient_thread;
+
+  std::set<uint64_t> registered_tasks;  //< which tasks have registered
+
+  // thread to checkpoint model
+  std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
+  pthread_t main_thread;
+  std::mutex to_process_lock;      //< lock for queue of requests
+  sem_t sem_new_req;               //< semaphore for queue of requests
+  std::queue<Request> to_process;  //< list of requests
+  std::mutex model_lock;  //< to coordinate access to the last computed model
+
+  // file descriptors for pipes
+  int pipefds[NUM_POLL_THREADS][2] = {{0}};
+
+  int server_sock_ = 0;           //< server used to receive connections
+  const uint64_t max_fds = 1000;  //< max number of connections supported
+  int timeout = 1;                //< 1 ms
+
+  // file descriptors for connections
+  std::vector<std::vector<struct pollfd>> fdses =
+      std::vector<std::vector<struct pollfd>>(NUM_POLL_THREADS);
+
+  std::vector<char> buffer;  //< we use this buffer to hold data from workers
+
+  std::atomic<uint64_t> gradientUpdatesCount;  //< # of gradients processed
+
+  std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
+  std::unique_ptr<MFModel> mf_model;        //< last computed model
+  std::unique_ptr<LDAUpdates> lda_global_vars;
+  Configuration task_config;                //< config for parameter server
+  uint32_t num_connections = 0;             //< number of current connections
+
+  std::map<int, bool> task_to_status;            //< keep track of task status
+  std::map<int, std::string> operation_to_name;  //< request id to name
+
+  char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
+  std::atomic<int> thread_count;  //< keep track of each thread's id
+
+  uint32_t num_updates = 0;       // Last measured num updates
+  std::atomic<bool> kill_signal;  // Used to coordinate thread kills
 };
 
 class MFNetflixTask : public MLTask {
@@ -348,10 +403,11 @@ class MFNetflixTask : public MLTask {
         MFModelGet(const std::string& ps_ip, int ps_port) :
           ps_ip(ps_ip), ps_port(ps_port) {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-          }
+        }
 
-        SparseMFModel get_new_model(
-            const SparseDataset& ds, uint64_t user_base_index, uint64_t mb_size) {
+        SparseMFModel get_new_model(const SparseDataset& ds,
+                                    uint64_t user_base_index,
+                                    uint64_t mb_size) {
           return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
         }
 
@@ -391,22 +447,6 @@ class LDATaskS3 : public MLTask {
     void run(const Configuration& config, int worker);
 
   private:
-    class LDAModelGet {
-      public:
-        LDAModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-          }
-
-        LDAModel get_new_model(LDAStatistics& info, const Configuration& config) {
-          return psi->get_lda_model(info);
-        }
-
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
-    };
 
     bool get_dataset_minibatch(
         std::unique_ptr<LDAStatistics>& local_vars,
@@ -415,7 +455,6 @@ class LDATaskS3 : public MLTask {
 
     std::mutex redis_lock;
 
-    std::unique_ptr<LDAModelGet> lda_model_get;
     PSSparseServerInterface* psint;
 };
 

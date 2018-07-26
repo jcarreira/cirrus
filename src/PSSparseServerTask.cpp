@@ -16,7 +16,7 @@
 #undef DEBUG
 
 #define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
-#define THREAD_MSG_BUFFER_SIZE 5000000
+#define THREAD_MSG_BUFFER_SIZE 1000000
 
 namespace cirrus {
 
@@ -31,23 +31,27 @@ PSSparseServerTask::PSSparseServerTask(
       nworkers, worker_id, ps_ip, ps_port) {
     std::cout << "PSSparseServerTask is built" << std::endl;
 
+    std::atomic_init(&gradientUpdatesCount, 0UL);
     std::atomic_init(&thread_count, 0);
 
     operation_to_name[0] = "SEND_LR_GRADIENT";
     operation_to_name[1] = "SEND_MF_GRADIENT";
-    operation_to_name[2] = "SEND_LDA_UPDATE";
-    operation_to_name[3] = "GET_LR_FULL_MODEL";
-    operation_to_name[4] = "GET_MF_FULL_MODEL";
-    operation_to_name[5] = "GET_LR_SPARSE_MODEL";
-    operation_to_name[6] = "GET_MF_SPARSE_MODEL";
-    operation_to_name[7] = "GET_LDA_MODEL";
-    operation_to_name[8] = "SET_TASK_STATUS";
-    operation_to_name[9] = "GET_TASK_STATUS";
+    operation_to_name[2] = "GET_LR_FULL_MODEL";
+    operation_to_name[3] = "GET_MF_FULL_MODEL";
+    operation_to_name[4] = "GET_LR_SPARSE_MODEL";
+    operation_to_name[5] = "GET_MF_SPARSE_MODEL";
+    operation_to_name[6] = "SET_TASK_STATUS";
+    operation_to_name[7] = "GET_TASK_STATUS";
+    operation_to_name[8] = "REGISTER_TASK";
+    operation_to_name[9] = "GET_NUM_CONNS";
+    operation_to_name[13] = "SEND_LDA_UPDATE";
+    operation_to_name[14] = "GET_LDA_MODEL";
 
     for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
       thread_msg_buffer[i] =
           new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
     }
+    kill_signal = false;
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -68,10 +72,13 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   return x.fd == -1;
 }
 
-bool PSSparseServerTask::process_send_mf_gradient(const Request& req, std::vector<char>& thread_buffer) {
+bool PSSparseServerTask::process_send_mf_gradient(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size << std::endl;
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
 #endif
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
@@ -100,10 +107,13 @@ bool PSSparseServerTask::process_send_mf_gradient(const Request& req, std::vecto
   return true;
 }
 
-bool PSSparseServerTask::process_send_lr_gradient(const Request& req, std::vector<char>& thread_buffer) {
+bool PSSparseServerTask::process_send_lr_gradient(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size << std::endl;
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
 #endif
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
@@ -184,8 +194,9 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   }
   read_all(req.sock, thread_buffer.data(), k_items * sizeof(uint32_t));
   uint32_t to_send_size =
-    minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-    k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
+      minibatch_size *
+          (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
+      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 #ifdef DEBUG
   std::cout << "k_items: " << k_items << std::endl;
   std::cout << "base_user_id: " << base_user_id << std::endl;
@@ -201,7 +212,8 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
     return false;
   }
-  if (send_all(req.sock, thread_msg_buffer[thread_number], to_send_size) == -1) {
+  if (send_all(req.sock, thread_msg_buffer[thread_number], to_send_size) ==
+      -1) {
     return false;
   }
   return true;
@@ -318,8 +330,9 @@ bool PSSparseServerTask::process_get_lr_full_model(
   uint32_t model_size = lr_model_copy.getSerializedSize();
 
   if (thread_buffer.size() < model_size) {
-    std::string error_str = "buffer with size " + std::to_string(thread_buffer.size()) +
-      "too small: " + std::to_string(model_size);
+    std::string error_str = "buffer with size " +
+                            std::to_string(thread_buffer.size()) +
+                            "too small: " + std::to_string(model_size);
     throw std::runtime_error(error_str);
   }
 
@@ -329,13 +342,37 @@ bool PSSparseServerTask::process_get_lr_full_model(
   return true;
 }
 
+void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
+  if (close(pfd->fd) != 0) {
+    std::cout << "Error closing socket. errno: " << errno << std::endl;
+  }
+  num_connections--;
+  std::cout << "PS closing connection after process(): " << num_connections
+            << std::endl;
+  pfd->fd = -1;
+  pfd->revents = 0;
+}
+
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
   thread_buffer.resize(120 * 1024 * 1024); // 120 MB
-
+  struct timespec ts;
   int thread_number = thread_count++;
-  while (1) {
-    sem_wait(&sem_new_req);
+  while (!kill_signal) {
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+      throw std::runtime_error("Error in clock_gettime");
+    }
+    ts.tv_sec += 3;
+    int s = sem_timedwait(&sem_new_req, &ts);
+
+    if (s == -1) {  // if sem_wait timed out and kill signal is not set, restart
+                    // the while loop
+      if (!kill_signal)
+        continue;
+      else
+        break;
+    }
+
     to_process_lock.lock();
     Request req = std::move(to_process.front());
 
@@ -343,36 +380,42 @@ void PSSparseServerTask::gradient_f() {
     to_process_lock.unlock();
     int sock = req.poll_fd.fd;
 
+    // first read 4 bytes for operation ID
     uint32_t operation = 0;
     if (read_all(sock, &operation, sizeof(uint32_t)) == 0) {
-      if (close(req.poll_fd.fd) != 0) {
-        std::cout << "Error closing socket. errno: " << errno << std::endl;
-      }
-      num_connections--;
-      std::cout << "PS closing connection after process(): " << num_connections << std::endl;
-      req.poll_fd.fd = -1;
-      req.poll_fd.revents = 0;
+      handle_failed_read(&req.poll_fd);
       continue;
     }
 
     req.req_id = operation;
-    if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-        operation == GET_LR_SPARSE_MODEL || operation == GET_MF_SPARSE_MODEL ||
-        operation == SEND_LDA_UPDATE || operation == GET_LDA_MODEL) {
+
+    if (operation == REGISTER_TASK) {
+      // read the task id
+      uint32_t task_id = 0;
+      if (read_all(sock, &task_id, sizeof(uint32_t)) == 0) {
+        handle_failed_read(&req.poll_fd);
+        continue;
+      }
+      // check if this task has already been registered
+      uint32_t task_reg =
+          (registered_tasks.find(task_id) != registered_tasks.end());
+
+      if (task_reg == 0) {
+        registered_tasks.insert(task_id);
+      }
+      send_all(sock, &task_reg, sizeof(uint32_t));
+      continue;
+    } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
+               operation == GET_LR_SPARSE_MODEL ||
+               operation == GET_MF_SPARSE_MODEL ||
+               operation == SEND_LDA_UPDATE || operation == GET_LDA_MODEL) {
+      // read 4 bytes of the size of the remaining message
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
-        if (close(req.poll_fd.fd) != 0) {
-          std::cout << "Error closing socket. errno: " << errno << std::endl;
-        }
-        num_connections--;
-        std::cout << "PS closing connection after process(): " << num_connections << std::endl;
-        req.poll_fd.fd = -1;
-        req.poll_fd.revents = 0;
+        handle_failed_read(&req.poll_fd);
         continue;
       }
       req.incoming_size = incoming_size;
-    } else{
-      std::cout << "Invalid operation ------------\n";
     }
 
 #ifdef DEBUG
@@ -438,13 +481,30 @@ void PSSparseServerTask::gradient_f() {
 
       uint32_t data[2] = {0}; // id + status
       if (read_all(sock, data, sizeof (uint32_t) * 2) == 0) {
-        break;
+        handle_failed_read(&req.poll_fd);
+        continue;
       }
 #ifdef DEBUG
-      std::cout << "Set status task id: " << data[0] << " status: " << data[1] << std::endl;
+      std::cout << "Set status task id: " << data[0] << " status: " << data[1]
+                << std::endl;
 #endif
       task_to_status[data[0]] = data[1];
 
+    } else if (operation == GET_NUM_CONNS) {
+      // NOTE: Consider changing this to flatbuffer serialization?
+      std::cout << "Retrieve info: " << num_connections << std::endl;
+      if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
+      }
+    } else if (operation == GET_NUM_UPDATES) {
+      std::cout << "Retrieve info: " << num_updates << std::endl;
+      if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
+      }
+    } else if (operation == KILL_SIGNAL) {
+      std::cout << "Received kill signal!" << std::endl;
+      kill_server();
+      break;
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
@@ -459,6 +519,8 @@ void PSSparseServerTask::gradient_f() {
     std::cout << "gradient_f done" << std::endl;
 #endif
   }
+
+  std::cout << "Gradient F is ending" << std::endl;
 }
 
 /**
@@ -474,9 +536,7 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 #endif
 
   uint32_t operation = 0;
-  //if (read_all(sock, &operation, sizeof(uint32_t)) == 0) { // read operation
-  //  return false;
-  //}
+
 #ifdef DEBUG
   std::cout << "Operation: " << operation << " - "
       << operation_to_name[operation] << std::endl;
@@ -504,9 +564,9 @@ void PSSparseServerTask::start_server() {
     std::cout << "Getting initial LDA statistics from S3\n";
     // Get the global stats from S3
     s3_initialize_aws();
-    auto s3_client = s3_create_client();
+    std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
     std::string obj_id_str = std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, task_config.get_s3_bucket());
+    std::ostringstream* s3_obj = s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
 
@@ -537,12 +597,14 @@ void PSSparseServerTask::start_server() {
   }
 }
 
+void PSSparseServerTask::kill_server() {
+  kill_signal = 1;
+}
+
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   // id=0 -> poll thread responsible for handling new connections
   if (poll_id == 0) {
     std::cout << "Starting server, poll id " << poll_id << std::endl;
-
-    poll_thread = pthread_self();
 
     server_sock_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock_ < 0) {
@@ -567,17 +629,17 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_);
+    serv_addr.sin_port = htons(ps_port);
     std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
     int ret = bind(server_sock_,
             reinterpret_cast<sockaddr*> (&serv_addr), sizeof(serv_addr));
     if (ret < 0) {
-      throw std::runtime_error("Error binding in port " + to_string(port_));
+      throw std::runtime_error("Error binding in port " + to_string(ps_port));
     }
 
     if (listen(server_sock_, SOMAXCONN) == -1) {
-      throw std::runtime_error("Error listening on port " + to_string(port_));
+      throw std::runtime_error("Error listening on port " + to_string(ps_port));
     }
     fdses[0].at(0).fd = server_sock_;
     fdses[0].at(0).events = POLLIN;
@@ -602,8 +664,9 @@ void PSSparseServerTask::loop(int poll_id) {
   buffer.resize(10 * 1024 * 1024); // reserve 10MB upfront
 
   std::cout << "Starting loop for id: " << poll_id << std::endl;
-  while (1) {
-    int poll_status = poll(fdses[poll_id].data(), curr_indexes[poll_id], timeout);
+  while (!kill_signal) {
+    int poll_status =
+        poll(fdses[poll_id].data(), curr_indexes[poll_id], timeout);
     if (poll_status == -1) {
       if (errno != EINTR) {
         throw std::runtime_error("Server error calling poll.");
@@ -613,10 +676,7 @@ void PSSparseServerTask::loop(int poll_id) {
     } else if (
             (poll_id == 0 && fdses[poll_id][1].revents == POLLIN)
          || (poll_id != 0 && fdses[poll_id][0].revents == POLLIN)) {
-      //std::cout << "Ignoring" << std::endl;
-      int posit = 0;
-      if (poll_id == 0)
-        posit = 1;
+      int posit = (poll_id == 0);        // =1 if main poll thread, 0 otherwise
       fdses[poll_id][posit].revents = 0; // Reset the event flags
       char a[1];
       assert(read(pipefds[poll_id][0], a, 1) >= 0);
@@ -633,7 +693,8 @@ void PSSparseServerTask::loop(int poll_id) {
         if (curr_fd.revents != POLLIN) {
           //LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
           if (curr_fd.revents & POLLHUP) {
-            std::cout << "PS closing connection " << num_connections << std::endl;
+            std::cout << "PS closing connection " << num_connections
+                      << std::endl;
             num_connections--;
             close(curr_fd.fd);
             curr_fd.fd = -1;
@@ -670,10 +731,12 @@ void PSSparseServerTask::loop(int poll_id) {
 #endif
           if (!process(curr_fd, poll_id)) {
             if (close(curr_fd.fd) != 0) {
-              std::cout << "Error closing socket. errno: " << errno << std::endl;
+              std::cout << "Error closing socket. errno: " << errno
+                        << std::endl;
             }
             num_connections--;
-            std::cout << "PS closing connection after process(): " << num_connections << std::endl;
+            std::cout << "PS closing connection after process(): "
+                      << num_connections << std::endl;
             curr_fd.fd = -1;
           }
         }
@@ -742,10 +805,14 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();
-  while (1) {
+  while (!kill_signal) {
     auto now = get_time_us();
     auto elapsed_us = now - last_tick;
     auto since_start_sec = 1.0 * (now - start) / 1000000;
+
+    num_updates = static_cast<uint32_t>(1.0 * gradientUpdatesCount /
+                                        elapsed_us * 1000 * 1000);
+
     if (elapsed_us > 1000000) {
       last_tick = now;
       std::cout << "Events in the last sec: "
@@ -761,6 +828,20 @@ void PSSparseServerTask::run(const Configuration& config) {
     }
     sleep(1);
   }
+
+  for (auto& thread : server_threads) {
+    std::cout << "Joining poll thread" << std::endl;
+    thread.get()->join();
+  }
+
+  for (auto& thread : gradient_thread) {
+    std::cout << "Joining gradient thread" << std::endl;
+    thread.get()->join();
+  }
+  for (auto& thread : checkpoint_thread) {
+    std::cout << "Joining check thread" << std::endl;
+    thread.get()->join();
+  }
 }
 
 void PSSparseServerTask::checkpoint_model_loop() {
@@ -769,13 +850,14 @@ void PSSparseServerTask::checkpoint_model_loop() {
         return;
     }
 
-    while (true) {
-        sleep(task_config.get_checkpoint_frequency());
-        // checkpoint to s3
+    while (!kill_signal) {
+      sleep(task_config.get_checkpoint_frequency());
+      // checkpoint to s3
     }
 }
 
-void PSSparseServerTask::checkpoint_model_file(const std::string& filename) const {
+void PSSparseServerTask::checkpoint_model_file(
+    const std::string& filename) const {
   uint64_t model_size;
   std::shared_ptr<char> data = serialize_lr_model(*lr_model, &model_size);
 
@@ -796,23 +878,6 @@ void PSSparseServerTask::compute_loglikelihood(){
   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
   double ll = K * lda_lgamma(eta * V);
 
-  // std::cout << lda_global_vars->slice_map[76] << " " << V << std::endl;
-
-
-  // std::cout << "nvt[78]: ";
-  // for(int i=0; i<nt.size(); ++i){
-  //   // std::cout << nvt[lda_global_vars->get_vocab_map(78) * nt.size() + i] << " ";
-  //   // std::cout << test[i] << " ";
-  //   // 3007
-  //   std::cout << nvt[78 * nt.size() + i] << " ";
-  // }
-  // std::cout << std::endl;
-  //
-  // for(int i=0; i<nt.size(); ++i){
-  //   std::cout << nt[i] << " ";
-  // }
-  // std::cout << std::endl;
-
   for(int i=0; i<K; ++i){
     int nti = 0;
     ll -= lda_lgamma(eta * V + nt[i]);
@@ -822,19 +887,15 @@ void PSSparseServerTask::compute_loglikelihood(){
         nti += nvt[v*K + i];
       }
     }
-    // std::cout << nt[i] << " " << nti << std::endl;
-    // ll -= lda_lgamma(eta * V + nti);
   }
 
-  // std::cout << "ll: " << ll << std::endl;
-
   s3_initialize_aws();
-  auto s3_client = s3_create_client();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   auto train_range = task_config.get_train_range();
   for(int i = train_range.first; i < train_range.second; ++i){
     std::string obj_id_str = std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, task_config.get_s3_bucket());
+    std::ostringstream* s3_obj = s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
 
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
@@ -845,27 +906,6 @@ void PSSparseServerTask::compute_loglikelihood(){
     ndt_partial.get_ndt(ndt);
     ndt_partial.get_slice(slice);
 
-    // std::cout << "ndt[0-4]: ";
-    // for(int p = 0; p < 5; p ++){
-    //   for(int j=0; j<K; ++j){
-    //     std::cout << ndt[p][j] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-
-    // for(int j=0; j<10; ++j){
-    //   std::cout << slice[j] << " ";
-    // }
-    // std::cout << std::endl;
-
-    // for(int j=0; j<ndt.size(); ++j){
-      // for(int k=0; k<K; ++k){
-      //   if (ndt[0][k] != 0)
-      //     std::cout << ndt[0][k] << " ";
-      // }
-      // std::cout << std::endl;
-    // }
-
     for(int j=0; j<ndt.size(); ++j){
       int ndj = 0;
       for(int k=0; k<K; ++k){
@@ -873,13 +913,12 @@ void PSSparseServerTask::compute_loglikelihood(){
         if(ndt[j][k] > 0){
           ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
         }
-        // else{
-        //   std::cout << j << " ----- \n";
-        // }
       }
       ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
     }
   }
+
+  s3_shutdown_aws();
 
   std::cout << "loglikelihood: " << ll << std::endl;
 

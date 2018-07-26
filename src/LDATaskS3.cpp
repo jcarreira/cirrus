@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
+#include "S3Client.h"
+
 
 #include <pthread.h>
 
@@ -17,6 +19,7 @@ void LDATaskS3::push_gradient(LDAUpdates* gradient) {
     std::cout << "Publishing gradients" << std::endl;
   #endif
     psint->send_lda_update(*gradient);
+    // lda_model_get->send_lda_update(gradient);
   #ifdef DEBUG
     std::cout << "Published gradients!" << std::endl;
     auto elapsed_push_us = get_time_us() - before_push_us;
@@ -72,7 +75,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     this->config = config;
 
     psint = new PSSparseServerInterface(ps_ip, ps_port);
-    lda_model_get = std::make_unique<LDAModelGet>(ps_ip, ps_port);
+    psint->connect();
+
+    // lda_model_get = std::make_unique<LDAModelGet>(ps_ip, ps_port);
 
     std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
       << std::endl;
@@ -96,7 +101,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     std::cout << "[WORKER] starting loop" << std::endl;
 
     uint64_t version = 1;
-    LDAModel model; 
+    LDAModel model;
 
     bool printed_rate = false;
     int count = 0;
@@ -105,9 +110,10 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // get_dataset_minibatch(s3_local_vars, s3_iter);
 
     s3_initialize_aws();
-    auto s3_client = s3_create_client();
+    // auto s3_client = s3_create_client();
+    std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
     std::string obj_id_str = std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
+    std::ostringstream* s3_obj = s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
     s3_local_vars.reset(new LDAStatistics(s3_data));
@@ -122,7 +128,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       // only gets partial LDAStatistics corresponding to one vocabulary slice
       if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
-        s3_put_object(obj_id_str, s3_client, config.get_s3_bucket(),
+        s3_client->s3_put_object(obj_id_str, config.get_s3_bucket(),
             std::string(s3_local_vars->serialize(), s3_local_vars->get_serialize_size()));
 
         cur_train_idx += 1;
@@ -131,7 +137,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         }
 
         obj_id_str = std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
-        s3_obj = s3_get_object_ptr(obj_id_str, s3_client, config.get_s3_bucket());
+        s3_obj = s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
         const std::string tmp = s3_obj->str();
         const char* s3_data = tmp.c_str();
         s3_local_vars.reset(new LDAStatistics(s3_data));
@@ -148,7 +154,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       // we get the model subset with just the right amount of weights
       // TODO can be improved
-      model = std::move(lda_model_get->get_new_model(*local_vars, config));
+      model = std::move(psint->get_lda_model(*local_vars));
 
   #ifdef DEBUG
       std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
