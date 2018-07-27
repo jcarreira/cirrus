@@ -112,7 +112,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       left, right, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION ||
-      config.get_model_type() == Configuration::SOFTMAX,
+          config.get_model_type() == Configuration::SOFTMAX,
       0, false);
 
   // get data first
@@ -214,5 +214,3 @@ void ErrorSparseTask::run(const Configuration& config) {
 }
 
 } // namespace cirrus
-
-

@@ -28,7 +28,7 @@ void SoftmaxTask::push_gradient(SoftmaxGradient* smg) {
             << "Worker task published gradient"
             << " with version: " << smg->getVersion()
             << " at time (us): " << get_time_us()
-            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed 
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
             << (1.0 * smg->getSerializedSize() / elapsed_push_us / 1024 / 1024 *
                 1000 * 1000)
             << " since last(us): " << (now - before) << "\n";
@@ -165,4 +165,3 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 }
 
 }  // namespace cirrus
-
