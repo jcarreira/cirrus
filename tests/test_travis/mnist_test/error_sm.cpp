@@ -23,6 +23,7 @@ std::unique_ptr<SoftmaxModel> get_model(const Configuration& config,
   if (first_time) {
     first_time = false;
     psi = new PSSparseServerInterface(ps_ip, ps_port);
+    psi->connect();
   }
   return psi->get_sm_full_model(config);
 }

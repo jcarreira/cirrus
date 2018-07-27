@@ -14,7 +14,7 @@
 #undef DEBUG
 
 #define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
-#define THREAD_MSG_BUFFER_SIZE 5000000
+#define THREAD_MSG_BUFFER_SIZE 1000000
 
 namespace cirrus {
 
@@ -50,6 +50,7 @@ PSSparseServerTask::PSSparseServerTask(
       thread_msg_buffer[i] =
           new char[THREAD_MSG_BUFFER_SIZE]; // per-thread buffer
     }
+    kill_signal = false;
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -352,10 +353,23 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
   thread_buffer.resize(120 * 1024 * 1024); // 120 MB
-
+  struct timespec ts;
   int thread_number = thread_count++;
-  while (1) {
-    sem_wait(&sem_new_req);
+  while (!kill_signal) {
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+      throw std::runtime_error("Error in clock_gettime");
+    }
+    ts.tv_sec += 3;
+    int s = sem_timedwait(&sem_new_req, &ts);
+
+    if (s == -1) {  // if sem_wait timed out and kill signal is not set, restart
+                    // the while loop
+      if (!kill_signal)
+        continue;
+      else
+        break;
+    }
+
     to_process_lock.lock();
     Request req = std::move(to_process.front());
 
@@ -477,10 +491,20 @@ void PSSparseServerTask::gradient_f() {
       task_to_status[data[0]] = data[1];
 
     } else if (operation == GET_NUM_CONNS) {
-      std::cout << "Retrieve num connections: " << num_connections << std::endl;
+      // NOTE: Consider changing this to flatbuffer serialization?
+      std::cout << "Retrieve info: " << num_connections << std::endl;
       if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
         throw std::runtime_error("Error sending number of connections");
       }
+    } else if (operation == GET_NUM_UPDATES) {
+      std::cout << "Retrieve info: " << num_updates << std::endl;
+      if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
+      }
+    } else if (operation == KILL_SIGNAL) {
+      std::cout << "Received kill signal!" << std::endl;
+      kill_server();
+      break;
     } else {
       throw std::runtime_error("gradient_f: Unknown operation");
     }
@@ -495,6 +519,8 @@ void PSSparseServerTask::gradient_f() {
     std::cout << "gradient_f done" << std::endl;
 #endif
   }
+
+  std::cout << "Gradient F is ending" << std::endl;
 }
 
 /**
@@ -556,6 +582,10 @@ void PSSparseServerTask::start_server() {
       checkpoint_thread.push_back(std::make_unique<std::thread>(
                   std::bind(&PSSparseServerTask::checkpoint_model_loop, this)));
   }
+}
+
+void PSSparseServerTask::kill_server() {
+  kill_signal = 1;
 }
 
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
@@ -620,7 +650,7 @@ void PSSparseServerTask::loop(int poll_id) {
   buffer.resize(10 * 1024 * 1024); // reserve 10MB upfront
 
   std::cout << "Starting loop for id: " << poll_id << std::endl;
-  while (1) {
+  while (!kill_signal) {
     int poll_status =
         poll(fdses[poll_id].data(), curr_indexes[poll_id], timeout);
     if (poll_status == -1) {
@@ -760,10 +790,14 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();
-  while (1) {
+  while (!kill_signal) {
     auto now = get_time_us();
     auto elapsed_us = now - last_tick;
     auto since_start_sec = 1.0 * (now - start) / 1000000;
+
+    num_updates = static_cast<uint32_t>(1.0 * gradientUpdatesCount /
+                                        elapsed_us * 1000 * 1000);
+
     if (elapsed_us > 1000000) {
       last_tick = now;
       std::cout << "Events in the last sec: "
@@ -775,6 +809,20 @@ void PSSparseServerTask::run(const Configuration& config) {
     }
     sleep(1);
   }
+
+  for (auto& thread : server_threads) {
+    std::cout << "Joining poll thread" << std::endl;
+    thread.get()->join();
+  }
+
+  for (auto& thread : gradient_thread) {
+    std::cout << "Joining gradient thread" << std::endl;
+    thread.get()->join();
+  }
+  for (auto& thread : checkpoint_thread) {
+    std::cout << "Joining check thread" << std::endl;
+    thread.get()->join();
+  }
 }
 
 void PSSparseServerTask::checkpoint_model_loop() {
@@ -783,9 +831,9 @@ void PSSparseServerTask::checkpoint_model_loop() {
         return;
     }
 
-    while (true) {
-        sleep(task_config.get_checkpoint_frequency());
-        // checkpoint to s3
+    while (!kill_signal) {
+      sleep(task_config.get_checkpoint_frequency());
+      // checkpoint to s3
     }
 }
 

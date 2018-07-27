@@ -70,6 +70,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
+  psint->connect();
   std::cout << "[WORKER] "
             << "num s3 batches: " << num_s3_batches << std::endl;
   wait_for_start(worker, nworkers);
