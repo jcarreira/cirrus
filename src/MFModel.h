@@ -91,8 +91,10 @@ class MFModel : public CirrusModel {
                                                 const SparseDataset& dataset,
                                                 double epsilon) const;
 
-  void sgd_update(double learning_rate, uint64_t base_user,
-                  const SparseDataset&, double epsilon);
+  void sgd_update(double learning_rate,
+                  uint64_t base_user,
+                  const SparseDataset&,
+                  double epsilon);
 
   /**
    * Compute the logistic loss of a given dataset on the current model

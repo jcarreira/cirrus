@@ -13,15 +13,14 @@ namespace cirrus {
 
 class OptimizationMethod {
  public:
-   OptimizationMethod(double lr);
+  OptimizationMethod(double lr);
 
-   virtual void sgd_update(
-      std::unique_ptr<SparseLRModel>& lr_model, 
-      const ModelGradient* gradient) = 0;
-   virtual void edit_weight(double& weight);
+  virtual void sgd_update(std::unique_ptr<SparseLRModel>& lr_model,
+                          const ModelGradient* gradient) = 0;
+  virtual void edit_weight(double& weight);
 
  protected:
-   double learning_rate;
+  double learning_rate;
 };
 
 }  // namespace cirrus

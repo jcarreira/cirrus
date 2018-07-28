@@ -23,14 +23,22 @@ namespace cirrus {
 
 static const int initial_buffer_size = 50;
 
-PSSparseServerTask::PSSparseServerTask(uint64_t model_size, uint64_t batch_size,
+PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
+                                       uint64_t batch_size,
                                        uint64_t samples_per_batch,
                                        uint64_t features_per_sample,
-                                       uint64_t nworkers, uint64_t worker_id,
+                                       uint64_t nworkers,
+                                       uint64_t worker_id,
                                        const std::string& ps_ip,
                                        uint64_t ps_port)
-    : MLTask(model_size, batch_size, samples_per_batch, features_per_sample,
-             nworkers, worker_id, ps_ip, ps_port) {
+    : MLTask(model_size,
+             batch_size,
+             samples_per_batch,
+             features_per_sample,
+             nworkers,
+             worker_id,
+             ps_ip,
+             ps_port) {
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
@@ -56,7 +64,8 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size, uint64_t batch_size,
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
-    const SparseLRModel& lr_model, uint64_t* model_size) const {
+    const SparseLRModel& lr_model,
+    uint64_t* model_size) const {
   *model_size = lr_model.getSerializedSize();
   auto d = std::shared_ptr<char>(new char[*model_size],
                                  std::default_delete<char[]>());
@@ -106,7 +115,9 @@ bool PSSparseServerTask::process_send_lr_gradient(
 // move this to SparseMFModel
 
 bool PSSparseServerTask::process_get_mf_sparse_model(
-    int k_items, const unsigned char* id_list, int sock) {
+    int k_items,
+    const unsigned char* id_list,
+    int sock) {
   uint32_t base_user_id = load_value<uint32_t>(id_list);
   uint32_t minibatch_size = load_value<uint32_t>(id_list);
 
@@ -117,7 +128,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
 
   // TODO: Should I use thread_buffer[thread_number] instead of msg?
-  SparseMFModel sparse_mf_model((uint64_t)0, 0, 0);
+  SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
   sparse_mf_model.serializeFromDense(*mf_model, base_user_id, minibatch_size,
                                      k_items, id_list, msg);
 
@@ -145,7 +156,9 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
 }
 
 bool PSSparseServerTask::process_get_lr_sparse_model(
-    int num_entries, const unsigned char* index_list, int sock) {
+    int num_entries,
+    const unsigned char* index_list,
+    int sock) {
   // need to parse the buffer to get the indices of the model we want
   // to send back to the client
 
@@ -180,7 +193,8 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 }
 
 bool PSSparseServerTask::process_get_mf_full_model(
-    std::vector<char>& thread_buffer, int sock) {
+    std::vector<char>& thread_buffer,
+    int sock) {
   model_lock.lock();
   auto mf_model_copy = *mf_model;
   model_lock.unlock();
@@ -211,7 +225,8 @@ bool PSSparseServerTask::process_get_mf_full_model(
 
 // TODO: Combine both get_full_model functions?
 bool PSSparseServerTask::process_get_lr_full_model(
-    std::vector<char>& thread_buffer, int sock) {
+    std::vector<char>& thread_buffer,
+    int sock) {
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
@@ -296,108 +311,106 @@ void PSSparseServerTask::gradient_f() {
 
     auto msg = message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
     switch (msg->payload_type()) {
-      case message::WorkerMessage::Request_GradientMessage: {
-        auto gradient_msg = msg->payload_as_GradientMessage();
-        const unsigned char* gradient_buf = gradient_msg->gradient()->data();
-        if (gradient_msg->model_type() ==
-            message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-          process_send_lr_gradient(gradient_buf);
-        } else if (gradient_msg->model_type() ==
-                   message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-          process_send_mf_gradient(gradient_buf);
-        } else {
-          throw std::runtime_error("Unimplemented gradient type");
-        }
+    case message::WorkerMessage::Request_GradientMessage: {
+      auto gradient_msg = msg->payload_as_GradientMessage();
+      const unsigned char* gradient_buf = gradient_msg->gradient()->data();
+      if (gradient_msg->model_type() ==
+          message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+        process_send_lr_gradient(gradient_buf);
+      } else if (gradient_msg->model_type() ==
+                 message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+        process_send_mf_gradient(gradient_buf);
+      } else {
+        throw std::runtime_error("Unimplemented gradient type");
       }
-      case message::WorkerMessage::Request_SparseModelRequest: {
-        auto sparse_req = msg->payload_as_SparseModelRequest();
-        const unsigned char* index_buf = sparse_req->index_info()->data();
-        if (sparse_req->model_type() ==
-            message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-          process_get_lr_sparse_model(sparse_req->index_info()->size(),
-                                      index_buf, req.sock);
-        } else if (sparse_req->model_type() ==
-                   message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-          process_get_mf_sparse_model(sparse_req->index_info()->size() - 2,
-                                      sparse_req->index_info()->data(),
-                                      req.sock);
-        } else {
-          throw std::runtime_error("Unimplemented request for sparse model");
-        }
+    }
+    case message::WorkerMessage::Request_SparseModelRequest: {
+      auto sparse_req = msg->payload_as_SparseModelRequest();
+      const unsigned char* index_buf = sparse_req->index_info()->data();
+      if (sparse_req->model_type() ==
+          message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+        process_get_lr_sparse_model(sparse_req->index_info()->size(), index_buf,
+                                    req.sock);
+      } else if (sparse_req->model_type() ==
+                 message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+        process_get_mf_sparse_model(sparse_req->index_info()->size() - 2,
+                                    sparse_req->index_info()->data(), req.sock);
+      } else {
+        throw std::runtime_error("Unimplemented request for sparse model");
       }
-      case message::WorkerMessage::Request_FullModelRequest: {
-        auto full_req = msg->payload_as_FullModelRequest();
-        if (full_req->model_type() ==
-            message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-          process_get_lr_full_model(thread_buffer, req.sock);
-        } else if (full_req->model_type() ==
-                   message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-          process_get_mf_full_model(thread_buffer, req.sock);
-        } else {
-          throw std::runtime_error("Unimplemented request for full model");
-        }
+    }
+    case message::WorkerMessage::Request_FullModelRequest: {
+      auto full_req = msg->payload_as_FullModelRequest();
+      if (full_req->model_type() ==
+          message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+        process_get_lr_full_model(thread_buffer, req.sock);
+      } else if (full_req->model_type() ==
+                 message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+        process_get_mf_full_model(thread_buffer, req.sock);
+      } else {
+        throw std::runtime_error("Unimplemented request for full model");
       }
-      case message::WorkerMessage::Request_TaskRequest: {
+    }
+    case message::WorkerMessage::Request_TaskRequest: {
 #ifdef DEBUG
-        std::cout << "Get status task id: " << task_id << std::endl;
+      std::cout << "Get status task id: " << task_id << std::endl;
 #endif
-        int task_id = msg->payload_as_TaskRequest()->task_id();
-        assert(task_id < 10000);
+      int task_id = msg->payload_as_TaskRequest()->task_id();
+      assert(task_id < 10000);
 
-        uint32_t status = 1;
-        if (task_to_status.find(task_id) == task_to_status.end() ||
-            task_to_status[task_id] == false) {
-          status = 0;
-        }
-
-        flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-        auto task_msg =
-            message::PSMessage::CreateTaskResponse(builder, task_id, status);
-        builder.Finish(task_msg);
-        send_flatbuffer(sock, &builder);
+      uint32_t status = 1;
+      if (task_to_status.find(task_id) == task_to_status.end() ||
+          task_to_status[task_id] == false) {
+        status = 0;
       }
-      case message::WorkerMessage::Request_TaskMessage: {
-        auto task_msg = msg->payload_as_TaskMessage();
+
+      flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+      auto task_msg =
+          message::PSMessage::CreateTaskResponse(builder, task_id, status);
+      builder.Finish(task_msg);
+      send_flatbuffer(sock, &builder);
+    }
+    case message::WorkerMessage::Request_TaskMessage: {
+      auto task_msg = msg->payload_as_TaskMessage();
 #ifdef DEBUG
-        std::cout << "Set status task id: " << task_msg->task_id()
-                  << " status: " << task_msg->status() << std::endl;
+      std::cout << "Set status task id: " << task_msg->task_id()
+                << " status: " << task_msg->status() << std::endl;
 #endif
-        task_to_status[task_msg->task_id()] = task_msg->status();
-      }
-      case message::WorkerMessage::Request_RegisterTaskMessage: {
-        // check if this task has already been registered
-        int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
-        uint32_t task_reg =
-            (registered_tasks.find(task_id) != registered_tasks.end());
+      task_to_status[task_msg->task_id()] = task_msg->status();
+    }
+    case message::WorkerMessage::Request_RegisterTaskMessage: {
+      // check if this task has already been registered
+      int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
+      uint32_t task_reg =
+          (registered_tasks.find(task_id) != registered_tasks.end());
 
-        if (task_reg == 0) {
-          registered_tasks.insert(task_id);
-        }
-        // TODO: Change to FlatBuffer, or determine what this should be.
-        send_all(sock, &task_reg, sizeof(uint32_t));
+      if (task_reg == 0) {
+        registered_tasks.insert(task_id);
       }
-      case message::WorkerMessage::Request_NumberConnectionsRequest: {
-        std::cout << "Retrieve num connections: " << num_connections
-                  << std::endl;
-        // TODO: Change to FlatBuffer, once this is being used.
-        if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
-          throw std::runtime_error("Error sending number of connections");
-        }
+      // TODO: Change to FlatBuffer, or determine what this should be.
+      send_all(sock, &task_reg, sizeof(uint32_t));
+    }
+    case message::WorkerMessage::Request_NumberConnectionsRequest: {
+      std::cout << "Retrieve num connections: " << num_connections << std::endl;
+      // TODO: Change to FlatBuffer, once this is being used.
+      if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
       }
-      case message::WorkerMessage::Request_NumberUpdatesRequest: {
-        // TODO: Send with FlatBuffers.
-        std::cout << "Retrieve info: " << num_updates << std::endl;
-        if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
-          throw std::runtime_error("Error sending number of connections");
-        }
+    }
+    case message::WorkerMessage::Request_NumberUpdatesRequest: {
+      // TODO: Send with FlatBuffers.
+      std::cout << "Retrieve info: " << num_updates << std::endl;
+      if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
+        throw std::runtime_error("Error sending number of connections");
       }
-      case message::WorkerMessage::Request_KillMessage: {
-        std::cout << "Received kill signal!" << std::endl;
-        kill_server();
-        break;
-      }
-      default:
-        throw std::runtime_error("Unknown message type");
+    }
+    case message::WorkerMessage::Request_KillMessage: {
+      std::cout << "Received kill signal!" << std::endl;
+      kill_server();
+      break;
+    }
+    default:
+      throw std::runtime_error("Unknown message type");
     }
     // We reactivate events from the client socket here
     req.poll_fd.events = POLLIN;
@@ -471,7 +484,9 @@ void PSSparseServerTask::start_server() {
   }
 }
 
-void PSSparseServerTask::kill_server() { kill_signal = 1; }
+void PSSparseServerTask::kill_server() {
+  kill_signal = 1;
+}
 
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   // id=0 -> poll thread responsible for handling new connections

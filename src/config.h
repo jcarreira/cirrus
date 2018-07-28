@@ -20,7 +20,7 @@
 #define ERROR_SPARSE_TASK_RANK (2)
 #define PS_SPARSE_SERVER_TASK_RANK (1)
 #define LOADING_SPARSE_TASK_RANK (0)
-#define WORKERS_BASE 3 // used in wait_for_start
+#define WORKERS_BASE 3  // used in wait_for_start
 
 #define SAMPLE_BASE (0)
 
@@ -40,4 +40,4 @@ using FEATURE_TYPE = float;
 #define NUM_POLL_THREADS 2
 
 // define number of parameter server working threads
-# define NUM_PS_WORK_THREADS 4
+#define NUM_PS_WORK_THREADS 4

@@ -7,14 +7,18 @@
 
 namespace cirrus {
 
-LRModel::LRModel(uint64_t d) { weights_.resize(d); }
+LRModel::LRModel(uint64_t d) {
+  weights_.resize(d);
+}
 
 LRModel::LRModel(const FEATURE_TYPE* w, uint64_t d) {
   weights_.resize(d);
   std::copy(w, w + d, weights_.begin());
 }
 
-uint64_t LRModel::size() const { return weights_.size(); }
+uint64_t LRModel::size() const {
+  return weights_.size();
+}
 
 /**
   * Serialization / deserialization routines
@@ -164,7 +168,7 @@ std::pair<double, double> LRModel::calc_loss(Dataset& dataset) const {
     int predicted_class = 0;
 
     auto r1 = ds.row(i) * weights_eig;
-    if (s_1((FEATURE_TYPE)r1) > 0.5) {
+    if (s_1((FEATURE_TYPE) r1) > 0.5) {
       predicted_class = 1;
     }
     if (predicted_class != class_i) {
@@ -177,7 +181,8 @@ std::pair<double, double> LRModel::calc_loss(Dataset& dataset) const {
     FEATURE_TYPE value = class_i * v2 + (1 - class_i) * v1;
 
     // XXX not sure this check is necessary
-    if (value > 0 && value < 1e-6) value = 0;
+    if (value > 0 && value < 1e-6)
+      value = 0;
 
     if (value > 0) {
       std::cout << "ds row: " << std::endl << ds.row(i) << std::endl;
@@ -214,7 +219,9 @@ std::unique_ptr<ModelGradient> LRModel::loadGradient(void* mem) const {
   return grad;
 }
 
-bool LRModel::is_integer(FEATURE_TYPE n) const { return floor(n) == n; }
+bool LRModel::is_integer(FEATURE_TYPE n) const {
+  return floor(n) == n;
+}
 
 double LRModel::checksum() const {
   return crc32(weights_.data(), weights_.size() * sizeof(FEATURE_TYPE));

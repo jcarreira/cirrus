@@ -2,10 +2,8 @@
 
 namespace cirrus {
 
-OptimizationMethod::OptimizationMethod(double lr)
-  : learning_rate(lr)
-{}
-   
+OptimizationMethod::OptimizationMethod(double lr) : learning_rate(lr) {}
+
 void OptimizationMethod::edit_weight(double& weight) {
   return;
 }

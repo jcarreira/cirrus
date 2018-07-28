@@ -5,8 +5,7 @@
 #include "Utils.h"
 #include "config.h"
 
-cirrus::SparseDataset read_dataset(
-    const cirrus::Configuration& config) {
+cirrus::SparseDataset read_dataset(const cirrus::Configuration& config) {
   cirrus::InputReader input;
 
   std::string delimiter;
@@ -21,10 +20,8 @@ cirrus::SparseDataset read_dataset(
   }
 
   // READ the kaggle criteo dataset
-  return input.read_input_criteo_kaggle_sparse(
-      config.get_input_path(),
-      delimiter,
-      config);
+  return input.read_input_criteo_kaggle_sparse(config.get_input_path(),
+                                               delimiter, config);
 }
 
 /**
@@ -70,7 +67,7 @@ int main() {
   cirrus::SparseDataset dataset = read_dataset(config);
   dataset.check();
 
-  std::ofstream ofs ("/mnt/efs/csv_to_libsvm.txt", std::ofstream::out);
+  std::ofstream ofs("/mnt/efs/csv_to_libsvm.txt", std::ofstream::out);
 
   for (uint32_t i = 0; i < dataset.num_samples(); ++i) {
     const auto label = dataset.labels_[i];
@@ -84,4 +81,3 @@ int main() {
   }
   return 0;
 }
-

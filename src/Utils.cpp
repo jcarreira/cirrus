@@ -38,7 +38,9 @@ uint64_t get_time_ms() {
   return (1000000UL * tv.tv_sec + tv.tv_usec) / 1000;
 }
 
-uint64_t get_time_sec() { return get_time_ms() / 1000; }
+uint64_t get_time_sec() {
+  return get_time_ms() / 1000;
+}
 
 uint64_t get_time_ns() {
   struct timespec ts;
@@ -50,7 +52,8 @@ std::ifstream::pos_type filesize(const std::string& filename) {
   std::ifstream in(filename.c_str(),
                    std::ifstream::ate | std::ifstream::binary);
 
-  if (!in) throw std::runtime_error("Error opening: " + filename);
+  if (!in)
+    throw std::runtime_error("Error opening: " + filename);
 
   return in.tellg();
 }

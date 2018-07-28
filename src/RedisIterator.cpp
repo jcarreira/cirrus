@@ -3,10 +3,11 @@
 #include <vector>
 #include <iostream>
 
-RedisIterator::RedisIterator(
-        uint64_t left_id, uint64_t right_id,
-        const std::string& IP, int port) :
-    left_id(left_id), right_id(right_id), IP(IP), port(port) {
+RedisIterator::RedisIterator(uint64_t left_id,
+                             uint64_t right_id,
+                             const std::string& IP,
+                             int port)
+    : left_id(left_id), right_id(right_id), IP(IP), port(port) {
   r = redis_connect(IP.c_str(), port);
   if (r == nullptr) {
     std::cout << "Not able to connect" << std::endl;
@@ -14,8 +15,7 @@ RedisIterator::RedisIterator(
   }
 
   std::cout << "Creating iterator"
-            << " left_id: " << left_id
-            << " right_id: " << right_id
+            << " left_id: " << left_id << " right_id: " << right_id
             << std::endl;
 
   cur = left_id;
@@ -25,9 +25,7 @@ RedisIterator::RedisIterator(
 
 char* RedisIterator::get_next() {
   std::cout << "Get next "
-    << " cur: " << cur
-    << " last: " << last
-    << "\n";
+            << " cur: " << cur << " last: " << last << "\n";
   while (1) {
     ring_lock.lock();
     if (ring.empty()) {
@@ -47,9 +45,7 @@ char* RedisIterator::get_next() {
   ring_lock.unlock();
 
   std::cout << "Returning prefetched batch"
-    << " cur: " << cur
-    << " last: " << last
-    << std::endl;
+            << " cur: " << cur << " last: " << last << std::endl;
   return ret;
 }
 
@@ -62,7 +58,7 @@ void RedisIterator::thread_function() {
       ring_lock.unlock();
       std::vector<char*> prefetched;
       for (uint64_t i = 0; i < to_read; ++i) {
-        char*data = redis_get_numid(r, last);
+        char* data = redis_get_numid(r, last);
         if (data == nullptr) {
           std::cout << "Wasn't able to find" << std::endl;
           exit(-1);
@@ -84,4 +80,3 @@ void RedisIterator::thread_function() {
     usleep(500);
   }
 }
-

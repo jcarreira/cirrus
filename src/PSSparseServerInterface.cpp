@@ -39,7 +39,7 @@ PSSparseServerInterface::PSSparseServerInterface(const std::string& ip,
 }
 
 void PSSparseServerInterface::connect() {
-  int ret = ::connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+  int ret = ::connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
   if (ret < 0) {
     throw std::runtime_error("Failed to make contact with server with ip: " +
                              ip + " port: " + std::to_string(port) + "\n");
@@ -59,7 +59,8 @@ void PSSparseServerInterface::send_lr_gradient(
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(
-    const SparseDataset& ds, SparseLRModel& lr_model,
+    const SparseDataset& ds,
+    SparseLRModel& lr_model,
     const Configuration& config) {
 #ifdef DEBUG
   std::cout << "Getting LR sparse model inplace" << std::endl;
@@ -113,13 +114,14 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #endif
   // build a truly sparse model and return
   // TODO: Can this copy be avoided?
-  lr_model.loadSerializedSparse((FEATURE_TYPE*)sparse_model->model()->data(),
-                                (uint32_t*)msg_start,
+  lr_model.loadSerializedSparse((FEATURE_TYPE*) sparse_model->model()->data(),
+                                (uint32_t*) msg_start,
                                 sparse_model->model()->size(), config);
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(
-    const SparseDataset& ds, const Configuration& config) {
+    const SparseDataset& ds,
+    const Configuration& config) {
   SparseLRModel model(0);
   get_lr_sparse_model_inplace(ds, model, config);
   return std::move(model);
@@ -167,7 +169,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
 
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
-        (FEATURE_TYPE*)msg->model()->data(), 0, 0, 0);  // XXX fix this
+        (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
     // TODO: Need to use delete[]?
     // delete[] buffer;
     return model;
@@ -191,7 +193,9 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   * list of K item ids (K * uint32_t)
   */
 SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
-    const SparseDataset& ds, uint32_t user_base, uint32_t minibatch_size) {
+    const SparseDataset& ds,
+    uint32_t user_base,
+    uint32_t minibatch_size) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
   char* msg = new char[MAX_MSG_SIZE];
@@ -208,7 +212,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       uint32_t movieId = w.first;
       // std::cout << "movieId: " << movieId << "\n";
 
-      if (seen[movieId]) continue;
+      if (seen[movieId])
+        continue;
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
       // store_value<uint32_t>(msg, movieId); // encode the index
@@ -252,14 +257,15 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
 
   // build a sparse model and return
-  SparseMFModel model((FEATURE_TYPE*)sparse_model->model()->data(),
+  SparseMFModel model((FEATURE_TYPE*) sparse_model->model()->data(),
                       minibatch_size, item_ids_count);
 
   return std::move(model);
 }
 
 void PSSparseServerInterface::send_gradient(
-    const ModelGradient& gradient, message::WorkerMessage::ModelType mt) {
+    const ModelGradient& gradient,
+    message::WorkerMessage::ModelType mt) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   int grad_size = gradient.getSerializedSize();
   unsigned char buf[grad_size];

@@ -5,17 +5,16 @@
 
 namespace cirrus {
 
-class AdaGrad: public OptimizationMethod {
+class AdaGrad : public OptimizationMethod {
  public:
-   AdaGrad(double lr, double ae);
-   void sgd_update(
-          std::unique_ptr<SparseLRModel>& lr_model, 
-          const ModelGradient* gradient);
- 
+  AdaGrad(double lr, double ae);
+  void sgd_update(std::unique_ptr<SparseLRModel>& lr_model,
+                  const ModelGradient* gradient);
+
  private:
-    double adagrad_epsilon;
+  double adagrad_epsilon;
 };
 
 }  // namespace cirrus
 
-#endif // _ADAGRAD_H_
+#endif  // _ADAGRAD_H_

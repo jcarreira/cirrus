@@ -17,7 +17,8 @@ namespace cirrus {
 // Sample2 : ...
 // ....
 
-void MFModel::initialize_data(uint64_t users, uint64_t items,
+void MFModel::initialize_data(uint64_t users,
+                              uint64_t items,
                               uint64_t nfactors) {
   // user_weights_ = std::shared_ptr<FEATURE_TYPE>(
   //    new FEATURE_TYPE[users * nfactors],
@@ -52,7 +53,9 @@ MFModel::MFModel(uint64_t users, uint64_t items, uint64_t nfactors) {
   initialize_data(users, items, nfactors);
 }
 
-MFModel::MFModel(const void* data, uint64_t /*nusers*/, uint64_t /*nitems*/,
+MFModel::MFModel(const void* data,
+                 uint64_t /*nusers*/,
+                 uint64_t /*nitems*/,
                  uint64_t /*nfactors*/) {
   loadSerialized(data);
 }
@@ -244,7 +247,8 @@ FEATURE_TYPE MFModel::predict(uint32_t userId, uint32_t itemId) const {
 }
 
 std::unique_ptr<ModelGradient> MFModel::minibatch_grad(const Matrix&,
-                                                       FEATURE_TYPE*, uint64_t,
+                                                       FEATURE_TYPE*,
+                                                       uint64_t,
                                                        double) const {
   throw std::runtime_error("Not implemented");
 }
@@ -270,8 +274,10 @@ const FEATURE_TYPE& MFModel::get_item_weights(uint64_t itemId,
   return item_weights_.at(itemId * nfactors_ + factor);
 }
 
-void MFModel::sgd_update(double learning_rate, uint64_t base_user,
-                         const SparseDataset& dataset, double /*epsilon*/) {
+void MFModel::sgd_update(double learning_rate,
+                         uint64_t base_user,
+                         const SparseDataset& dataset,
+                         double /*epsilon*/) {
   // iterate all pairs user rating
   for (uint64_t i = 0; i < dataset.data_.size(); ++i) {
     for (uint64_t j = 0; j < dataset.data_[i].size(); ++j) {

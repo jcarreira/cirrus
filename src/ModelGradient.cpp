@@ -113,7 +113,7 @@ void LRSparseGradient::loadSerialized(const void* mem) {
 
   int size =
       num_weights * (sizeof(FEATURE_TYPE) + sizeof(int)) + 2 * sizeof(int);
-  char* data_begin = (char*)mem;
+  char* data_begin = (char*) mem;
 
   // std::cout << "Number of weights: " << num_weights << std::endl;
   // std::cout << "Version: " << version << std::endl;
@@ -123,7 +123,7 @@ void LRSparseGradient::loadSerialized(const void* mem) {
   weights.resize(0);
 
   for (int i = 0; i < num_weights; ++i) {
-    assert(std::distance(data_begin, (char*)mem) < size);
+    assert(std::distance(data_begin, (char*) mem) < size);
     int index = load_value<int>(mem);
     FEATURE_TYPE w = load_value<FEATURE_TYPE>(mem);
     weights.push_back(std::make_pair(index, w));

@@ -1,5 +1,3 @@
 #include "Synchronization.h"
 
-namespace cirrus {
-
-}  // namespace cirrus
+namespace cirrus {}  // namespace cirrus

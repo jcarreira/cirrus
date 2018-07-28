@@ -2,14 +2,12 @@
 
 namespace cirrus {
 
-SGD::SGD(double lr)
-  : OptimizationMethod(lr) {}
+SGD::SGD(double lr) : OptimizationMethod(lr) {}
 
-void SGD::sgd_update(
-    std::unique_ptr<SparseLRModel>& lr_model, 
-    const ModelGradient* gradient) {
+void SGD::sgd_update(std::unique_ptr<SparseLRModel>& lr_model,
+                     const ModelGradient* gradient) {
   const LRSparseGradient* grad =
-    dynamic_cast<const LRSparseGradient*>(gradient);
+      dynamic_cast<const LRSparseGradient*>(gradient);
   if (grad == nullptr) {
     throw std::runtime_error("Error in dynamic cast");
   }

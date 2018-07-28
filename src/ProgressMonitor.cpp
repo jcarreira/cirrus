@@ -22,5 +22,4 @@ int ProgressMonitor::get_number_batches() {
   return ret;
 }
 
-} // namespace cirrus
-
+}  // namespace cirrus

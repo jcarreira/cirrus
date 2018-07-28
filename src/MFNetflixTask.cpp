@@ -22,7 +22,8 @@ void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
   static uint64_t before = 0;
-  if (before == 0) before = get_time_us();
+  if (before == 0)
+    before = get_time_us();
   auto now = get_time_us();
   std::cout << "[WORKER] "
             << "Worker task published gradient"
@@ -37,7 +38,8 @@ void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
 
 // get samples and labels data
 bool MFNetflixTask::get_dataset_minibatch(
-    std::unique_ptr<SparseDataset>& dataset, S3SparseIterator& s3_iter) {
+    std::unique_ptr<SparseDataset>& dataset,
+    S3SparseIterator& s3_iter) {
 #ifdef DEBUG
   auto start = get_time_us();
 #endif

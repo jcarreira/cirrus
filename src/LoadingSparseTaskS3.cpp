@@ -10,8 +10,7 @@
 namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
-SparseDataset LoadingSparseTaskS3::read_dataset(
-    const Configuration& config) {
+SparseDataset LoadingSparseTaskS3::read_dataset(const Configuration& config) {
   InputReader input;
 
   std::string delimiter;
@@ -26,10 +25,8 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
   }
 
   // READ the kaggle criteo dataset
-  return input.read_input_criteo_kaggle_sparse(
-      config.get_input_path(),
-      delimiter,
-      config);
+  return input.read_input_criteo_kaggle_sparse(config.get_input_path(),
+                                               delimiter, config);
 }
 
 void LoadingSparseTaskS3::check_label(FEATURE_TYPE label) {
@@ -45,7 +42,8 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
                                         std::unique_ptr<S3Client>& s3_client) {
   std::cout << "[LOADER] Trying to get sample with id: " << 0 << std::endl;
 
-  std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
+  std::string obj_id =
+      std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
   std::string data =
       s3_client->s3_get_object_value(obj_id, config.get_s3_bucket());
 
@@ -53,11 +51,12 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
   dataset.check();
   dataset.check_labels();
 
-  //std::cout << "[LOADER] Checking label values.." << std::endl;
-  //check_label(sample.get()[0]);
+  // std::cout << "[LOADER] Checking label values.." << std::endl;
+  // check_label(sample.get()[0]);
 
   const auto& s = dataset.get_row(0);
-  std::cout << "[LOADER] " << "Print sample 0 with size: " << s.size() << std::endl;
+  std::cout << "[LOADER] "
+            << "Print sample 0 with size: " << s.size() << std::endl;
   for (const auto& feature : s) {
     int index = feature.first;
     FEATURE_TYPE value = feature.second;
@@ -65,7 +64,7 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
   }
 
   for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
-    //const auto& s = dataset.get_row(i);
+    // const auto& s = dataset.get_row(i);
     const auto& label = dataset.labels_[i];
     if (label != 0.0 && label != 1.0) {
       throw std::runtime_error("Wrong label");
@@ -79,7 +78,8 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
  * It signals when work is done by changing a bit in the object store
  */
 void LoadingSparseTaskS3::run(const Configuration& config) {
-  std::cout << "[LOADER-SPARSE] " << "Read criteo input..." << std::endl;
+  std::cout << "[LOADER-SPARSE] "
+            << "Read criteo input..." << std::endl;
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
   s3_initialize_aws();
@@ -90,10 +90,9 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "
-    << "Adding " << dataset.num_samples()
-    << " #s3 objs: " << num_s3_objs
-    << " bucket: " << config.get_s3_bucket()
-    << std::endl;
+            << "Adding " << dataset.num_samples()
+            << " #s3 objs: " << num_s3_objs
+            << " bucket: " << config.get_s3_bucket() << std::endl;
 
   // For each S3 object (group of s3_obj_num_samples samples)
   for (unsigned int i = 0; i < num_s3_objs; ++i) {
@@ -105,10 +104,12 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
     uint64_t len;
     // this function already returns a nicely packed object
     std::shared_ptr<char> s3_obj =
-      dataset.build_serialized_s3_obj(first_sample, last_sample, &len);
+        dataset.build_serialized_s3_obj(first_sample, last_sample, &len);
 
     std::cout << "Putting object in S3 with size: " << len << std::endl;
-    std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-CRITEO";
+    std::string obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
+        "-CRITEO";
     s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
   }
@@ -116,5 +117,4 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
   std::cout << "LOADER-SPARSE terminated successfully" << std::endl;
 }
 
-} // namespace cirrus
-
+}  // namespace cirrus

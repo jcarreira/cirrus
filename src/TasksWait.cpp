@@ -8,9 +8,8 @@ namespace cirrus {
 void MLTask::wait_for_start(int index, int nworkers) {
   return;
   std::cout << "Waiting for all workers to start (redis). index: " << index
-    << std::endl;
-  std::cout << "Setting start flag. id: " << index
-    << std::endl;
+            << std::endl;
+  std::cout << "Setting start flag. id: " << index << std::endl;
 
   PSSparseServerInterface psi(ps_ip, ps_port);
 
@@ -33,5 +32,4 @@ void MLTask::wait_for_start(int index, int nworkers) {
   std::cout << "Worker " << index << " done waiting: " << std::endl;
 }
 
-} // namespace cirrus
-
+}  // namespace cirrus

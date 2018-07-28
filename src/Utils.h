@@ -105,8 +105,10 @@ void print_statistics(const T& begin, const T& end) {
 
   for (T it = begin; it != end; ++it) {
     avg += *it;
-    if (*it > max_val) max_val = *it;
-    if (*it < min_val) min_val = *it;
+    if (*it > max_val)
+      max_val = *it;
+    if (*it < min_val)
+      min_val = *it;
   }
 
   std::cout << std::endl
@@ -124,7 +126,7 @@ template <typename T>
 void advance_ptr(T*& p, uint64_t bytes) {
   const char* ptr = reinterpret_cast<const char*>(p);
   ptr += bytes;
-  p = (T*)ptr;
+  p = (T*) ptr;
 }
 
 template <typename T, typename C>
