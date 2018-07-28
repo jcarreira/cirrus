@@ -1,9 +1,9 @@
+#include "Constants.h"
 #include <ModelGradient.h>
 #include <Utils.h>
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-#include "Constants.h"
 
 namespace cirrus {
 

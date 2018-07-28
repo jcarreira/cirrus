@@ -8,16 +8,16 @@
 #include <InputReader.h>
 #include <Utils.h>
 
-#include <string>
-#include <vector>
-#include <thread>
-#include <cassert>
-#include <memory>
 #include <algorithm>
 #include <atomic>
-#include <map>
-#include <iomanip>
+#include <cassert>
 #include <functional>
+#include <iomanip>
+#include <map>
+#include <memory>
+#include <string>
+#include <thread>
+#include <vector>
 
 #define DEBUG
 

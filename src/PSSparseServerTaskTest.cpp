@@ -1,14 +1,14 @@
-#include <poll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
-#include <unistd.h>
-#include <stdexcept>
-#include <cstring>
-#include <iostream>
 #include "ModelGradient.h"
 #include "Utils.h"
+#include <arpa/inet.h>
+#include <cstring>
+#include <iostream>
+#include <netinet/tcp.h>
+#include <poll.h>
+#include <stdexcept>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 void send_message(int sock) {
   uint32_t operation = 1;

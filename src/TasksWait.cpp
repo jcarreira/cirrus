@@ -1,7 +1,7 @@
+#include "PSSparseServerInterface.h"
+#include "config.h"
 #include <Tasks.h>
 #include <iostream>
-#include "config.h"
-#include "PSSparseServerInterface.h"
 
 namespace cirrus {
 

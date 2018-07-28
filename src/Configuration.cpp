@@ -1,10 +1,10 @@
 #include <Configuration.h>
 
+#include <Utils.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <Utils.h>
 
 namespace cirrus {
 

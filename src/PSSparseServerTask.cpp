@@ -1,6 +1,5 @@
 #include <Tasks.h>
 
-#include <signal.h>
 #include "AdaGrad.h"
 #include "Checksum.h"
 #include "Constants.h"
@@ -12,6 +11,7 @@
 #include "Utils.h"
 #include "common/schemas/PSMessage_generated.h"
 #include "common/schemas/WorkerMessage_generated.h"
+#include <signal.h>
 
 #undef DEBUG
 

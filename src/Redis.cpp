@@ -1,11 +1,11 @@
-#include <stdio.h>
 #include <iostream>
+#include <stdio.h>
 
 extern "C" {
 
-#include <string.h>
-#include <assert.h>
 #include "Redis.h"
+#include <assert.h>
+#include <string.h>
 
 #undef REDIS_DEBUG
 

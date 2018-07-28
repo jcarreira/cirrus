@@ -1,8 +1,8 @@
 #include "S3Iterator.h"
 #include "Utils.h"
+#include <iostream>
 #include <unistd.h>
 #include <vector>
-#include <iostream>
 
 #include <pthread.h>
 #include <semaphore.h>

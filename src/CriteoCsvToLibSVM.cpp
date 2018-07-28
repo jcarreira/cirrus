@@ -1,7 +1,7 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
 #include "InputReader.h"
+#include "Serializers.h"
 #include "Utils.h"
 #include "config.h"
 

@@ -1,9 +1,9 @@
 #include <Tasks.h>
 
 #include "Configuration.h"
+#include "S3Iterator.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "S3Iterator.h"
 
 namespace cirrus {
 

@@ -1,9 +1,9 @@
+#include <Checksum.h>
+#include <Eigen/Dense>
 #include <SoftmaxModel.h>
 #include <Utils.h>
-#include <Eigen/Dense>
-#include <cmath>
 #include <algorithm>
-#include <Checksum.h>
+#include <cmath>
 
 namespace cirrus {
 

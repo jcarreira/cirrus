@@ -2,10 +2,10 @@
   * SparseDataset is a class that is used to manage a sparse dataset
   */
 
-#include <SparseDataset.h>
-#include <algorithm>
-#include <Utils.h>
 #include <Checksum.h>
+#include <SparseDataset.h>
+#include <Utils.h>
+#include <algorithm>
 
 #include <cassert>
 #include <limits>

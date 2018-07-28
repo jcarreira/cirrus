@@ -1,7 +1,7 @@
 #include "RedisIterator.h"
+#include <iostream>
 #include <unistd.h>
 #include <vector>
-#include <iostream>
 
 RedisIterator::RedisIterator(uint64_t left_id,
                              uint64_t right_id,

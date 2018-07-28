@@ -1,9 +1,9 @@
 #include <Tasks.h>
 
+#include "PSSparseServerInterface.h"
+#include "S3SparseIterator.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "S3SparseIterator.h"
-#include "PSSparseServerInterface.h"
 
 #include <pthread.h>
 

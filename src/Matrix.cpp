@@ -1,6 +1,6 @@
+#include <Checksum.h>
 #include <Matrix.h>
 #include <Utils.h>
-#include <Checksum.h>
 
 namespace cirrus {
 
