@@ -44,14 +44,14 @@ uint64_t get_time_ms();
   */
 template <class C>
 C string_to(const std::string& s) {
-    if (s == "") {
-        return 0;
-    } else {
-        std::istringstream iss(s);
-        C c;
-        iss >> c;
-        return c;
-    }
+  if (s == "") {
+    return 0;
+  } else {
+    std::istringstream iss(s);
+    C c;
+    iss >> c;
+    return c;
+  }
 }
 
 /**
@@ -59,9 +59,9 @@ C string_to(const std::string& s) {
   */
 template <class C>
 std::string to_string(const C& s) {
-    std::ostringstream oss;
-    oss << s;
-    return oss.str();
+  std::ostringstream oss;
+  oss << s;
+  return oss.str();
 }
 
 /**
@@ -89,9 +89,9 @@ double get_random_normal(double, double);
 /**
   * Used to delete arrays of arbitrary teypes
   */
-template<typename T>
+template <typename T>
 void array_deleter(T* t) {
-    delete[] t;
+  delete[] t;
 }
 
 /**
@@ -99,44 +99,41 @@ void array_deleter(T* t) {
   */
 template <typename T>
 void print_statistics(const T& begin, const T& end) {
-    double max_val = DBL_MIN;
-    double min_val = DBL_MAX;
-    double avg = 0;
+  double max_val = DBL_MIN;
+  double min_val = DBL_MAX;
+  double avg = 0;
 
-    for (T it = begin; it != end; ++it) {
-        avg += *it;
-        if (*it > max_val)
-            max_val = *it;
-        if (*it < min_val)
-            min_val = *it;
-    }
+  for (T it = begin; it != end; ++it) {
+    avg += *it;
+    if (*it > max_val) max_val = *it;
+    if (*it < min_val) min_val = *it;
+  }
 
-    std::cout << std::endl
-        << "Min: " << min_val << std::endl
-        << "Max: " << max_val << std::endl
-        << "avg: " << avg / std::distance(begin, end) << std::endl
-        << "distance: " << std::distance(begin, end) << std::endl
-        << std::endl;
+  std::cout << std::endl << "Min: " << min_val << std::endl
+            << "Max: " << max_val << std::endl
+            << "avg: " << avg / std::distance(begin, end) << std::endl
+            << "distance: " << std::distance(begin, end) << std::endl
+            << std::endl;
 }
 
 void sleep_forever();
 
 // advance ptr a number of bytes forward
-template<typename T>
+template <typename T>
 void advance_ptr(T*& p, uint64_t bytes) {
-  const char*ptr = reinterpret_cast<const char*>(p);
+  const char* ptr = reinterpret_cast<const char*>(p);
   ptr += bytes;
   p = (T*)ptr;
 }
 
-template<typename T, typename C>
+template <typename T, typename C>
 void store_value(C*& data, T value) {
   T* v_ptr = reinterpret_cast<T*>(data);
   *v_ptr = value;
   advance_ptr(data, sizeof(T));
 }
 
-template<typename T, typename C>
+template <typename T, typename C>
 T load_value(const C*& data) {
   const T* v_ptr = reinterpret_cast<const T*>(data);
   T ret = *v_ptr;
@@ -152,6 +149,6 @@ uint64_t hash_f(const char* s);
 
 void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb);
 
-} // namespace cirrus
+}  // namespace cirrus
 
 #endif  // _UTILS_H_

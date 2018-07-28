@@ -27,35 +27,32 @@ void check_mpi_error(int err, std::string error) {
 #endif
 
 uint64_t get_time_us() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return 1000000UL * tv.tv_sec + tv.tv_usec;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return 1000000UL * tv.tv_sec + tv.tv_usec;
 }
 
 uint64_t get_time_ms() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (1000000UL * tv.tv_sec + tv.tv_usec) / 1000;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (1000000UL * tv.tv_sec + tv.tv_usec) / 1000;
 }
 
-uint64_t get_time_sec() {
-    return get_time_ms() / 1000;
-}
+uint64_t get_time_sec() { return get_time_ms() / 1000; }
 
 uint64_t get_time_ns() {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return ts.tv_nsec + ts.tv_sec * 1000000000UL;
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return ts.tv_nsec + ts.tv_sec * 1000000000UL;
 }
 
 std::ifstream::pos_type filesize(const std::string& filename) {
-    std::ifstream in(filename.c_str(),
-            std::ifstream::ate | std::ifstream::binary);
+  std::ifstream in(filename.c_str(),
+                   std::ifstream::ate | std::ifstream::binary);
 
-    if (!in)
-        throw std::runtime_error("Error opening: " + filename);
+  if (!in) throw std::runtime_error("Error opening: " + filename);
 
-    return in.tellg();
+  return in.tellg();
 }
 
 #if 0
@@ -108,13 +105,13 @@ int64_t send_all(int sock, void* data, size_t len) {
 
   while (bytes_sent < len) {
     int64_t retval = send(sock, reinterpret_cast<char*>(data) + bytes_sent,
-        len - bytes_sent, 0);
+                          len - bytes_sent, 0);
 
     if (retval == -1) {
       return -1;
     }
     bytes_sent += retval;
-  }   
+  }
 #ifdef DEBUG
   std::cout << "send_all done" << std::endl;
 #endif
@@ -122,7 +119,7 @@ int64_t send_all(int sock, void* data, size_t len) {
 }
 
 void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb) {
-  uint8_t *msg_buf = (*fbb).GetBufferPointer();
+  uint8_t* msg_buf = (*fbb).GetBufferPointer();
   int size = (*fbb).GetSize();
   if (send_all(sock, &size, sizeof(int)) < 1) {
     throw std::runtime_error("Error sending message size");
@@ -143,18 +140,19 @@ ssize_t read_all(int sock, void* data, size_t len) {
     std::cout << "calling read().." << std::endl;
 #endif
     int64_t retval = read(sock, reinterpret_cast<char*>(data) + bytes_read,
-        len - bytes_read);
+                          len - bytes_read);
 #ifdef DEBUG
-    std::cout << "read_all told to read: " << (len - bytes_read) << " retval: " << retval << std::endl;
+    std::cout << "read_all told to read: " << (len - bytes_read)
+              << " retval: " << retval << std::endl;
 #endif
 
     if (retval == -1) {
-      std::string error_str = "Error reading from client. errno: "
-        + std::to_string(errno);
+      std::string error_str =
+          "Error reading from client. errno: " + std::to_string(errno);
       throw std::runtime_error(error_str);
     } else if (retval == 0) {
       // end of file
-      return 0; // we inform the caller of EOF
+      return 0;  // we inform the caller of EOF
     }
     bytes_read += retval;
   }
@@ -166,11 +164,10 @@ ssize_t read_all(int sock, void* data, size_t len) {
 
 uint64_t hash_f(const char* s) {
   uint64_t seed = 100;
-  uint64_t hash_otpt[2]= {0};
+  uint64_t hash_otpt[2] = {0};
   MurmurHash3_x64_128(s, strlen(s), seed, hash_otpt);
 
-  //std::cout << "MurmurHash3_x64_128 hash: " << hash_otpt[0] << std::endl;
+  // std::cout << "MurmurHash3_x64_128 hash: " << hash_otpt[0] << std::endl;
   return hash_otpt[0];
 }
-
 }

@@ -16,9 +16,7 @@ LRGradient::LRGradient(LRGradient&& other) {
   version = other.version;
 }
 
-LRGradient::LRGradient(const std::vector<FEATURE_TYPE>& data) :
-  weights(data) {
-  }
+LRGradient::LRGradient(const std::vector<FEATURE_TYPE>& data) : weights(data) {}
 
 LRGradient::LRGradient(int d) {
   weights.resize(d);
@@ -66,7 +64,7 @@ uint64_t LRGradient::getSerializedSize() const {
 
 void LRGradient::print() const {
   std::cout << "Printing LRGradient. version: " << version << std::endl;
-  for (const auto &v : weights) {
+  for (const auto& v : weights) {
     std::cout << v << " ";
   }
   std::cout << std::endl;
@@ -80,8 +78,6 @@ void LRGradient::check_values() const {
   }
 }
 
-
-
 /**
  * LRSparseGradient
  */
@@ -92,9 +88,8 @@ LRSparseGradient::LRSparseGradient(LRSparseGradient&& other) {
 }
 
 LRSparseGradient::LRSparseGradient(
-    const std::vector<std::pair<int, FEATURE_TYPE>>&& data) :
-  weights(data) {
-  }
+    const std::vector<std::pair<int, FEATURE_TYPE>>&& data)
+    : weights(data) {}
 
 LRSparseGradient::LRSparseGradient(int d) {
   weights.resize(d);
@@ -116,12 +111,13 @@ void LRSparseGradient::loadSerialized(const void* mem) {
   int num_weights = load_value<int>(mem);
   assert(num_weights > 0 && num_weights < 10000000);
 
-  int size = num_weights * (sizeof(FEATURE_TYPE)+sizeof(int)) + 2 * sizeof(int);
+  int size =
+      num_weights * (sizeof(FEATURE_TYPE) + sizeof(int)) + 2 * sizeof(int);
   char* data_begin = (char*)mem;
 
-  //std::cout << "Number of weights: " << num_weights << std::endl;
-  //std::cout << "Version: " << version << std::endl;
-  //std::cout << "size: " << size << std::endl;
+  // std::cout << "Number of weights: " << num_weights << std::endl;
+  // std::cout << "Version: " << version << std::endl;
+  // std::cout << "size: " << size << std::endl;
 
   // clear weights
   weights.resize(0);
@@ -137,7 +133,8 @@ void LRSparseGradient::loadSerialized(const void* mem) {
 /** Format:
  * version (int)
  * number of weights (int)
- * list of weights: index1 (int) weight1 (FEATURE_TYPE) | index2 (int) weight2 (FEATURE_TYPE) | ..
+ * list of weights: index1 (int) weight1 (FEATURE_TYPE) | index2 (int) weight2
+ * (FEATURE_TYPE) | ..
  */
 void LRSparseGradient::serialize(void* mem) const {
   store_value<int>(mem, version);
@@ -152,13 +149,14 @@ void LRSparseGradient::serialize(void* mem) const {
 }
 
 uint64_t LRSparseGradient::getSerializedSize() const {
-  return weights.size() * (sizeof(FEATURE_TYPE) + sizeof(int)) + // pairs (index, weight value)
-    sizeof(int) * 2; // version + number of weights
+  return weights.size() * (sizeof(FEATURE_TYPE) +
+                           sizeof(int)) +  // pairs (index, weight value)
+         sizeof(int) * 2;                  // version + number of weights
 }
 
 void LRSparseGradient::print() const {
   std::cout << "Printing LRSparseGradient. version: " << version << std::endl;
-  for (const auto &v : weights) {
+  for (const auto& v : weights) {
     std::cout << "(" << v.first << "," << v.second << ") ";
   }
   std::cout << std::endl;
@@ -172,9 +170,7 @@ void LRSparseGradient::check_values() const {
   }
 }
 
-
-
-/** 
+/**
  * SOFTMAX
  *
  */
@@ -186,7 +182,8 @@ SoftmaxGradient::SoftmaxGradient(uint64_t nclasses, uint64_t d) {
   }
 }
 
-SoftmaxGradient::SoftmaxGradient(const std::vector<std::vector<FEATURE_TYPE>>& w) {
+SoftmaxGradient::SoftmaxGradient(
+    const std::vector<std::vector<FEATURE_TYPE>>& w) {
   weights = w;
 }
 
@@ -203,8 +200,8 @@ void SoftmaxGradient::serialize(void* mem) const {
 }
 
 uint64_t SoftmaxGradient::getSerializedSize() const {
-  return weights.size() * weights[0].size() * sizeof(FEATURE_TYPE)
-    + sizeof(uint32_t);
+  return weights.size() * weights[0].size() * sizeof(FEATURE_TYPE) +
+         sizeof(uint32_t);
 }
 
 void SoftmaxGradient::loadSerialized(const void* mem) {
@@ -220,11 +217,10 @@ void SoftmaxGradient::loadSerialized(const void* mem) {
 }
 
 void SoftmaxGradient::print() const {
-  std::cout
-    << "SoftmaxGradient (" << weights.size() << "x"
-    << weights[0].size() << "): " << std::endl;
-  for (const auto &v : weights) {
-    for (const auto &vv : v) {
+  std::cout << "SoftmaxGradient (" << weights.size() << "x" << weights[0].size()
+            << "): " << std::endl;
+  for (const auto& v : weights) {
+    for (const auto& vv : v) {
       std::cout << vv << " ";
     }
     std::cout << std::endl;
@@ -233,8 +229,8 @@ void SoftmaxGradient::print() const {
 }
 
 void SoftmaxGradient::check_values() const {
-  for (const auto &v : weights) {
-    for (const auto &vv : v) {
+  for (const auto& v : weights) {
+    for (const auto& vv : v) {
       if (std::isnan(vv) || std::isinf(vv)) {
         throw std::runtime_error("SoftmaxGradient::check_values error");
       }
@@ -242,7 +238,7 @@ void SoftmaxGradient::check_values() const {
   }
 }
 
-/** 
+/**
  * MFGradient
  *
  */
@@ -271,8 +267,8 @@ void MFGradient::serialize(void* mem) const {
 }
 
 uint64_t MFGradient::getSerializedSize() const {
-  return weights.size() * weights[0].size() * sizeof(FEATURE_TYPE)
-    + sizeof(uint32_t);
+  return weights.size() * weights[0].size() * sizeof(FEATURE_TYPE) +
+         sizeof(uint32_t);
 }
 
 void MFGradient::loadSerialized(const void* mem) {
@@ -288,11 +284,10 @@ void MFGradient::loadSerialized(const void* mem) {
 }
 
 void MFGradient::print() const {
-  std::cout
-    << "MFGradient (" << weights.size() << "x"
-    << weights[0].size() << "): " << std::endl;
-  for (const auto &v : weights) {
-    for (const auto &vv : v) {
+  std::cout << "MFGradient (" << weights.size() << "x" << weights[0].size()
+            << "): " << std::endl;
+  for (const auto& v : weights) {
+    for (const auto& vv : v) {
       std::cout << vv << " ";
     }
     std::cout << std::endl;
@@ -301,8 +296,8 @@ void MFGradient::print() const {
 }
 
 void MFGradient::check_values() const {
-  for (const auto &v : weights) {
-    for (const auto &vv : v) {
+  for (const auto& v : weights) {
+    for (const auto& vv : v) {
       if (std::isnan(vv) || std::isinf(vv)) {
         throw std::runtime_error("MFGradient::check_values error");
       }
@@ -311,11 +306,11 @@ void MFGradient::check_values() const {
 }
 
 MFSparseGradient::MFSparseGradient() {
-  //users_bias_grad.resize(nusers);
-  //users_weights_grad.resize(nusers);
+  // users_bias_grad.resize(nusers);
+  // users_weights_grad.resize(nusers);
 
-  //items_bias_grad.resize(nitems);
-  //items_weights_grad.resize(nitems);
+  // items_bias_grad.resize(nitems);
+  // items_weights_grad.resize(nitems);
 }
 
 /** FORMAT of the Matrix Factorization sparse gradient
@@ -323,19 +318,23 @@ MFSparseGradient::MFSparseGradient() {
  * number of items (uint32_t)
  * user_bias [# users] (FEATURE_TYPE)
  * item_bias [# items] (FEATURE_TYPE)
- * user weights grad id (uint32_t) and [# users * NUM_FACTORS] (uint32_t + FEATURE_TYPE)
- * item_weights_grad id (uint32_t) [# items * NUM_FACTORS] (uint32_t + FEATURE_TYPE)
+ * user weights grad id (uint32_t) and [# users * NUM_FACTORS] (uint32_t +
+ * FEATURE_TYPE)
+ * item_weights_grad id (uint32_t) [# items * NUM_FACTORS] (uint32_t +
+ * FEATURE_TYPE)
  */
 uint64_t MFSparseGradient::getSerializedSize() const {
-  return sizeof(uint32_t) * (2 + 2) // also count magic values
-    + users_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE))
-    + items_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE))
-    + users_weights_grad.size() * (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE))
-    + items_weights_grad.size() *  (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
+  return sizeof(uint32_t) * (2 + 2)  // also count magic values
+         + users_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE)) +
+         items_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE)) +
+         users_weights_grad.size() *
+             (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE)) +
+         items_weights_grad.size() *
+             (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
 }
 
-void MFSparseGradient::serialize(void *mem) const {
-  store_value<uint32_t>(mem, MAGIC_NUMBER); // magic value
+void MFSparseGradient::serialize(void* mem) const {
+  store_value<uint32_t>(mem, MAGIC_NUMBER);  // magic value
   store_value<uint32_t>(mem, users_bias_grad.size());
   store_value<uint32_t>(mem, items_bias_grad.size());
 
@@ -361,14 +360,14 @@ void MFSparseGradient::serialize(void *mem) const {
 
   assert(items_weights_grad.size() == items_bias_grad.size());
   for (const auto& item : items_weights_grad) {
-    //std::cout << "Serializing itemId: " << item.first << std::endl;
+    // std::cout << "Serializing itemId: " << item.first << std::endl;
     store_value<int>(mem, item.first);
     assert(item.second.size() == NUM_FACTORS);
     for (const auto& weight_grad : item.second) {
       store_value<FEATURE_TYPE>(mem, weight_grad);
     }
   }
-  store_value<uint32_t>(mem, 0x1338); // magic value
+  store_value<uint32_t>(mem, 0x1338);  // magic value
 }
 
 void MFSparseGradient::loadSerialized(const void* mem) {
@@ -376,9 +375,9 @@ void MFSparseGradient::loadSerialized(const void* mem) {
   assert(magic_value == MAGIC_NUMBER);
   uint32_t users_size = load_value<uint32_t>(mem);
   uint32_t items_size = load_value<uint32_t>(mem);
-  //users_bias_grad.reserve(users_size);
-  //items_bias_grad.reserve(items_size);
-  
+  // users_bias_grad.reserve(users_size);
+  // items_bias_grad.reserve(items_size);
+
   for (uint32_t i = 0; i < users_size; ++i) {
     int user_id = load_value<int>(mem);
     FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(mem);
@@ -399,11 +398,12 @@ void MFSparseGradient::loadSerialized(const void* mem) {
     }
     users_weights_grad.push_back(user_weights_grad);
   }
-  
+
   for (uint32_t i = 0; i < items_size; ++i) {
     std::pair<int, std::vector<FEATURE_TYPE>> item_weights_grad;
     item_weights_grad.first = load_value<int>(mem);
-    //std::cout << "loadSerialized itemId: " << item_weights_grad.first << std::endl;
+    // std::cout << "loadSerialized itemId: " << item_weights_grad.first <<
+    // std::endl;
     item_weights_grad.second.reserve(NUM_FACTORS);
     for (uint32_t j = 0; j < NUM_FACTORS; ++j) {
       FEATURE_TYPE weight = load_value<FEATURE_TYPE>(mem);
@@ -428,5 +428,4 @@ void MFSparseGradient::check_values() const {
   }
 }
 
-} // namespace cirrus
-
+}  // namespace cirrus
