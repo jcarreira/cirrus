@@ -1,15 +1,15 @@
 #include <Tasks.h>
 
+#include <signal.h>
+#include "AdaGrad.h"
+#include "Checksum.h"
+#include "Constants.h"
+#include "Momentum.h"
+#include "Nesterov.h"
+#include "OptimizationMethod.h"
+#include "SGD.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "Constants.h"
-#include "Checksum.h"
-#include <signal.h>
-#include "OptimizationMethod.h"
-#include "AdaGrad.h"
-#include "Momentum.h"
-#include "SGD.h"
-#include "Nesterov.h"
 #include "common/schemas/PSMessage_generated.h"
 #include "common/schemas/WorkerMessage_generated.h"
 
@@ -290,8 +290,7 @@ void PSSparseServerTask::gradient_f() {
       if (read_all(sock, thread_buffer.data(), msg_size) == 0) {
         throw std::runtime_error("Error reading message");
       }
-    }
-    catch (...) {
+    } catch (...) {
       throw std::runtime_error("Unhandled error");
     }
 
@@ -713,8 +712,8 @@ void PSSparseServerTask::checkpoint_model_loop() {
   }
 }
 
-void PSSparseServerTask::checkpoint_model_file(const std::string& filename)
-    const {
+void PSSparseServerTask::checkpoint_model_file(
+    const std::string& filename) const {
   uint64_t model_size;
   std::shared_ptr<char> data = serialize_lr_model(*lr_model, &model_size);
 

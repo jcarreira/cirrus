@@ -1,12 +1,12 @@
 #ifndef _MODELGRADIENT_H_
 #define _MODELGRADIENT_H_
 
-#include <cstdint>
+#include <config.h>
 #include <cassert>
-#include <vector>
+#include <cstdint>
 #include <iostream>
 #include <unordered_map>
-#include <config.h>
+#include <vector>
 
 namespace cirrus {
 
@@ -132,7 +132,7 @@ class SoftmaxGradient : public ModelGradient {
  protected:
   // [D * K]
   std::vector<std::vector<FEATURE_TYPE>> weights;  //< weights for softmax
-                                                   //gradient
+                                                   // gradient
 };
 
 class MFGradient : public ModelGradient {

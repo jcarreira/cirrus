@@ -1,10 +1,10 @@
-#include <MFModel.h>
-#include <Utils.h>
-#include <MlUtils.h>
-#include <Eigen/Dense>
 #include <Checksum.h>
-#include <algorithm>
+#include <MFModel.h>
+#include <MlUtils.h>
 #include <ModelGradient.h>
+#include <Utils.h>
+#include <Eigen/Dense>
+#include <algorithm>
 
 #define DEBUG
 

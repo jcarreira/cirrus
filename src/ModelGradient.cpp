@@ -1,8 +1,8 @@
 #include <ModelGradient.h>
-#include <iostream>
-#include <algorithm>
 #include <Utils.h>
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 #include "Constants.h"
 
 namespace cirrus {

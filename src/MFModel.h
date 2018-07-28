@@ -1,13 +1,13 @@
 #ifndef _MFMODEL_H_
 #define _MFMODEL_H_
 
-#include <vector>
-#include <utility>
-#include <Model.h>
-#include <Matrix.h>
 #include <Dataset.h>
+#include <Matrix.h>
+#include <Model.h>
 #include <ModelGradient.h>
 #include <SparseDataset.h>
+#include <utility>
+#include <vector>
 
 namespace cirrus {
 

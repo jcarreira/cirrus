@@ -3,12 +3,12 @@
 
 #include <sys/time.h>
 #include <unistd.h>
-#include <sstream>
+#include <cfloat>
 #include <fstream>
 #include <iostream>
-#include <string>
 #include <random>
-#include <cfloat>
+#include <sstream>
+#include <string>
 #include "flatbuffers/flatbuffers.h"
 
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
@@ -109,7 +109,8 @@ void print_statistics(const T& begin, const T& end) {
     if (*it < min_val) min_val = *it;
   }
 
-  std::cout << std::endl << "Min: " << min_val << std::endl
+  std::cout << std::endl
+            << "Min: " << min_val << std::endl
             << "Max: " << max_val << std::endl
             << "avg: " << avg / std::distance(begin, end) << std::endl
             << "distance: " << std::distance(begin, end) << std::endl

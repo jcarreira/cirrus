@@ -1,10 +1,10 @@
+#include "PSSparseServerInterface.h"
 #include <cassert>
 #include <stdexcept>
-#include "PSSparseServerInterface.h"
-#include "Constants.h"
-#include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
+#include "Constants.h"
+#include "MFModel.h"
 #include "common/schemas/PSMessage_generated.h"
 #include "common/schemas/WorkerMessage_generated.h"
 
@@ -19,7 +19,6 @@ static const int initial_buffer_size = 50;
 PSSparseServerInterface::PSSparseServerInterface(const std::string& ip,
                                                  int port)
     : ip(ip), port(port) {
-
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     throw std::runtime_error("Error when creating socket.");
   }
@@ -102,8 +101,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
     if (read_all(sock, &buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
-  }
-  catch (...) {
+  } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
 
@@ -160,8 +158,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     if (read_all(sock, &buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
-  }
-  catch (...) {
+  } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
 
@@ -247,8 +244,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     if (read_all(sock, &buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
-  }
-  catch (...) {
+  } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
 
@@ -310,8 +306,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
     if (read_all(sock, &buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
-  }
-  catch (...) {
+  } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
   auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_TaskResponse();

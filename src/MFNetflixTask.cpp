@@ -1,10 +1,10 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "Utils.h"
-#include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
+#include "S3SparseIterator.h"
+#include "Serializers.h"
 #include "SparseMFModel.h"
+#include "Utils.h"
 
 #include <pthread.h>
 
@@ -22,25 +22,22 @@ void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
   static uint64_t before = 0;
-  if (before == 0)
-    before = get_time_us();
+  if (before == 0) before = get_time_us();
   auto now = get_time_us();
   std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * mfg.getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
+            << "Worker task published gradient"
+            << " at time (us): " << get_time_us()
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
+            << (1.0 * mfg.getSerializedSize() / elapsed_push_us / 1024 / 1024 *
+                1000 * 1000)
+            << " since last(us): " << (now - before) << "\n";
   before = now;
 #endif
 }
 
 // get samples and labels data
 bool MFNetflixTask::get_dataset_minibatch(
-    std::unique_ptr<SparseDataset>& dataset,
-    S3SparseIterator& s3_iter) {
+    std::unique_ptr<SparseDataset>& dataset, S3SparseIterator& s3_iter) {
 #ifdef DEBUG
   auto start = get_time_us();
 #endif
@@ -50,26 +47,24 @@ bool MFNetflixTask::get_dataset_minibatch(
   auto finish1 = get_time_us();
 #endif
   dataset.reset(new SparseDataset(reinterpret_cast<const char*>(minibatch),
-        config.get_minibatch_size(), false));  // this takes 11 us
+                                  config.get_minibatch_size(),
+                                  false));  // this takes 11 us
 
 #ifdef DEBUG
   auto finish2 = get_time_us();
-  double bw = 1.0 * dataset->getSizeBytes() /
-    (finish2-start) * 1000.0 * 1000 / 1024 / 1024;
+  double bw = 1.0 * dataset->getSizeBytes() / (finish2 - start) * 1000.0 *
+              1000 / 1024 / 1024;
   std::cout << "[WORKER] Get Sample Elapsed (S3) "
-    << " minibatch size: " << config.get_minibatch_size()
-    << " part1(us): " << (finish1 - start)
-    << " part2(us): " << (finish2 - finish1)
-    << " BW (MB/s): " << bw
-    << " at time: " << get_time_us()
-    << "\n";
+            << " minibatch size: " << config.get_minibatch_size()
+            << " part1(us): " << (finish1 - start)
+            << " part2(us): " << (finish2 - finish1) << " BW (MB/s): " << bw
+            << " at time: " << get_time_us() << "\n";
 #endif
   return true;
 }
 
 void MFNetflixTask::run(const Configuration& config, int worker) {
-  std::cout << "Starting MFNetflixTask"
-    << std::endl;
+  std::cout << "Starting MFNetflixTask" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -77,8 +72,8 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
 
   mf_model_get = std::make_unique<MFModelGet>(ps_ip, ps_port);
 
-  std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
-    << std::endl;
+  std::cout << "[WORKER] "
+            << "num s3 batches: " << num_s3_batches << std::endl;
   wait_for_start(WORKER_SPARSE_TASK_RANK + worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
@@ -94,10 +89,12 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
   int r = train_range.second;
   uint64_t sample_low = 0;
   uint64_t sample_index = 0;
-  uint64_t sample_high = config.get_s3_size() * (config.get_train_range().second + 1);
+  uint64_t sample_high =
+      config.get_s3_size() * (config.get_train_range().second + 1);
 
   if (config.get_netflix_workers()) {
-    int range_length = (train_range.second - train_range.first) / config.get_netflix_workers();
+    int range_length =
+        (train_range.second - train_range.first) / config.get_netflix_workers();
     range_length += 1;
 
     l = worker * range_length;
@@ -107,17 +104,15 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     sample_high = std::min(sample_high, (r + 1) * config.get_s3_size());
 
     sample_index = sample_low;
-
   }
 
-  S3SparseIterator s3_iter(
-      l, r + 1, config, config.get_s3_size(), config.get_minibatch_size(),
-      false, worker, false);
+  S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
+                           config.get_minibatch_size(), false, worker, false);
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
   while (1) {
-    // get data, labels and model
+// get data, labels and model
 #ifdef DEBUG
     std::cout << "[WORKER] running phase 1" << std::endl;
 #endif
@@ -136,14 +131,14 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    SparseMFModel model =
-      mf_model_get->get_new_model(
-              *dataset, sample_index, config.get_minibatch_size());
+    SparseMFModel model = mf_model_get->get_new_model(
+        *dataset, sample_index, config.get_minibatch_size());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;
-    std::cout << "Computing gradient" << "\n";
+    std::cout << "Computing gradient"
+              << "\n";
     now = get_time_us();
 #endif
 
@@ -152,22 +147,21 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
 #ifdef DEBUG
       auto elapsed_us = get_time_us() - now;
       std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
-        << " at time: " << get_time_us() << "\n";
+                << " at time: " << get_time_us() << "\n";
 #endif
       MFSparseGradient* grad_ptr =
-        dynamic_cast<MFSparseGradient*>(gradient.get());
+          dynamic_cast<MFSparseGradient*>(gradient.get());
       push_gradient(*grad_ptr);
       sample_index += config.get_minibatch_size();
 
-
       if (sample_index + config.get_minibatch_size() > sample_high) {
-          sample_index = sample_low;
+        sample_index = sample_low;
       }
-    } catch(...) {
+    } catch (...) {
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
   }
 }
 
-} // namespace cirrus
+}  // namespace cirrus

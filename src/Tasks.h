@@ -3,23 +3,23 @@
 
 #include <Configuration.h>
 
-#include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SparseLRModel.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
 #include <unistd.h>
 
 namespace cirrus {
