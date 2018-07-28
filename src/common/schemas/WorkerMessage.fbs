@@ -1,6 +1,6 @@
 namespace cirrus.message.WorkerMessage;
 
-union Request { SparseModelRequest, FullModelRequest, GradientMessage, NumberConnectionsRequest, RegisterTaskMessage, TaskRequest, TaskMessage }
+union Request { SparseModelRequest, FullModelRequest, GradientMessage, NumberConnectionsRequest, NumberUpdatesRequest, KillMessage, RegisterTaskMessage, TaskRequest, TaskMessage }
 
 enum ModelType : byte {
   LOGISTIC_REGRESSION = 0,
@@ -22,6 +22,12 @@ table GradientMessage {
 }
 
 table NumberConnectionsRequest {
+}
+
+table NumberUpdatesRequest {
+}
+
+table KillMessage {
 }
 
 table RegisterTaskMessage {
