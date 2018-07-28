@@ -24,7 +24,7 @@ script:
    - gcc --version
    - g++ --version
    - make
-   - for i in "./tests/test_travis/mnist_test/test.sh & sleep 10" "./tests/test_travis/mnist_test/error_sm"; do eval ${i}; done
+   - for i in "./tests/test_travis/mnist_test/test.sh & sleep 10"; do eval ${i}; done
    - for i in "./tests/test_travis/test.sh & sleep 1" "./tests/test_travis/error"; do eval ${i}; done
 
 env:
