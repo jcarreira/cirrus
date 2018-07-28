@@ -327,14 +327,14 @@ void SparseMFModel::check() const {
 void SparseMFModel::serializeFromDense(
     MFModel& mf_model,
     uint32_t base_user_id, uint32_t minibatch_size, uint32_t k_items,
-    const char* item_data_ptr, char* holder) const {
+    const unsigned char* item_data_ptr, unsigned char* holder) const {
 
   uint32_t to_send_size = 
     minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
     k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
   //std::vector<char> buffer(to_send_size);
-  char* data_to_send_ptr = holder;
+  unsigned char* data_to_send_ptr = holder;
 
   // first we store data about users
   for (uint32_t i = base_user_id; i < base_user_id + minibatch_size; ++i) {

@@ -16,6 +16,8 @@
 #include "SparseLRModel.h"
 #include "SparseMFModel.h"
 #include "Model.h"
+#include "common/schemas/PSMessage_generated.h"
+#include "common/schemas/WorkerMessage_generated.h"
 
 namespace cirrus {
 
@@ -23,6 +25,10 @@ class PSSparseServerInterface {
  public:
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
+
+  void send_gradient(
+    const ModelGradient& gradient,
+    message::WorkerMessage::ModelType mt);
 
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);

@@ -54,7 +54,7 @@ PSSparseServerInterface::~PSSparseServerInterface() {
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   PSSparseServerInterface::send_gradient(gradient, 
     message::WorkerMessage::ModelType_LOGISTIC_REGRESSION
-    )
+    );
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel& lr_model,
@@ -72,11 +72,11 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      num_bytes += sizeof(w.first)
+      num_bytes += sizeof(w.first);
       store_value<uint32_t>(msg, w.first); // encode the index
     }
   }
-  auto index_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_start));
+  auto index_vec = builder.CreateVector(msg_start, num_bytes);
   
   auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(builder, 
     index_vec,
@@ -92,8 +92,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    handle_failed_read(&req.poll_fd);
-    continue;
+    // TODO: Handle read failure.
   }
   char buf[msg_size];
   try {
@@ -104,15 +103,16 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
     throw std::runtime_error("Unhandled error");
   }
 
-  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
+  auto sparse_model = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
   // build a truly sparse model and return
   // TODO: Can this copy be avoided?
-  lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, 
-    (uint32_t*)msg->model()->data(), msg->model()->size(), config);
+  lr_model.loadSerializedSparse(
+    (FEATURE_TYPE*) sparse_model->model()->data(), 
+    (uint32_t*) msg_start, sparse_model->model()->size(), config);
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config) {
@@ -145,8 +145,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    handle_failed_read(&req.poll_fd);
-    continue;
+    // TODO: Handle read failure.
   }
   char buf[msg_size];
   try {
@@ -190,7 +189,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
 
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg; // need to keep this pointer to delete later
- 
+  
+  uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   bool seen[17770] = {false};
@@ -206,11 +206,14 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
       //store_value<uint32_t>(msg, movieId); // encode the index
+      item_ids_count++;
       num_bytes += sizeof(uint32_t);
     }
   }
 
-  auto id_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_begin));
+  auto id_vec = builder.CreateVector(
+    reinterpret_cast<unsigned char *> (msg_begin),
+    num_bytes);
   
   auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(builder, 
     id_vec,
@@ -228,8 +231,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    handle_failed_read(&req.poll_fd);
-    continue;
+    // TODO: Handle read failure.
   }
   char buf[msg_size];
   try {
@@ -240,10 +242,11 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     throw std::runtime_error("Unhandled error");
   }
 
-  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
+  auto sparse_model = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
 
   // build a sparse model and return
-  SparseMFModel model((FEATURE_TYPE*) msg->model->data, minibatch_size, item_ids_count);
+  SparseMFModel model((FEATURE_TYPE*) sparse_model->model()->data(), 
+    minibatch_size, item_ids_count);
 
   return std::move(model);
 }
@@ -254,7 +257,8 @@ void PSSparseServerInterface::send_gradient(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   int grad_size = gradient.getSerializedSize();
   unsigned char buf[grad_size];
-  auto grad_vec = builder.CreateUninitializedVector(grad_size, static_cast<unsigned char **> (&buf));
+  auto grad_vec = builder.CreateUninitializedVector(grad_size,
+    reinterpret_cast<unsigned char **> (&buf));
   gradient.serialize(buf);
   auto grad_msg = message::WorkerMessage::CreateGradientMessage(builder, 
     grad_vec, 
@@ -270,7 +274,7 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   PSSparseServerInterface::send_gradient(
     gradient,
     message::WorkerMessage::ModelType_MATRIX_FACTORIZATION
-    )
+    );
 }
   
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
@@ -289,8 +293,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    handle_failed_read(&req.poll_fd);
-    continue;
+    // TODO: Handle read failure.
   }
   char buf[msg_size];
   try {
@@ -301,7 +304,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
     throw std::runtime_error("Unhandled error");
   }
   auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_TaskResponse();
-  return msg->status;
+  return msg->status();
 }
 
 } // namespace cirrus

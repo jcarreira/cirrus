@@ -17,8 +17,11 @@
 
 #define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
 #define THREAD_MSG_BUFFER_SIZE 5000000
+#define MAX_MSG_SIZE (1024*1024)
 
 namespace cirrus {
+
+static const int initial_buffer_size = 50;
 
 PSSparseServerTask::PSSparseServerTask(
     uint64_t model_size,
@@ -106,7 +109,7 @@ bool PSSparseServerTask::process_send_lr_gradient(const unsigned char *gradient_
 // move this to SparseMFModel
 
 bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
-    const unsigned char* id_list) {
+    const unsigned char* id_list, int sock) {
   uint32_t base_user_id = load_value<uint32_t>(id_list);
   uint32_t minibatch_size = load_value<uint32_t>(id_list);
 
@@ -114,7 +117,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
-  char* msg = new char[MAX_MSG_SIZE];
+  unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
 
   // TODO: Should I use thread_buffer[thread_number] instead of msg?
   SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
@@ -129,12 +132,13 @@ bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
 #endif
 
   // TODO: Refactor so this is provided by the SparseMFModel class.
-  uint32_t to_send_size =
+  uint32_t num_bytes =
       minibatch_size *
           (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
       k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
-  auto sparse_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg));
+  auto sparse_vec = builder.CreateVector(reinterpret_cast<unsigned char *> (msg),
+    num_bytes);
 
   auto sparse_msg = message::PSMessage::CreateSparseModelResponse(builder, 
     sparse_vec);
@@ -145,14 +149,14 @@ bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
 }
 
 bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
-  const unsigned char* index_list) {
+  const unsigned char* index_list, int sock) {
   // need to parse the buffer to get the indices of the model we want
   // to send back to the client
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
   assert(to_send_size < 1024 * 1024);
-  char data_to_send[1024 * 1024]; // 1MB
-  char* data_to_send_ptr = data_to_send;
+  unsigned char data_to_send[1024 * 1024]; // 1MB
+  unsigned char* data_to_send_ptr = data_to_send;
 #ifdef DEBUG
   std::cout << "Sending back: " << num_entries
     << " weights from model. Size: " << to_send_size
@@ -172,8 +176,8 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
   }
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-  auto weights_vec = builder.CreateVector(
-    num_bytes, static_cast<unsigned char **> (&data_to_send));
+  unsigned char *data = data_to_send;
+  auto weights_vec = builder.CreateVector(data, num_bytes);
   
   auto sparse_msg = message::PSMessage::CreateSparseModelResponse(builder, weights_vec);
   builder.Finish(sparse_msg);
@@ -182,7 +186,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
 }
 
 bool PSSparseServerTask::process_get_mf_full_model(
-  std::vector<char>& thread_buffer) {
+  std::vector<char>& thread_buffer, int sock) {
   model_lock.lock();
   auto mf_model_copy = *mf_model;
   model_lock.unlock();
@@ -202,10 +206,10 @@ bool PSSparseServerTask::process_get_mf_full_model(
     << std::endl;
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-  auto full_vec = builder.CreateVector(model_size, 
-    static_cast<unsigned char **> (&(thread_buffer.data())));
+  unsigned char *data = reinterpret_cast<unsigned char *> (thread_buffer.data());
+  auto full_vec = builder.CreateVector(data, model_size);
 
-  auto full_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+  auto full_msg = message::PSMessage::CreateFullModelResponse(builder, 
     full_vec);
   builder.Finish(full_msg);
   send_flatbuffer(sock, &builder);
@@ -213,11 +217,12 @@ bool PSSparseServerTask::process_get_mf_full_model(
 }
 
 // TODO: Combine both get_full_model functions?
-bool PSSparseServerTask::process_get_lr_full_model(std::vector<char>& thread_buffer) {
+bool PSSparseServerTask::process_get_lr_full_model(std::vector<char>& thread_buffer, 
+  int sock) {
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
-  uint32_t model_size = lr_model_copy.getSerializedSize();
+  int model_size = lr_model_copy.getSerializedSize();
 
   if (thread_buffer.size() < model_size) {
     std::string error_str = "buffer with size " +
@@ -229,10 +234,11 @@ bool PSSparseServerTask::process_get_lr_full_model(std::vector<char>& thread_buf
   lr_model_copy.serializeTo(thread_buffer.data());
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-  auto full_vec = builder.CreateVector(model_size, 
-    static_cast<unsigned char **> (&(thread_buffer.data())));
+  unsigned char *data = reinterpret_cast<unsigned char *> (
+    thread_buffer.data());
+  auto full_vec = builder.CreateVector(data, model_size);
 
-  auto full_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+  auto full_msg = message::PSMessage::CreateFullModelResponse(builder, 
     full_vec);
   builder.Finish(full_msg);
   send_flatbuffer(sock, &builder);
@@ -303,9 +309,10 @@ void PSSparseServerTask::gradient_f() {
           auto sparse_req = msg->payload_as_SparseModelRequest();
           const unsigned char *index_buf = sparse_req->index_info()->data();
           if (sparse_req->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-            process_get_lr_sparse_model(sparse_req->index_info()->size(), index_buf);
+            process_get_lr_sparse_model(sparse_req->index_info()->size(), index_buf, req.sock);
           } else if (sparse_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-            process_get_mf_sparse_model(sparse_req->index_info()->size() - 2, sparse_req->index_info()->data())
+            process_get_mf_sparse_model(sparse_req->index_info()->size() - 2, 
+              sparse_req->index_info()->data(), req.sock);
           }
           else {
             throw std::runtime_error("Unimplemented request for sparse model");
@@ -315,9 +322,9 @@ void PSSparseServerTask::gradient_f() {
         {
           auto full_req = msg->payload_as_FullModelRequest();
           if (full_req->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-            process_get_lr_full_model(thread_buffer);
-          } else if (sparse_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-            process_get_mf_full_model(thread_buffer);
+            process_get_lr_full_model(thread_buffer, req.sock);
+          } else if (full_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+            process_get_mf_full_model(thread_buffer, req.sock);
           }
           else {
             throw std::runtime_error("Unimplemented request for full model");
@@ -338,7 +345,7 @@ void PSSparseServerTask::gradient_f() {
           }
 
           flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-          auto task_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+          auto task_msg = message::PSMessage::CreateTaskResponse(builder, 
               task_id, status);
           builder.Finish(task_msg);
           send_flatbuffer(sock, &builder);
