@@ -25,8 +25,6 @@ script:
    - g++ --version
    - make
    - for i in "./tests/test_travis/mnist_test/test.sh & sleep 5" "./tests/test_travis/mnist_test/error_sm"; do eval ${i}; done
-   - sleep 140
-   - for i in "./tests/test_travis/test.sh & sleep 1" "./tests/test_travis/error"; do eval ${i}; done
 
 env:
   global:
