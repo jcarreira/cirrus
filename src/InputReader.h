@@ -114,18 +114,18 @@ class InputReader {
       const std::string& delimiter,
       const Configuration&);
 
-    /**
-     * Reads corpus in libsvm format and vocabulary in txt format
-     * @param input_doc_file Path to corpus which is in libsvm format
-     * @param input_vocab_file Path to the txt file containing all vocabularies
-     * @param delimiter
-     */
-    LDADataset read_lda_input(const std::string& input_doc_file,
-                              const std::string& input_vocab_file,
-                              const std::string& delimiter,
-                              const Configuration&);
+  /**
+   * Reads corpus in libsvm format and vocabulary in txt format
+   * @param input_doc_file Path to corpus which is in libsvm format
+   * @param input_vocab_file Path to the txt file containing all vocabularies
+   * @param delimiter
+   */
+  LDADataset read_lda_input(const std::string& input_doc_file,
+                            const std::string& input_vocab_file,
+                            const std::string& delimiter,
+                            const Configuration&);
 
-  private:
+ private:
   /**
    * Thread worker that reads raw lines of text from queue and appends labels and features
    * into formated samples queue
@@ -213,20 +213,24 @@ class InputReader {
     std::vector<std::pair<int, FEATURE_TYPE>>& features,
     FEATURE_TYPE& label);
 
-  void parse_read_lda_input_thread(std::ifstream& fin, std::mutex& fin_lock,
-    std::mutex& out_lock,
-    const std::string& delimiter,
-    std::vector<std::vector<std::pair<int,int> > >& samples_res,
-    uint64_t limit_lines, std::atomic<unsigned int>&,
-    std::function<void(const std::string&, const std::string&,
-      std::vector<std::pair<int, int> >&)> fun);
+  void parse_read_lda_input_thread(
+      std::ifstream& fin,
+      std::mutex& fin_lock,
+      std::mutex& out_lock,
+      const std::string& delimiter,
+      std::vector<std::vector<std::pair<int, int>>>& samples_res,
+      uint64_t limit_lines,
+      std::atomic<unsigned int>&,
+      std::function<void(const std::string&,
+                         const std::string&,
+                         std::vector<std::pair<int, int>>&)> fun);
 
-  void parse_read_lda_input_line(
-    const std::string& line, const std::string& delimiter,
-    std::vector<std::pair<int, int> >& features);//,
-    // const Configuration&);
-
-  void read_lda_vocab_input(std::ifstream& fin, std::vector<std::string>& vocabs);
+  void parse_read_lda_input_line(const std::string& line,
+                                 const std::string& delimiter,
+                                 std::vector<std::pair<int, int>>& features);
+                                                   
+  void read_lda_vocab_input(std::ifstream& fin,
+                            std::vector<std::string>& vocabs);
 };
 
 } // namespace cirrus
