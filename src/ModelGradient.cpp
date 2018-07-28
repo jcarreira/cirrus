@@ -443,6 +443,7 @@ LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt) 
 
 LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s) :
   change_nvt(nvt), change_nt(nt), slice(s) {
+
   }
 
 LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
@@ -502,8 +503,6 @@ void LDAUpdates::loadSerialized(const char* mem) {
     slice_map.insert(std::make_pair(i, idx));
     ++ idx;
   }
-  // std::cout << slice_map.size() << " " << idx << " " << slice[slice.size()-1]  <<" ----------\n";
-
 }
 
 std::shared_ptr<char> LDAUpdates::serialize(uint64_t* serialize_size) {
@@ -604,6 +603,12 @@ void LDAUpdates::update(const LDAUpdates& gradient){
 }
 
 char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size){
+  slice_map.clear();
+  int idx = 0;
+  for (int i : slice) {
+    slice_map.insert(std::make_pair(i, idx));
+    ++idx;
+  }
 
   std::vector<int> partial_nvt;
   int K = change_nt.size();

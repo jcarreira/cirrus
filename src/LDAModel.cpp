@@ -161,7 +161,7 @@ namespace cirrus{
     }
 
     delete[] rate;
-    
+
     std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice);
     return ret;
   }
