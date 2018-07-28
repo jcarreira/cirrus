@@ -269,8 +269,8 @@ Dataset InputReader::read_input_csv(const std::string& input_file,
   }
 
   std::vector<std::vector<FEATURE_TYPE>> samples;  // final result
-  std::vector<FEATURE_TYPE> labels;                // final result
-  std::queue<std::string> lines[nthreads];         // input to threads
+  std::vector<FEATURE_TYPE> labels;               // final result
+  std::queue<std::string> lines[nthreads];        // input to threads
 
   std::mutex input_mutex[nthreads];  // mutex to protect queue of raw samples
   std::mutex output_mutex;  // mutex to protect queue of processed samples
