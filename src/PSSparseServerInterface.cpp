@@ -123,51 +123,52 @@ SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& 
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     bool isCollaborative //XXX use a better argument here
+    // TODO: Maybe split up into two separate functions, or take ModelType enum in this 
+    // and other functions.
     ) {
 #ifdef DEBUG
   std::cout << "Getting full model isCollaborative: " << isCollaborative << std::endl;
 #endif
+
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+  auto full_msg = message::WorkerMessage::CreateFullModelRequest(builder, 
+      message::WorkerMessage::ModelType_LOGISTIC_REGRESSION);
+
   if (isCollaborative) {
-    // 1. Send operation
-    uint32_t operation = GET_MF_FULL_MODEL;
-    send_all(sock, &operation, sizeof(uint32_t));
+    full_msg = message::WorkerMessage::CreateFullModelRequest(builder, 
+      message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
+  }
 
-    uint32_t to_receive_size;
-    read_all(sock, &to_receive_size, sizeof(uint32_t));
-    std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" << std::endl;
+  builder.Finish(full_msg);
+  send_flatbuffer(sock, &builder);
 
-    char* buffer = new char[to_receive_size];
-    read_all(sock, buffer, to_receive_size);
-    
-    std::cout
-      << " buffer checksum: " << crc32(buffer, to_receive_size)
-      << std::endl;
+  // Get the message size and FlatBuffer message
+  int msg_size;
+  if (read_all(sock, &msg_size, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    continue;
+  }
+  char buf[msg_size];
+  try {
+    if (read_all(sock, &buf, msg_size) == 0) {
+      throw std::runtime_error("Error reading message");
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
+  }
 
-    // build a sparse model and return
+  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_FullModelResponse();
+
+  if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
-        (FEATURE_TYPE*)buffer, 0, 0, 0); //XXX fix this
-    delete[] buffer;
+        (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0); //XXX fix this
+    // TODO: Need to use delete[]?
+    // delete[] buffer;
     return model;
   } else {
-    // 1. Send operation
-    uint32_t operation = GET_LR_FULL_MODEL;
-    send_all(sock, &operation, sizeof(uint32_t));
-    //2. receive size from PS
-    int model_size;
-    if (read_all(sock, &model_size, sizeof(int)) == 0) {
-      throw std::runtime_error("Error talking to PS");
-    }
-    char* model_data = new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)];
-    char*model_data_ptr = model_data;
-    store_value<int>(model_data_ptr, model_size);
-
-    if (read_all(sock, model_data_ptr, model_size * sizeof(FEATURE_TYPE)) == 0) {
-      throw std::runtime_error("Error talking to PS");
-    }
     std::unique_ptr<CirrusModel> model = std::make_unique<SparseLRModel>(0);
-    model->loadSerialized(model_data);
-
-    delete[] model_data;
+    model->loadSerialized(msg->model()->data());
+    // delete[] model_data;
     return model;
   }
 }

@@ -135,6 +135,9 @@ bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
 
   auto sparse_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg));
 
+  auto sparse_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+    sparse_vec);
+  builder.Finish(sparse_msg);
   send_flatbuffer(sock, &builder);
 
   return true;
@@ -173,9 +176,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
     num_bytes, static_cast<unsigned char **> (&data_to_send));
   
   auto sparse_msg = message::PSMessage::CreateSparseModelResponse(builder, weights_vec);
-
   builder.Finish(sparse_msg);
-
   send_flatbuffer(sock, &builder);
   return true;
 }
@@ -199,17 +200,19 @@ bool PSSparseServerTask::process_get_mf_full_model(
     << " mode checksum: " << mf_model_copy.checksum()
     << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
     << std::endl;
-  if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
-    return false;
-  }
-  if (send_all(req.sock, thread_buffer.data(), model_size) == -1) {
-    return false;
-  }
+
+  auto full_vec = builder.CreateVector(model_size, 
+    static_cast<unsigned char **> (&(thread_buffer.data())));
+
+  auto full_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+    full_vec);
+  builder.Finish(full_msg);
+  send_flatbuffer(sock, &builder);
   return true;
 }
 
-bool PSSparseServerTask::process_get_lr_full_model(
-    const Request& req, std::vector<char>& thread_buffer) {
+// TODO: Combine both get_full_model functions?
+bool PSSparseServerTask::process_get_lr_full_model(std::vector<char>& thread_buffer) {
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
@@ -221,10 +224,16 @@ bool PSSparseServerTask::process_get_lr_full_model(
                             "too small: " + std::to_string(model_size);
     throw std::runtime_error(error_str);
   }
-
+  // TODO: Should I use thread_buffer always?
   lr_model_copy.serializeTo(thread_buffer.data());
-  if (send_all(req.sock, thread_buffer.data(), model_size) == -1)
-    return false;
+
+  auto full_vec = builder.CreateVector(model_size, 
+    static_cast<unsigned char **> (&(thread_buffer.data())));
+
+  auto full_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+    full_vec);
+  builder.Finish(full_msg);
+  send_flatbuffer(sock, &builder);
   return true;
 }
 
@@ -298,6 +307,18 @@ void PSSparseServerTask::gradient_f() {
           }
           else {
             throw std::runtime_error("Unimplemented request for sparse model");
+          }
+        }
+      case message::WorkerMessage::Request_FullModelRequest:
+        {
+          auto full_req = msg->payload_as_FullModelRequest();
+          if (full_req->model_type() == message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
+            process_get_lr_full_model(thread_buffer);
+          } else if (sparse_req->model_type() == message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
+            process_get_mf_full_model(thread_buffer);
+          }
+          else {
+            throw std::runtime_error("Unimplemented request for full model");
           }
         }
       default:
