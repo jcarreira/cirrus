@@ -208,9 +208,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       num_bytes += sizeof(uint32_t);
     }
   }
-  msg = msg_begin;
 
-  auto id_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_start));
+  auto id_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg_begin));
   
   auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(builder, 
     id_vec,
@@ -224,23 +223,26 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   // FORMAT here is
   // minibatch_size * user vectors. Each vector is user_id + user_bias + NUM_FACTORS * FEATURE_TYPE
   // num_item_ids * item vectors. Each vector is item_id + item_bias + NUM_FACTORS * FEATURE_TYPE
-  uint32_t to_receive_size;
-  read_all(sock, &to_receive_size, sizeof(uint32_t));
-  //minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-  //item_ids_count * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
-  std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" << std::endl;
-
-  char* buffer = new char[to_receive_size];
-  if (read_all(sock, buffer, to_receive_size) == 0) {
-    throw std::runtime_error("");
+  // Get the message size and FlatBuffer message
+  int msg_size;
+  if (read_all(sock, &msg_size, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    continue;
+  }
+  char buf[msg_size];
+  try {
+    if (read_all(sock, &buf, msg_size) == 0) {
+      throw std::runtime_error("Error reading message");
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
   }
 
+  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_SparseModelResponse();
+
   // build a sparse model and return
-  SparseMFModel model((FEATURE_TYPE*)buffer, minibatch_size, item_ids_count);
-  
-  delete[] msg_begin;
-  delete[] buffer;
+  SparseMFModel model((FEATURE_TYPE*) msg->model->data, minibatch_size, item_ids_count);
 
   return std::move(model);
 }

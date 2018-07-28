@@ -110,32 +110,33 @@ bool PSSparseServerTask::process_get_mf_sparse_model(int k_items,
   uint32_t minibatch_size = load_value<uint32_t>(id_list);
 
   assert(minibatch_size > 0);
-  // TODO(nsomani): Send and receive the SparseMFModel via a FlatBuffer.
-  /*
-  uint32_t to_send_size =
-      minibatch_size *
-          (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
+
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+
+  char* msg = new char[MAX_MSG_SIZE];
+
+  // TODO: Should I use thread_buffer[thread_number] instead of msg?
+  SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
+    sparse_mf_model.serializeFromDense(
+      *mf_model, base_user_id, minibatch_size,
+      k_items, id_list, msg);
+
 #ifdef DEBUG
   std::cout << "k_items: " << k_items << std::endl;
   std::cout << "base_user_id: " << base_user_id << std::endl;
   std::cout << "minibatch_size: " << minibatch_size << std::endl;
 #endif
 
-  SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
-  sparse_mf_model.serializeFromDense(
-      *mf_model, base_user_id, minibatch_size,
-      k_items, id_list, thread_msg_buffer[thread_number]);
+  // TODO: Refactor so this is provided by the SparseMFModel class.
+  uint32_t to_send_size =
+      minibatch_size *
+          (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
+      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
-  //uint32_t to_send_size = data_to_send.size();
-  if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
-    return false;
-  }
-  if (send_all(req.sock, thread_msg_buffer[thread_number], to_send_size) ==
-      -1) {
-    return false;
-  }
-  */
+  auto sparse_vec = builder.CreateVector(num_bytes, static_cast<unsigned char **> (&msg));
+
+  send_flatbuffer(sock, &builder);
+
   return true;
 }
 
@@ -175,7 +176,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
 
   builder.Finish(sparse_msg);
 
-  send_flatbuffer(&builder);
+  send_flatbuffer(sock, &builder);
   return true;
 }
 
