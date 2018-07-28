@@ -30,6 +30,8 @@ class PSSparseServerInterface {
     const ModelGradient& gradient,
     message::WorkerMessage::ModelType mt);
 
+  void connect();
+
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
   
@@ -46,6 +48,7 @@ class PSSparseServerInterface {
   std::string ip;
   int port;
   int sock = -1;
+  struct sockaddr_in serv_addr;
 };
 
 } // namespace cirrus
