@@ -34,6 +34,7 @@ PSSparseServerTask::PSSparseServerTask(
     std::atomic_init(&gradientUpdatesCount, 0UL);
     std::atomic_init(&thread_count, 0);
 
+    // TODO: Remove operation_to_name; remove Utils operations.
     operation_to_name[0] = "SEND_LR_GRADIENT";
     operation_to_name[1] = "SEND_MF_GRADIENT";
     operation_to_name[2] = "GET_LR_FULL_MODEL";
@@ -181,7 +182,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
 }
 
 bool PSSparseServerTask::process_get_mf_full_model(
-    const Request& req, std::vector<char>& thread_buffer) {
+  std::vector<char>& thread_buffer) {
   model_lock.lock();
   auto mf_model_copy = *mf_model;
   model_lock.unlock();
@@ -352,122 +353,30 @@ void PSSparseServerTask::gradient_f() {
 #endif
           task_to_status[task_msg->task_id()] = task_msg->status();
         }
+      case message::WorkerMessage::Request_RegisterTaskMessage:
+        {
+          // check if this task has already been registered
+          int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
+          uint32_t task_reg =
+              (registered_tasks.find(task_id) != registered_tasks.end());
+
+          if (task_reg == 0) {
+            registered_tasks.insert(task_id);
+          }
+          // TODO: Change to FlatBuffer, or determine what this should be.
+          send_all(sock, &task_reg, sizeof(uint32_t));
+        }
+      case message::WorkerMessage::Request_NumberConnectionsRequest:
+        {
+          std::cout << "Retrieve num connections: " << num_connections << std::endl;
+          // TODO: Change to FlatBuffer, once this is being used.
+          if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
+            throw std::runtime_error("Error sending number of connections");
+          }
+        }
       default:
         throw std::runtime_error("Unknown message type");
     }
-
-    /* TODO: Replace below with FlatBuffers version.
-    // first read 4 bytes for operation ID
-    uint32_t operation = 0;
-    if (read_all(sock, &operation, sizeof(uint32_t)) == 0) {
-      handle_failed_read(&req.poll_fd);
-      continue;
-    }
-
-    req.req_id = operation;
-
-    if (operation == REGISTER_TASK) {
-      // read the task id
-      uint32_t task_id = 0;
-      if (read_all(sock, &task_id, sizeof(uint32_t)) == 0) {
-        handle_failed_read(&req.poll_fd);
-        continue;
-      }
-      // check if this task has already been registered
-      uint32_t task_reg =
-          (registered_tasks.find(task_id) != registered_tasks.end());
-
-      if (task_reg == 0) {
-        registered_tasks.insert(task_id);
-      }
-      send_all(sock, &task_reg, sizeof(uint32_t));
-      continue;
-    } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
-               operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL) {
-      // read 4 bytes of the size of the remaining message
-      uint32_t incoming_size = 0;
-      if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
-        handle_failed_read(&req.poll_fd);
-        continue;
-      }
-      req.incoming_size = incoming_size;
-    }
-
-#ifdef DEBUG
-    std::cout << "Processing request: " << req.req_id << std::endl;
-#endif
-
-    if (req.req_id == SEND_LR_GRADIENT) {
-      if (!process_send_lr_gradient(req, thread_buffer)) {
-        break;
-      }
-    } else if (req.req_id == SEND_MF_GRADIENT) {
-      if (!process_send_mf_gradient(req, thread_buffer)) {
-        break;
-      }
-    } else if (req.req_id == GET_LR_SPARSE_MODEL) {
-#ifdef DEBUG
-      std::cout << "process_get_lr_sparse_model" << std::endl;
-      auto before = get_time_us();
-#endif
-      if (!process_get_lr_sparse_model(req, thread_buffer)) {
-        break;
-      }
-#ifdef DEBUG
-      auto elapsed = get_time_us() - before;
-      std::cout << "GET_LR_SPARSE_MODEL Elapsed(us): " << elapsed << std::endl;
-#endif
-    } else if (req.req_id == GET_MF_SPARSE_MODEL) {
-      if (!process_get_mf_sparse_model(req, thread_buffer, thread_number)) {
-        break;
-      }
-    } else if (req.req_id == GET_LR_FULL_MODEL) {
-      if (!process_get_lr_full_model(req, thread_buffer))
-        break;
-    } else if (req.req_id == GET_MF_FULL_MODEL) {
-      if (!process_get_mf_full_model(req, thread_buffer))
-        break;
-    } else if (req.req_id == GET_TASK_STATUS) {
-      uint32_t task_id;
-      if (read_all(sock, &task_id, sizeof (uint32_t)) == 0) {
-        break;
-      }
-#ifdef DEBUG
-      std::cout << "Get status task id: " << task_id << std::endl;
-#endif
-      assert(task_id < 10000);
-      if (task_to_status.find(task_id) == task_to_status.end() ||
-          task_to_status[task_id] == false) {
-        uint32_t status = 0;
-        send_all(sock, &status, sizeof (uint32_t));
-      } else {
-        uint32_t status = 1;
-        send_all(sock, &status, sizeof (uint32_t));
-      }
-    
-    } else if (operation == SET_TASK_STATUS) {
-    
-      uint32_t data[2] = {0}; // id + status
-      if (read_all(sock, data, sizeof (uint32_t) * 2) == 0) {
-        handle_failed_read(&req.poll_fd);
-        continue;
-      }
-#ifdef DEBUG
-      std::cout << "Set status task id: " << data[0] << " status: " << data[1]
-                << std::endl;
-#endif
-      task_to_status[data[0]] = data[1];
-
-    } else if (operation == GET_NUM_CONNS) {
-      std::cout << "Retrieve num connections: " << num_connections << std::endl;
-      if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
-        throw std::runtime_error("Error sending number of connections");
-      }
-    } else {
-      throw std::runtime_error("gradient_f: Unknown operation");
-    }
-    */
     // We reactivate events from the client socket here
     req.poll_fd.events = POLLIN;
     //pthread_kill(main_thread, SIGUSR1);
@@ -492,6 +401,8 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
   std::cout << "Processing socket: " << sock << std::endl;
 #endif
 
+  // TODO: Change Request object; change this function and remove
+  // vestigial code.
   uint32_t operation = 0;
 #ifdef DEBUG 
   std::cout << "Operation: " << operation << " - "
@@ -499,6 +410,7 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 #endif
 
   uint32_t incoming_size = 0;
+  // TODO: Is this being set? I don't quite understand what's happening.
 #ifdef DEBUG 
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
