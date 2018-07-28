@@ -158,8 +158,6 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
     << std::endl;
 #endif
 
-  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
-
   // Make the weights vector
   int num_bytes = 0;
   for (uint32_t i = 0; i < num_entries; ++i) {
@@ -172,6 +170,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(int num_entries,
         weight);
   }
 
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   auto weights_vec = builder.CreateVector(
     num_bytes, static_cast<unsigned char **> (&data_to_send));
   
@@ -201,6 +200,7 @@ bool PSSparseServerTask::process_get_mf_full_model(
     << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
     << std::endl;
 
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   auto full_vec = builder.CreateVector(model_size, 
     static_cast<unsigned char **> (&(thread_buffer.data())));
 
@@ -227,6 +227,7 @@ bool PSSparseServerTask::process_get_lr_full_model(std::vector<char>& thread_buf
   // TODO: Should I use thread_buffer always?
   lr_model_copy.serializeTo(thread_buffer.data());
 
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   auto full_vec = builder.CreateVector(model_size, 
     static_cast<unsigned char **> (&(thread_buffer.data())));
 
@@ -320,6 +321,36 @@ void PSSparseServerTask::gradient_f() {
           else {
             throw std::runtime_error("Unimplemented request for full model");
           }
+        }
+      case message::WorkerMessage::Request_TaskRequest:
+        {
+#ifdef DEBUG
+          std::cout << "Get status task id: " << task_id << std::endl;
+#endif
+          int task_id = msg->payload_as_TaskRequest()->task_id();
+          assert(task_id < 10000);
+
+          uint32_t status = 1;
+          if (task_to_status.find(task_id) == task_to_status.end() ||
+              task_to_status[task_id] == false) {
+            status = 0;
+          }
+
+          flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+          auto task_msg = message::PSMessage::CreateSparseModelResponse(builder, 
+              task_id, status);
+          builder.Finish(task_msg);
+          send_flatbuffer(sock, &builder);
+        }
+      case message::WorkerMessage::Request_TaskMessage:
+        {
+          auto task_msg = msg->payload_as_TaskMessage();
+#ifdef DEBUG
+          std::cout << "Set status task id: " << task_msg->task_id()
+                    << " status: " << task_msg->status()
+                    << std::endl;
+#endif
+          task_to_status[task_msg->task_id()] = task_msg->status();
         }
       default:
         throw std::runtime_error("Unknown message type");

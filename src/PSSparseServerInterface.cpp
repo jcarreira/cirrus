@@ -275,22 +275,33 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
   std::cout << "Setting status id: " << id << " status: " << status << std::endl;
-  uint32_t data[3] = {SET_TASK_STATUS, id, status};
-  if (send_all(sock, data, sizeof(uint32_t) * 3) == -1) {
-    throw std::runtime_error("Error setting task status");
-  }
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+  auto task_msg = message::WorkerMessage::CreateTaskMessage(builder, id, status);
+  builder.Finish(task_msg);
+  send_flatbuffer(sock, &builder);
 }
 
 uint32_t PSSparseServerInterface::get_status(uint32_t id) {
-  uint32_t data[2] = {GET_TASK_STATUS, id};
-  if (send_all(sock, data, sizeof(uint32_t) * 2) == -1) {
-    throw std::runtime_error("Error getting task status");
+  flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
+  auto task_msg = message::WorkerMessage::CreateTaskRequest(builder, id);
+  builder.Finish(task_msg);
+  send_flatbuffer(sock, &builder);
+  
+  int msg_size;
+  if (read_all(sock, &msg_size, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    continue;
   }
-  uint32_t status;
-  if (read_all(sock, &status, sizeof(uint32_t)) == 0) {
-    throw std::runtime_error("Error getting task status");
+  char buf[msg_size];
+  try {
+    if (read_all(sock, &buf, msg_size) == 0) {
+      throw std::runtime_error("Error reading message");
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
   }
-  return status;
+  auto msg = message::PSMessage::GetPSMessage(&buf)->payload_as_TaskResponse();
+  return msg->status;
 }
 
 } // namespace cirrus
