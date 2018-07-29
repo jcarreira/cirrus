@@ -498,7 +498,7 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
   to_process_lock.lock();
-  poll_fd.events = 0; // explain this
+  poll_fd.events = 0;  // explain this
   to_process.push(Request(sock, thread_id, incoming_size, poll_fd));
   to_process_lock.unlock();
   sem_post(&sem_new_req);

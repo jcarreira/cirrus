@@ -267,8 +267,8 @@ Dataset InputReader::read_input_csv(const std::string& input_file,
   }
 
   std::vector<std::vector<FEATURE_TYPE>> samples;  // final result
-  std::vector<FEATURE_TYPE> labels;               // final result
-  std::queue<std::string> lines[nthreads];        // input to threads
+  std::vector<FEATURE_TYPE> labels;                // final result
+  std::queue<std::string> lines[nthreads];         // input to threads
 
   std::mutex input_mutex[nthreads];  // mutex to protect queue of raw samples
   std::mutex output_mutex;  // mutex to protect queue of processed samples
@@ -710,8 +710,8 @@ void InputReader::parse_rcv1_vw_sparse_line(
                              std::to_string(RCV1_STR_SIZE));
   }
 
-  //static int static_count = 0;
-  //std::cout << "Parsing line: " << ++static_count << std::endl;
+  // static int static_count = 0;
+  // std::cout << "Parsing line: " << ++static_count << std::endl;
   strncpy(rcv1_line, line.c_str(), RCV1_STR_SIZE - 1);
   char* s = rcv1_line;
 
