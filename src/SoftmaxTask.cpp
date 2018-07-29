@@ -65,7 +65,7 @@ bool SoftmaxTask::get_dataset_minibatch(std::unique_ptr<SparseDataset>& dataset,
 }
 
 void SoftmaxTask::run(const Configuration& config, int worker) {
-  std::cout << "Starting LogisticSparseTaskS3" << std::endl;
+  std::cout << "Starting SoftmaxTask" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -123,7 +123,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
       Dataset ds = dataset->to_dataset(config);
       gradient =
           model.minibatch_grad(ds.get_samples(), (float*) ds.get_labels().get(),
-                               20, config.get_learning_rate());
+                               config.get_minibatch_size(), config.get_learning_rate());
     } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
