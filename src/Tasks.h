@@ -153,24 +153,24 @@ class PSSparseTask : public MLTask {
 };
 
 class ErrorSparseTask : public MLTask {
-  public:
-   ErrorSparseTask(uint64_t model_size,
-                   uint64_t batch_size,
-                   uint64_t samples_per_batch,
-                   uint64_t features_per_sample,
-                   uint64_t nworkers,
-                   uint64_t worker_id,
-                   const std::string& ps_ip,
-                   uint64_t ps_port);
+ public:
+  ErrorSparseTask(uint64_t model_size,
+                  uint64_t batch_size,
+                  uint64_t samples_per_batch,
+                  uint64_t features_per_sample,
+                  uint64_t nworkers,
+                  uint64_t worker_id,
+                  const std::string& ps_ip,
+                  uint64_t ps_port);
 
-   void run(const Configuration& config);
-   void error_response();
+  void run(const Configuration& config);
+  void error_response();
 
-  private:
-   // Stores last recorded time/loss values
-   double last_time = 0.0;
-   double last_error = 0.0;
-   std::atomic<double> curr_error;
+ private:
+  // Stores last recorded time/loss values
+  double last_time = 0.0;
+  double last_error = 0.0;
+  std::atomic<double> curr_error;
 };
 
 class PerformanceLambdaTask : public MLTask {

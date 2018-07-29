@@ -114,11 +114,11 @@ class SparseDataset {
   // return train set and test set (in this order)
   std::pair<SparseDataset, SparseDataset> split(double fraction) const;
 
-  public:
+ public:
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> data_;
   std::vector<FEATURE_TYPE> labels_;
 
-  uint64_t size_bytes = 0; // size of data when read from serialized format
+  uint64_t size_bytes = 0;  // size of data when read from serialized format
 };
 
 }  // namespace cirrus
