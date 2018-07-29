@@ -138,16 +138,18 @@ bool PSSparseServerTask::process_send_lr_gradient(
   return true;
 }
 
-bool PSSparseServerTask::process_send_lda_update(const Request& req, std::vector<char>& thread_buffer) {
-
+bool PSSparseServerTask::process_send_lda_update(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
-  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size << std::endl;
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
 #endif
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  //buffer.resize(incoming_size);
+  // buffer.resize(incoming_size);
   // std::cout  << "1111111\n";
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
@@ -265,8 +267,8 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 }
 
 bool PSSparseServerTask::process_get_lda_model(
-    const Request& req, std::vector<char>& thread_buffer) {
-
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   // std::cout << "Sending lda model\n";
   // need to parse the buffer to get the indices of the model we want
   // to send back to the client
@@ -292,7 +294,6 @@ bool PSSparseServerTask::process_get_lda_model(
   }
   return true;
 }
-
 
 bool PSSparseServerTask::process_get_mf_full_model(
     const Request& req, std::vector<char>& thread_buffer) {
@@ -430,7 +431,7 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_mf_gradient(req, thread_buffer)) {
         break;
       }
-    } else if(req.req_id == SEND_LDA_UPDATE){
+    } else if (req.req_id == SEND_LDA_UPDATE) {
       if (!process_send_lda_update(req, thread_buffer)) {
         break;
       }
@@ -456,10 +457,10 @@ void PSSparseServerTask::gradient_f() {
     } else if (req.req_id == GET_MF_FULL_MODEL) {
       if (!process_get_mf_full_model(req, thread_buffer))
         break;
-    } else if(req.req_id == GET_LDA_MODEL){
+    } else if (req.req_id == GET_LDA_MODEL) {
       if (!process_get_lda_model(req, thread_buffer))
         break;
-    }else if (req.req_id == GET_TASK_STATUS) {
+    } else if (req.req_id == GET_TASK_STATUS) {
       uint32_t task_id;
       if (read_all(sock, &task_id, sizeof (uint32_t)) == 0) {
         break;
@@ -478,7 +479,6 @@ void PSSparseServerTask::gradient_f() {
       }
 
     } else if (operation == SET_TASK_STATUS) {
-
       uint32_t data[2] = {0}; // id + status
       if (read_all(sock, data, sizeof (uint32_t) * 2) == 0) {
         handle_failed_read(&req.poll_fd);
@@ -559,14 +559,15 @@ void PSSparseServerTask::start_server() {
   lr_model->randomize();
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(), NUM_FACTORS));
   mf_model->randomize();
-  if(task_config.get_model_type() == cirrus::Configuration::LDA){
-
+  if (task_config.get_model_type() == cirrus::Configuration::LDA) {
     std::cout << "Getting initial LDA statistics from S3\n";
     // Get the global stats from S3
     s3_initialize_aws();
     std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
-    std::string obj_id_str = std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+    std::string obj_id_str =
+        std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
+    std::ostringstream* s3_obj =
+        s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
 
@@ -648,8 +649,7 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     fdses[0].at(1).fd = pipefds[poll_id][0];
     fdses[0].at(1).events = POLLIN;
     curr_indexes[poll_id] = 2;
-  }
-  else {
+  } else {
     std::cout << "Starting secondary poll thread: " << poll_id << std::endl;
     fdses[poll_id].at(0).fd = pipefds[poll_id][0];
     fdses[poll_id].at(0).events = POLLIN;
@@ -785,7 +785,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   task_config = config;
 
-  if (task_config.get_model_type() != cirrus::Configuration::LDA){
+  if (task_config.get_model_type() != cirrus::Configuration::LDA) {
     auto learning_rate = config.get_learning_rate();
     auto epsilon = config.get_epsilon();
     auto momentum_beta = config.get_momentum_beta();
@@ -824,7 +824,7 @@ void PSSparseServerTask::run(const Configuration& config) {
         << std::endl;
       gradientUpdatesCount = 0;
       // compute_loglikelihood();
-      if((int)since_start_sec % 10 == 0 && since_start_sec != 0){
+      if ((int) since_start_sec % 10 == 0 && since_start_sec != 0) {
         compute_loglikelihood();
       }
     }
@@ -868,7 +868,7 @@ void PSSparseServerTask::checkpoint_model_file(
   fout.close();
 }
 
-void PSSparseServerTask::compute_loglikelihood(){
+void PSSparseServerTask::compute_loglikelihood() {
   std::vector<int> nvt, nt;
 
   lda_global_vars->get_nvt(nvt);
@@ -880,13 +880,13 @@ void PSSparseServerTask::compute_loglikelihood(){
   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
   double ll = K * lda_lgamma(eta * V);
 
-  for(int i=0; i<K; ++i){
+  for (int i = 0; i < K; ++i) {
     int nti = 0;
     ll -= lda_lgamma(eta * V + nt[i]);
-    for(int v=0; v<V; ++v){
-      if(nvt[v * K + i] > 0){
+    for (int v = 0; v < V; ++v) {
+      if (nvt[v * K + i] > 0) {
         ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-        nti += nvt[v*K + i];
+        nti += nvt[v * K + i];
       }
     }
   }
@@ -895,9 +895,11 @@ void PSSparseServerTask::compute_loglikelihood(){
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   auto train_range = task_config.get_train_range();
-  for(int i = train_range.first; i < train_range.second; ++i){
-    std::string obj_id_str = std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
-    std::ostringstream* s3_obj = s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+  for (int i = train_range.first; i < train_range.second; ++i) {
+    std::string obj_id_str =
+        std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
+    std::ostringstream* s3_obj =
+        s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
 
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
@@ -908,11 +910,11 @@ void PSSparseServerTask::compute_loglikelihood(){
     ndt_partial.get_ndt(ndt);
     ndt_partial.get_slice(slice);
 
-    for(int j=0; j<ndt.size(); ++j){
+    for (int j = 0; j < ndt.size(); ++j) {
       int ndj = 0;
-      for(int k=0; k<K; ++k){
+      for (int k = 0; k < K; ++k) {
         ndj += ndt[j][k];
-        if(ndt[j][k] > 0){
+        if (ndt[j][k] > 0) {
           ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
         }
       }
@@ -923,7 +925,6 @@ void PSSparseServerTask::compute_loglikelihood(){
   s3_shutdown_aws();
 
   std::cout << "loglikelihood: " << ll << std::endl;
-
 }
 
 } // namespace cirrus

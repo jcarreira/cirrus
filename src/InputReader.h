@@ -228,7 +228,6 @@ class InputReader {
   void parse_read_lda_input_line(const std::string& line,
                                  const std::string& delimiter,
                                  std::vector<std::pair<int, int>>& features);
-                                                   
   void read_lda_vocab_input(std::ifstream& fin,
                             std::vector<std::string>& vocabs);
 };

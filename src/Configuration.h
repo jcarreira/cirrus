@@ -91,11 +91,11 @@ class Configuration {
     void print() const;
 
     enum ModelType {
-        UNKNOWN = 0,
-        LOGISTICREGRESSION,
-        SOFTMAX,
-        COLLABORATIVE_FILTERING,
-        LDA
+      UNKNOWN = 0,
+      LOGISTICREGRESSION,
+      SOFTMAX,
+      COLLABORATIVE_FILTERING,
+      LDA
     };
 
     /**

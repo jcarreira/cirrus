@@ -7,7 +7,6 @@
 #include "Constants.h"
 #include "LDAStatistics.h"
 
-
 //#define DEBUG
 
 #define MAX_MSG_SIZE (1024*1024)
@@ -33,7 +32,6 @@ PSSparseServerInterface::PSSparseServerInterface(const std::string& ip, int port
   // Save the port in the info
   serv_addr.sin_port = htons(port);
   std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
-
 }
 
 void PSSparseServerInterface::connect() {
@@ -344,7 +342,6 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
 }
 
 LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
-
 #ifdef DEBUG
   std::cout << "Getting LDA model " << std::endl;
 #endif
@@ -371,13 +368,13 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
     throw std::runtime_error("Error getting lda model");
   }
 
-  //4. receive partial_nvt from server
+  // 4. receive partial_nvt from server
   uint32_t to_receive_size = info.get_receive_size();
 #ifdef DEBUG
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
   char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size); //XXX
+  read_all(sock, buffer, to_receive_size);  // XXX
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
@@ -390,7 +387,4 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
   return lda_model;
 }
 
-
-
-
-} // namespace cirrus
+}  // namespace cirrus

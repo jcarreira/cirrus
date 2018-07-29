@@ -318,10 +318,10 @@ class PSSparseServerTask : public MLTask {
                                 std::vector<char>& thread_buffer);
   bool process_get_mf_full_model(const Request& req,
                                  std::vector<char>& thread_buffer);
-
-  bool process_send_lda_update( const Request& req, std::vector<char>& thread_buffer);
-  bool process_get_lda_model( const Request& req, std::vector<char>& thread_buffer);
-
+  bool process_send_lda_update(const Request& req,
+                               std::vector<char>& thread_buffer);
+  bool process_get_lda_model(const Request& req,
+                             std::vector<char>& thread_buffer);
   void kill_server();
 
   /**
@@ -366,8 +366,8 @@ class PSSparseServerTask : public MLTask {
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
   std::unique_ptr<LDAUpdates> lda_global_vars;
-  Configuration task_config;                //< config for parameter server
-  uint32_t num_connections = 0;             //< number of current connections
+  Configuration task_config;     //< config for parameter server
+  uint32_t num_connections = 0;  //< number of current connections
 
   std::map<int, bool> task_to_status;            //< keep track of task status
   std::map<int, std::string> operation_to_name;  //< request id to name
@@ -428,34 +428,35 @@ class MFNetflixTask : public MLTask {
 };
 
 class LDATaskS3 : public MLTask {
-  public:
-    LDATaskS3(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id,
-        const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
-  {}
+ public:
+  LDATaskS3(uint64_t model_size,
+            uint64_t batch_size,
+            uint64_t samples_per_batch,
+            uint64_t features_per_sample,
+            uint64_t nworkers,
+            uint64_t worker_id,
+            const std::string& ps_ip,
+            uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port),
+        psint(nullptr) {}
+  /**
+   * Worker here is a value 0..nworkers - 1
+   */
+  void run(const Configuration& config, int worker);
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker);
-
-  private:
-
-    bool get_dataset_minibatch(
-        std::unique_ptr<LDAStatistics>& local_vars,
-        S3SparseIterator& s3_iter);
-    void push_gradient(LDAUpdates*);
-
-    std::mutex redis_lock;
-
-    PSSparseServerInterface* psint;
+ private:
+  bool get_dataset_minibatch(std::unique_ptr<LDAStatistics>& local_vars,
+                             S3SparseIterator& s3_iter);
+  void push_gradient(LDAUpdates*);
+  std::mutex redis_lock;
+  PSSparseServerInterface* psint;
 };
 
 /**
@@ -463,27 +464,32 @@ class LDATaskS3 : public MLTask {
  * store everything in S3
  */
 class LoadingLDATaskS3 : public MLTask {
-  public:
-    LoadingLDATaskS3(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
-    void run(const Configuration& config);
-    LDADataset read_dataset(const Configuration& config);
-    LDAStatistics count_dataset(const std::vector<std::vector<std::pair<int, int>>>& docs,\
-                        std::vector<int>& nvt,
-                        std::vector<int>& nt, int K,
-                        std::set<int>& global_vocab);
-
-  private:
+ public:
+  LoadingLDATaskS3(uint64_t model_size,
+                   uint64_t batch_size,
+                   uint64_t samples_per_batch,
+                   uint64_t features_per_sample,
+                   uint64_t nworkers,
+                   uint64_t worker_id,
+                   const std::string& ps_ip,
+                   uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port) {}
+  void run(const Configuration& config);
+  LDADataset read_dataset(const Configuration& config);
+  LDAStatistics count_dataset(
+      const std::vector<std::vector<std::pair<int, int>>>& docs,
+      std::vector<int>& nvt,
+      std::vector<int>& nt,
+      int K,
+      std::set<int>& global_vocab);
 };
-
 }
 
 #endif  // _TASKS_H_

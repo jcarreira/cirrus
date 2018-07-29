@@ -12,44 +12,38 @@ namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
 
-LDADataset LoadingLDATaskS3::read_dataset(
-    const Configuration& config) {
-
+LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
   InputReader input;
-  return input.read_lda_input(
-      config.get_doc_path(),
-      config.get_vocab_path(),
-      ",",
-      config);
+  return input.read_lda_input(config.get_doc_path(), config.get_vocab_path(),
+                              ",", config);
 }
 
 LDAStatistics LoadingLDATaskS3::count_dataset(
-                    const std::vector<std::vector<std::pair<int, int>>>& docs,\
-                    std::vector<int>& nvt,
-                    std::vector<int>& nt, int K,
-                    std::set<int>& global_vocab){
-
+    const std::vector<std::vector<std::pair<int, int>>>& docs,
+    std::vector<int>& nvt,
+    std::vector<int>& nt,
+    int K,
+    std::set<int>& global_vocab) {
   std::vector<int> t, d, w;
   std::vector<std::vector<int>> ndt;
   std::set<int> local_vocab;
 
-  for(const auto& doc: docs){
-
+  for (const auto& doc : docs) {
     std::vector<int> ndt_row(K);
 
-    for(const auto& feat: doc){
+    for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
-      if(local_vocab.find(gindex) == local_vocab.end())
+      if (local_vocab.find(gindex) == local_vocab.end())
         local_vocab.insert(local_vocab.begin(), gindex);
-      if(global_vocab.find(gindex) == global_vocab.end())
+      if (global_vocab.find(gindex) == global_vocab.end())
         global_vocab.insert(global_vocab.begin(), gindex);
-      for(int i=0; i<count; ++i){
+      for (int i = 0; i < count; ++i) {
         int top = rand() % K;
 
         t.push_back(top);
         d.push_back(ndt.size());
         w.push_back(gindex);
-        ++ ndt_row[top];
+        ++ndt_row[top];
 
         nvt[gindex * K + top] += 1;
         nt[top] += 1;
@@ -63,7 +57,8 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
 }
 
 void LoadingLDATaskS3::run(const Configuration& config) {
-  std::cout << "[LOADER] " << "Read lda input..." << std::endl;
+  std::cout << "[LOADER] "
+            << "Read lda input..." << std::endl;
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
   s3_initialize_aws();
@@ -77,10 +72,9 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   uint64_t num_s3_objs = dataset.num_docs() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "
-    << "Adding " << dataset.num_docs()
-    << " #s3 objs: " << num_s3_objs + 1
-    << " bucket: " << config.get_s3_bucket()
-    << std::endl;
+            << "Adding " << dataset.num_docs()
+            << " #s3 objs: " << num_s3_objs + 1
+            << " bucket: " << config.get_s3_bucket() << std::endl;
 
   std::vector<int> nvt, nt;
   std::vector<std::vector<std::pair<int, int>>> partial_docs;
@@ -95,11 +89,16 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
     // Only get corpus of size s3_obj_num_samples
     dataset.get_some_docs(partial_docs);
-    LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, K, global_vocab);
+    LDAStatistics to_save =
+        count_dataset(partial_docs, nvt, nt, K, global_vocab);
 
-    std::cout << "Putting object(LDAStatistics) in S3 with size: " << to_save.get_serialize_size() << std::endl;
-    std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-LDA";
-    s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
+    std::cout << "Putting object(LDAStatistics) in S3 with size: "
+              << to_save.get_serialize_size() << std::endl;
+    std::string obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
+        "-LDA";
+    s3_client->s3_put_object(
+        obj_id, config.get_s3_bucket(),
         std::string(to_save.serialize(), to_save.get_serialize_size()));
   }
   // check_loading(config, s3_client);
@@ -107,19 +106,20 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   // Storing global variables
   std::vector<int> global_vocab_vec(global_vocab.begin(), global_vocab.end());
   LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
-  std::cout << "Putting object(initial global var) in S3 with size: " << initial_global_var.getSerializedSize() << std::endl;
-  std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
+  std::cout << "Putting object(initial global var) in S3 with size: "
+            << initial_global_var.getSerializedSize() << std::endl;
+  std::string obj_id =
+      std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
 
   uint64_t len;
-  std::shared_ptr<char> s3_obj =
-    initial_global_var.serialize(&len);
+  std::shared_ptr<char> s3_obj = initial_global_var.serialize(&len);
 
   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
-      std::string(s3_obj.get(), len));
+                           std::string(s3_obj.get(), len));
 
   s3_shutdown_aws();
 
   std::cout << "LOADER-LDA terminated successfully" << std::endl;
 }
 
-} // namespace cirrus
+}  // namespace cirrus

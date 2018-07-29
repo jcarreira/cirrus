@@ -45,8 +45,7 @@ void Configuration::read(const std::string& path) {
 }
 
 void Configuration::print() const {
-
-  if (model_type == LDA){
+  if (model_type == LDA) {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "vocab_path: " << get_vocab_path() << std::endl;
     std::cout << "doc_path: " << get_doc_path() << std::endl;
@@ -85,7 +84,6 @@ void Configuration::print() const {
         << " items: " << nitems << std::endl;
     }
   }
-
 }
 
 void Configuration::check() const {
@@ -136,57 +134,57 @@ void Configuration::parse_line(const std::string& line) {
           throw std::runtime_error("s3_size not multiple of minibatch_size");
         }
     } else if (s == "num_features:") {
-        iss >> num_features;
+      iss >> num_features;
     } else if (s == "input_path:") {
-        iss >> input_path;
+      iss >> input_path;
     } else if (s == "samples_path:") {
-        iss >> samples_path;
+      iss >> samples_path;
     } else if (s == "vocab_path:") {
-        iss >> vocab_path;
+      iss >> vocab_path;
     } else if (s == "doc_path:") {
-        iss >> doc_path;
-    }else if (s == "labels_path:") {
-        iss >> labels_path;
-    }else if(s == "slice_size:") {
-        iss >> slice_size;
+      iss >> doc_path;
+    } else if (s == "labels_path:") {
+      iss >> labels_path;
+    } else if (s == "slice_size:") {
+      iss >> slice_size;
     } else if (s == "n_workers:") {
-        iss >> n_workers;
+      iss >> n_workers;
     } else if (s == "K:") {
-        iss >> K_;
+      iss >> K_;
     } else if (s == "opt_method:") {
-        iss >> opt_method;
+      iss >> opt_method;
     }  else if (s == "epsilon:") {
-        iss >> epsilon;
+      iss >> epsilon;
     } else if (s == "input_type:") {
-        iss >> input_type;
+      iss >> input_type;
     } else if (s == "learning_rate:") {
-        iss >> learning_rate;
+      iss >> learning_rate;
     } else if (s == "num_classes:") {
-        iss >> num_classes;
+      iss >> num_classes;
     } else if (s == "limit_cols:") {
-        iss >> limit_cols;
+      iss >> limit_cols;
     } else if (s == "limit_samples:") {
-        iss >> limit_samples;
+      iss >> limit_samples;
     } else if (s == "momentum_beta:") {
-        iss >> momentum_beta;
+      iss >> momentum_beta;
     } else if (s == "s3_bucket:") {
-        iss >> s3_bucket_name;
+      iss >> s3_bucket_name;
     } else if (s == "use_bias:") {
-        iss >> use_bias;
+      iss >> use_bias;
     } else if (s == "num_users:") {
-        iss >> nusers;
+      iss >> nusers;
     } else if (s == "num_items:") {
-        iss >> nitems;
+      iss >> nitems;
     } else if (s == "model_bits:") {
-        iss >> model_bits;
+      iss >> model_bits;
     } else if (s == "netflix_workers:") {
-       iss >> netflix_workers;
+      iss >> netflix_workers;
     } else if (s == "checkpoint_frequency:") {
-       iss >> checkpoint_frequency;
+      iss >> checkpoint_frequency;
     } else if (s == "checkpoint_s3_bucket:") {
-       iss >> checkpoint_s3_bucket;
+      iss >> checkpoint_s3_bucket;
     } else if (s == "checkpoint_s3_keyname:") {
-       iss >> checkpoint_s3_keyname;
+      iss >> checkpoint_s3_keyname;
     } else if (s == "normalize:") {
       int n;
       iss >> n;
@@ -196,8 +194,8 @@ void Configuration::parse_line(const std::string& line) {
       iss >> model;
       if (model == "LogisticRegression") {
           model_type = LOGISTICREGRESSION;
-      }if (model == "LDA") {
-          model_type = LDA;
+      } else if (model == "LDA") {
+        model_type = LDA;
       } else if (model == "Softmax") {
           model_type = SOFTMAX;
       } else if (model == "CollaborativeFiltering") {
@@ -274,15 +272,15 @@ std::string Configuration::get_labels_path() const {
 }
 
 std::string Configuration::get_vocab_path() const {
-    if (vocab_path == "")
-        throw std::runtime_error("vocab path not loaded");
-    return vocab_path;
+  if (vocab_path == "")
+    throw std::runtime_error("vocab path not loaded");
+  return vocab_path;
 }
 
 std::string Configuration::get_doc_path() const {
-    if (doc_path == "")
-        throw std::runtime_error("doc path not loaded");
-    return doc_path;
+  if (doc_path == "")
+    throw std::runtime_error("doc path not loaded");
+  return doc_path;
 }
 
 double Configuration::get_learning_rate() const {
@@ -311,7 +309,7 @@ uint64_t Configuration::get_s3_size() const {
 
 uint32_t Configuration::get_slice_size() const {
   if (slice_size == 0)
-      throw std::runtime_error("Slice size not loaded");
+    throw std::runtime_error("Slice size not loaded");
   return slice_size;
 }
 

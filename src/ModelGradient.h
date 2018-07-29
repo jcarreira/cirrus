@@ -193,41 +193,43 @@ class MFSparseGradient : public ModelGradient {
 
 class LDAUpdates {
  public:
-    friend class LDAModel;
+  friend class LDAModel;
 
-    virtual ~LDAUpdates() = default;
+  virtual ~LDAUpdates() = default;
 
-    LDAUpdates() {}
-    LDAUpdates(LDAUpdates&& data);
-    LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s);
-    LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
-    LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
+  LDAUpdates() {}
+  LDAUpdates(LDAUpdates&& data);
+  LDAUpdates(const std::vector<int>& nvt,
+             const std::vector<int>& nt,
+             const std::vector<int>& s);
+  LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
+  LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
 
-    LDAUpdates& operator=(LDAUpdates&& other);
+  LDAUpdates& operator=(LDAUpdates&& other);
 
-    void loadSerialized(const char* mem);
-    std::shared_ptr<char> serialize(uint64_t*);
-    uint64_t getSerializedSize() const ;
+  void loadSerialized(const char* mem);
+  std::shared_ptr<char> serialize(uint64_t*);
+  uint64_t getSerializedSize() const;
 
-    void update(const LDAUpdates& gradient);
-    char* get_partial_model(const char* slice, uint32_t& to_send_size);
+  void update(const LDAUpdates& gradient);
+  char* get_partial_model(const char* slice, uint32_t& to_send_size);
 
-    void get_nvt(std::vector<int>& nvt) {nvt = change_nvt;}
-    void get_nt(std::vector<int>& nt) {nt = change_nt;}
-    int get_vocab_map(int key) {return slice_map[key];}
+  void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
+  void get_nt(std::vector<int>& nt) { nt = change_nt; }
+  int get_vocab_map(int key) { return slice_map[key]; }
 
-    void setVersion(int v) {version = v;}
-    int getVersion() const {return version;}
+  void setVersion(int v) { version = v; }
+  int getVersion() const { return version; }
 
-    void print() const;
+  void print() const;
 
-    std::map<int, int> slice_map;
-    
-    // void check_values() const;
+  std::map<int, int> slice_map;
+
+  // void check_values() const;
  protected:
-    std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
-    std::vector<int> slice;
-    uint64_t version = 0;
+  std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
+  std::vector<int> slice;
+  uint64_t version = 0;
 };
 
 } // namespace cirrus

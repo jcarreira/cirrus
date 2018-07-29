@@ -59,7 +59,7 @@ class LDADataset {
   std::vector<std::vector<std::pair<int, int> > > docs_;
   std::vector<std::string> vocabs_;
   int sample_size = 0, serialize_size = 0;
-  };
+};
 }
 
 #endif

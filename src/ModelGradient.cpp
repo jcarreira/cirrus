@@ -172,8 +172,6 @@ void LRSparseGradient::check_values() const {
   }
 }
 
-
-
 /**
  * SOFTMAX
  *
@@ -435,16 +433,16 @@ LDAUpdates::LDAUpdates(LDAUpdates&& other) {
   version = other.version;
 }
 
-LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt) :
-  change_nvt(nvt), change_nt(nt){
-    slice.clear();
-    slice.resize(0);
-  }
+LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt)
+    : change_nvt(nvt), change_nt(nt) {
+  slice.clear();
+  slice.resize(0);
+}
 
-LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt, const std::vector<int>& s) :
-  change_nvt(nvt), change_nt(nt), slice(s) {
-
-  }
+LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
+                       const std::vector<int>& nt,
+                       const std::vector<int>& s)
+    : change_nvt(nvt), change_nt(nt), slice(s) {}
 
 LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
   change_nvt.resize(nvt_dim);
@@ -462,8 +460,6 @@ LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
 }
 
 void LDAUpdates::loadSerialized(const char* mem) {
-
-
   version = *reinterpret_cast<const uint64_t*>(mem);
   mem = reinterpret_cast<const char*>(
       (reinterpret_cast<const char*>(mem) + sizeof(uint64_t)));
@@ -476,8 +472,8 @@ void LDAUpdates::loadSerialized(const char* mem) {
   // change_nvt = std::vector<int>(len);
   const int* nvt = reinterpret_cast<const int*>(mem);
   std::copy(nvt, nvt + len, change_nvt.begin());
-  mem = reinterpret_cast<const char*>(
-      (reinterpret_cast<const char*>(mem) +  sizeof(uint32_t) * change_nvt.size()));
+  mem = reinterpret_cast<const char*>((reinterpret_cast<const char*>(mem) +
+                                       sizeof(uint32_t) * change_nvt.size()));
 
   len = *reinterpret_cast<const uint32_t*>(mem);
   mem = reinterpret_cast<const char*>(
@@ -486,8 +482,8 @@ void LDAUpdates::loadSerialized(const char* mem) {
   // change_nt = std::vector<int>(len);
   const int* nt = reinterpret_cast<const int*>(mem);
   std::copy(nt, nt + len, change_nt.begin());
-  mem = reinterpret_cast<const char*>(
-      (reinterpret_cast<const char*>(mem) +  sizeof(uint32_t) * change_nt.size()));
+  mem = reinterpret_cast<const char*>((reinterpret_cast<const char*>(mem) +
+                                       sizeof(uint32_t) * change_nt.size()));
 
   len = *reinterpret_cast<const uint32_t*>(mem);
   mem = reinterpret_cast<const char*>(
@@ -499,18 +495,18 @@ void LDAUpdates::loadSerialized(const char* mem) {
 
   slice_map.clear();
   int idx = 0;
-  for(int i: slice){
+  for (int i : slice) {
     slice_map.insert(std::make_pair(i, idx));
-    ++ idx;
+    ++idx;
   }
 }
 
 std::shared_ptr<char> LDAUpdates::serialize(uint64_t* serialize_size) {
-
-  *serialize_size = sizeof(uint64_t) + sizeof(int) * (3 + change_nvt.size() + change_nt.size()  + slice.size());
+  *serialize_size =
+      sizeof(uint64_t) +
+      sizeof(int) * (3 + change_nvt.size() + change_nt.size() + slice.size());
   std::shared_ptr<char> mem_begin = std::shared_ptr<char>(
-      new char[*serialize_size],
-      std::default_delete<char[]>());
+      new char[*serialize_size], std::default_delete<char[]>());
   char* mem = mem_begin.get();
 
   store_value<uint64_t>(mem, version);
@@ -533,38 +529,37 @@ std::shared_ptr<char> LDAUpdates::serialize(uint64_t* serialize_size) {
       (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
 
   return mem_begin;
-
 }
 
 uint64_t LDAUpdates::getSerializedSize() const {
-  return sizeof(uint64_t) + sizeof(uint32_t) * (3 + change_nvt.size() + change_nt.size()  + slice.size());
+  return sizeof(uint64_t) +
+         sizeof(uint32_t) *
+             (3 + change_nvt.size() + change_nt.size() + slice.size());
 }
 
 void LDAUpdates::print() const {
   std::cout << "Printing LDAUpdates. version: " << version << std::endl;
-  for (const auto &v : change_nvt) {
+  for (const auto& v : change_nvt) {
     std::cout << v << " ";
   }
   std::cout << std::endl;
 
-  for (const auto &v : change_nt) {
+  for (const auto& v : change_nt) {
     std::cout << v << " ";
   }
   std::cout << std::endl;
 
-  for (const auto &v : slice) {
+  for (const auto& v : slice) {
     std::cout << v << " ";
   }
   std::cout << std::endl;
 }
 
-void LDAUpdates::update(const LDAUpdates& gradient){
-
+void LDAUpdates::update(const LDAUpdates& gradient) {
   // std::cout << slice_map.size() << " -------------" << std::endl;
 
   int K = change_nt.size();
-  for(int i=0; i<gradient.slice.size(); ++i){
-
+  for (int i = 0; i < gradient.slice.size(); ++i) {
     // if(gradient.slice[i] == 1004){
     //   std::cout << "b4 nvt[0]: ";
     //   std::cout << slice_map[gradient.slice[i]] << std::endl;
@@ -580,9 +575,10 @@ void LDAUpdates::update(const LDAUpdates& gradient){
     //   std::cout << std::endl;
     // }
 
-    for(int j=0; j<K; ++j){
+    for (int j = 0; j < K; ++j) {
       // std::cout << gradient.change_nvt[i*K + j] << " ";
-      change_nvt[slice_map[gradient.slice[i]] * K + j] += gradient.change_nvt[i*K + j];
+      change_nvt[slice_map[gradient.slice[i]] * K + j] +=
+          gradient.change_nvt[i * K + j];
     }
     // std::cout << std::endl;
 
@@ -595,14 +591,12 @@ void LDAUpdates::update(const LDAUpdates& gradient){
     // }
   }
 
-  for(int i=0; i<change_nt.size(); ++i){
+  for (int i = 0; i < change_nt.size(); ++i) {
     change_nt[i] += gradient.change_nt[i];
   }
-
-
 }
 
-char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size){
+char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
   slice_map.clear();
   int idx = 0;
   for (int i : slice) {
@@ -614,13 +608,15 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size){
   int K = change_nt.size();
 
   const int* len = reinterpret_cast<const int*>(s);
-  s = reinterpret_cast<const char*>(reinterpret_cast<const char*>(s) +  sizeof(int));
-  for(int i=0; i<*len; ++i){
+  s = reinterpret_cast<const char*>(reinterpret_cast<const char*>(s) +
+                                    sizeof(int));
+  for (int i = 0; i < *len; ++i) {
     const int* word_idx = reinterpret_cast<const int*>(s);
-    // std::vector<int> partial(change_nvt.begin() + *word_idx * K, change_nvt.begin() + (*word_idx + 1) * K);
-    // partial_nvt.push_back(partial);
-    partial_nvt.insert(partial_nvt.end(), change_nvt.begin() + slice_map[*word_idx] * K, change_nvt.begin() + (slice_map[*word_idx] + 1) * K);
-    s = reinterpret_cast<const char*>(reinterpret_cast<const char*>(s) +  sizeof(int));
+    partial_nvt.insert(partial_nvt.end(),
+                       change_nvt.begin() + slice_map[*word_idx] * K,
+                       change_nvt.begin() + (slice_map[*word_idx] + 1) * K);
+    s = reinterpret_cast<const char*>(reinterpret_cast<const char*>(s) +
+                                      sizeof(int));
   }
 
   to_send_size = sizeof(uint32_t) * (1 + partial_nvt.size() + change_nt.size());
@@ -639,13 +635,8 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size){
   // store_value<uint32_t>(mem, change_nt.size());
   data = reinterpret_cast<uint32_t*>(mem);
   std::copy(change_nt.begin(), change_nt.end(), data);
-  // mem = reinterpret_cast<char*>(
-  //     (reinterpret_cast<char*>(mem) + sizeof(uint32_t) * change_nt.size()));
-
-  // to_send_size = sizeof(uint64_t) + sizeof(uint32_t) * (3 + partial_nvt.size() + change_nt.size()  + slice.size());
-
 
   return mem_begin;
 }
 
-} // namespace cirrus
+}  // namespace cirrus

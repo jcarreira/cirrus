@@ -22,7 +22,7 @@
 #define ERROR_SPARSE_TASK_RANK (2)
 #define PS_SPARSE_SERVER_TASK_RANK (1)
 #define LOADING_SPARSE_TASK_RANK (0)
-#define WORKERS_BASE 5 // used in wait_for_start
+#define WORKERS_BASE 5  // used in wait_for_start
 
 #define SAMPLE_BASE (0)
 
