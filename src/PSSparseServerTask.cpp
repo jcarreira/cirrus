@@ -149,7 +149,13 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
 
   auto sparse_msg =
       message::PSMessage::CreateSparseModelResponse(builder, sparse_vec);
-  builder.Finish(sparse_msg);
+
+  auto ps_msg = message::PSMessage::CreatePSMessage(builder,
+    message::PSMessage::Response_SparseModelResponse,
+    sparse_msg.Union());
+
+  builder.Finish(ps_msg);
+
   send_flatbuffer(sock, &builder);
 
   return true;
@@ -163,17 +169,17 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   // to send back to the client
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
-  assert(to_send_size < 1024 * 1024);
-  unsigned char data_to_send[1024 * 1024];  // 1MB
+  assert(to_send_size < 1024 * 1024); // 1 MB
+  unsigned char data_to_send[to_send_size];
   unsigned char* data_to_send_ptr = data_to_send;
-#ifdef DEBUG
+//#ifdef DEBUG
   std::cout << "Sending back: " << num_entries
             << " weights from model. Size: " << to_send_size << std::endl;
-#endif
+//#endif
 
   // Make the weights vector
   int num_bytes = 0;
-  for (uint32_t i = 0; i < num_entries; ++i) {
+  for (uint32_t i = 0; i < num_entries; i++) {
     uint32_t entry_index = load_value<uint32_t>(index_list);
     double weight = lr_model->get_nth_weight(entry_index);
     opt_method->edit_weight(weight);
@@ -183,11 +189,15 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   unsigned char* data = data_to_send;
-  auto weights_vec = builder.CreateVector(data, num_bytes);
+  auto weights_vec = builder.CreateVector(data, to_send_size);
 
   auto sparse_msg =
       message::PSMessage::CreateSparseModelResponse(builder, weights_vec);
-  builder.Finish(sparse_msg);
+  auto ps_msg = message::PSMessage::CreatePSMessage(builder,
+    message::PSMessage::Response_SparseModelResponse,
+    sparse_msg.Union());
+  
+  builder.Finish(ps_msg);
   send_flatbuffer(sock, &builder);
   return true;
 }
@@ -218,7 +228,11 @@ bool PSSparseServerTask::process_get_mf_full_model(
 
   auto full_msg =
       message::PSMessage::CreateFullModelResponse(builder, full_vec);
-  builder.Finish(full_msg);
+  auto ps_msg = message::PSMessage::CreatePSMessage(builder,
+    message::PSMessage::Response_FullModelResponse,
+    full_msg.Union());
+  
+  builder.Finish(ps_msg);
   send_flatbuffer(sock, &builder);
   return true;
 }
@@ -247,7 +261,11 @@ bool PSSparseServerTask::process_get_lr_full_model(
 
   auto full_msg =
       message::PSMessage::CreateFullModelResponse(builder, full_vec);
-  builder.Finish(full_msg);
+  auto ps_msg = message::PSMessage::CreatePSMessage(builder,
+    message::PSMessage::Response_FullModelResponse,
+    full_msg.Union());
+  
+  builder.Finish(ps_msg);
   send_flatbuffer(sock, &builder);
   return true;
 }
@@ -308,10 +326,28 @@ void PSSparseServerTask::gradient_f() {
     } catch (...) {
       throw std::runtime_error("Unhandled error");
     }
+    std::cout<<"Received message\n";
+    const message::WorkerMessage::WorkerMessage *msg = message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
+    std::cout<<"Attempting to verify message...\n";
+    const unsigned char *buf = 
+      reinterpret_cast<unsigned char *>(thread_buffer.data());
+    flatbuffers::Verifier verifier = flatbuffers::Verifier(buf, msg_size);
+    if (!message::WorkerMessage::VerifyWorkerMessageBuffer(
+      verifier
+      )) {
+      throw std::runtime_error("Flatbuffer verification failed!");
+    }
+    std::cout<<"Interpreted message as a WorkerMessage\n";
+    std::cout<<msg->payload_type();
+    std::cout<<"\n";
+    if (msg->payload_type() ==
+      message::WorkerMessage::Request_FullModelRequest) {
+      std::cout<<"Message type is FullModelRequest...\n";
+    }
 
-    auto msg = message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
     switch (msg->payload_type()) {
     case message::WorkerMessage::Request_GradientMessage: {
+      std::cout<<"Gradient message received\n";
       auto gradient_msg = msg->payload_as_GradientMessage();
       const unsigned char* gradient_buf = gradient_msg->gradient()->data();
       if (gradient_msg->model_type() ==
@@ -323,8 +359,10 @@ void PSSparseServerTask::gradient_f() {
       } else {
         throw std::runtime_error("Unimplemented gradient type");
       }
+      break;
     }
     case message::WorkerMessage::Request_SparseModelRequest: {
+      std::cout<<"Received SparseModelRequest\n";
       auto sparse_req = msg->payload_as_SparseModelRequest();
       const unsigned char* index_buf = sparse_req->index_info()->data();
       if (sparse_req->model_type() ==
@@ -338,8 +376,10 @@ void PSSparseServerTask::gradient_f() {
       } else {
         throw std::runtime_error("Unimplemented request for sparse model");
       }
+      break;
     }
     case message::WorkerMessage::Request_FullModelRequest: {
+      std::cout<<"Received FullModelRequest\n";
       auto full_req = msg->payload_as_FullModelRequest();
       if (full_req->model_type() ==
           message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
@@ -350,8 +390,10 @@ void PSSparseServerTask::gradient_f() {
       } else {
         throw std::runtime_error("Unimplemented request for full model");
       }
+      break;
     }
     case message::WorkerMessage::Request_TaskRequest: {
+      std::cout<<"TaskRequest received\n";
 #ifdef DEBUG
       std::cout << "Get status task id: " << task_id << std::endl;
 #endif
@@ -367,8 +409,13 @@ void PSSparseServerTask::gradient_f() {
       flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
       auto task_msg =
           message::PSMessage::CreateTaskResponse(builder, task_id, status);
-      builder.Finish(task_msg);
+      auto ps_msg = message::PSMessage::CreatePSMessage(builder,
+        message::PSMessage::Response_TaskResponse,
+        task_msg.Union());
+      
+      builder.Finish(ps_msg);
       send_flatbuffer(sock, &builder);
+      break;
     }
     case message::WorkerMessage::Request_TaskMessage: {
       auto task_msg = msg->payload_as_TaskMessage();
@@ -377,8 +424,10 @@ void PSSparseServerTask::gradient_f() {
                 << " status: " << task_msg->status() << std::endl;
 #endif
       task_to_status[task_msg->task_id()] = task_msg->status();
+      break;
     }
     case message::WorkerMessage::Request_RegisterTaskMessage: {
+      std::cout<<"Register task received\n";
       // check if this task has already been registered
       int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
       uint32_t task_reg =
@@ -389,6 +438,7 @@ void PSSparseServerTask::gradient_f() {
       }
       // TODO: Change to FlatBuffer, or determine what this should be.
       send_all(sock, &task_reg, sizeof(uint32_t));
+      break;
     }
     case message::WorkerMessage::Request_NumberConnectionsRequest: {
       std::cout << "Retrieve num connections: " << num_connections << std::endl;
@@ -396,6 +446,7 @@ void PSSparseServerTask::gradient_f() {
       if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
         throw std::runtime_error("Error sending number of connections");
       }
+      break;
     }
     case message::WorkerMessage::Request_NumberUpdatesRequest: {
       // TODO: Send with FlatBuffers.
@@ -403,6 +454,7 @@ void PSSparseServerTask::gradient_f() {
       if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
         throw std::runtime_error("Error sending number of connections");
       }
+      break;
     }
     case message::WorkerMessage::Request_KillMessage: {
       std::cout << "Received kill signal!" << std::endl;
@@ -410,7 +462,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     default:
-      throw std::runtime_error("Unknown message type");
+      throw std::runtime_error("Unknown message type for FlatBuffer");
     }
     // We reactivate events from the client socket here
     req.poll_fd.events = POLLIN;

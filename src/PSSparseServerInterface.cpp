@@ -85,17 +85,22 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
       builder, index_vec,
       message::WorkerMessage::ModelType_LOGISTIC_REGRESSION);
 
-  builder.Finish(sparse_msg);
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_SparseModelRequest,
+    sparse_msg.Union());
+
+  builder.Finish(worker_msg);
 
 #ifdef DEBUG
   std::cout << "Sending sparse model request" << std::endl;
 #endif
   send_flatbuffer(sock, &builder);
 
+  std::cout << "Successfully sent request... Receiving sparse model response" << std::endl;
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    // TODO: Handle read failure.
+    throw std::runtime_error("Error reading size of message");
   }
   char buf[msg_size];
   try {
@@ -112,6 +117,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
+  std::cout << "Calling load serialized sparse" << std::endl;
   // build a truly sparse model and return
   // TODO: Can this copy be avoided?
   lr_model.loadSerializedSparse((FEATURE_TYPE*) sparse_model->model()->data(),
@@ -146,14 +152,19 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     full_msg = message::WorkerMessage::CreateFullModelRequest(
         builder, message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
   }
+  std::cout<<"Constructed FlatBuffer for FullModelRequest\n";
 
-  builder.Finish(full_msg);
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_FullModelRequest,
+    full_msg.Union());
+
+  builder.Finish(worker_msg);
   send_flatbuffer(sock, &builder);
-
+  std::cout<<"Sent FlatBuffer\n";
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    // TODO: Handle read failure.
+    throw std::runtime_error("Failed to read message size");
   }
   char buf[msg_size];
   try {
@@ -163,13 +174,14 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
-
+  std::cout<<"Read response";
   auto msg =
       message::PSMessage::GetPSMessage(&buf)->payload_as_FullModelResponse();
-
+  std::cout<<"Interpreted FullModelResponse";
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
+    std::cout<<"Made MFModel";
     // TODO: Need to use delete[]?
     // delete[] buffer;
     return model;
@@ -228,7 +240,11 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(
       builder, id_vec, message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
 
-  builder.Finish(sparse_msg);
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_SparseModelRequest,
+    sparse_msg.Union());
+
+  builder.Finish(worker_msg);
 
   send_flatbuffer(sock, &builder);
 
@@ -274,7 +290,12 @@ void PSSparseServerInterface::send_gradient(
   gradient.serialize(buf);
   auto grad_msg =
       message::WorkerMessage::CreateGradientMessage(builder, grad_vec, mt);
-  builder.Finish(grad_msg);
+
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_GradientMessage,
+    grad_msg.Union());
+
+  builder.Finish(worker_msg);
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
@@ -293,14 +314,22 @@ void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   auto task_msg =
       message::WorkerMessage::CreateTaskMessage(builder, id, status);
-  builder.Finish(task_msg);
+
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_TaskMessage,
+    task_msg.Union());
+
+  builder.Finish(worker_msg);
   send_flatbuffer(sock, &builder);
 }
 
 uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   auto task_msg = message::WorkerMessage::CreateTaskRequest(builder, id);
-  builder.Finish(task_msg);
+  auto worker_msg = message::WorkerMessage::CreateWorkerMessage(builder,
+    message::WorkerMessage::Request_TaskRequest,
+    task_msg.Union());
+  builder.Finish(worker_msg);
   send_flatbuffer(sock, &builder);
 
   int msg_size;
