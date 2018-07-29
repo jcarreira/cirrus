@@ -14,7 +14,9 @@ fi
 cd flatbuffers
 cmake -G "Unix Makefiles"
 make -j 10
-cd ..
+cd ../../src/common/schemas
+make
+cd ../../../third_party
 
 # get keyutils library
 KEYUTILS=keyutils-1.5.10
