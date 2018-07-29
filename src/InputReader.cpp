@@ -526,9 +526,9 @@ void InputReader::parse_criteo_sparse_line(
   char str[MAX_STR_SIZE];
 
   if (line.size() > MAX_STR_SIZE) {
-    throw std::runtime_error(
-        "Criteo input line is too big: " + std::to_string(line.size()) + " " +
-        std::to_string(MAX_STR_SIZE));
+    throw std::runtime_error("Criteo input line is too big: " +
+                             std::to_string(line.size()) + " " +
+                             std::to_string(MAX_STR_SIZE));
   }
 
   strncpy(str, line.c_str(), MAX_STR_SIZE - 1);
@@ -832,15 +832,16 @@ void InputReader::parse_criteo_kaggle_sparse_line(
     const std::string& line,
     const std::string& delimiter,
     std::vector<std::pair<int, FEATURE_TYPE>>& output_features,
-    FEATURE_TYPE& label, const Configuration& config) {
+    FEATURE_TYPE& label,
+    const Configuration& config) {
   char str[MAX_STR_SIZE];
 
   // std::cout << "line: " << line << std::endl;
 
   if (line.size() > MAX_STR_SIZE) {
-    throw std::runtime_error(
-        "Criteo input line is too big: " + std::to_string(line.size()) + " " +
-        std::to_string(MAX_STR_SIZE));
+    throw std::runtime_error("Criteo input line is too big: " +
+                             std::to_string(line.size()) + " " +
+                             std::to_string(MAX_STR_SIZE));
   }
 
   strncpy(str, line.c_str(), MAX_STR_SIZE - 1);
