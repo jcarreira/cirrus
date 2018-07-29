@@ -382,7 +382,7 @@ void SparseLRModel::loadSerializedSparse(const FEATURE_TYPE* weights,
   int num_weights = num_bytes / sizeof(FEATURE_TYPE);
 
   assert(num_weights > 0 && num_weights < 10000000);
-  std::cout<<"Loading weights: " << num_weights << std::endl;
+  std::cout << "Loading weights: " << num_weights << std::endl;
 
   weights_sparse_.reserve((1 << config.get_model_bits()));
   for (uint64_t i = 0; i < num_weights; i++) {
@@ -390,7 +390,7 @@ void SparseLRModel::loadSerializedSparse(const FEATURE_TYPE* weights,
     FEATURE_TYPE value = load_value<FEATURE_TYPE>(weights);
     weights_sparse_[index] = value;
   }
-  std::cout<<"Finished loading weights"<<std::endl;
+  std::cout << "Finished loading weights" << std::endl;
 }
 
 void SparseLRModel::ensure_preallocated_vectors(

@@ -122,10 +122,10 @@ int64_t send_all(int sock, void* data, size_t len) {
 }
 
 void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb) {
-  std::cout<<"Attempting to get buffer pointer and size...\n";
+  std::cout << "Attempting to get buffer pointer and size...\n";
   uint8_t* msg_buf = (*fbb).GetBufferPointer();
   int size = (*fbb).GetSize();
-  std::cout<<"Got buffer pointer and size.\n";
+  std::cout << "Got buffer pointer and size.\n";
   if (send_all(sock, &size, sizeof(int)) < 1) {
     throw std::runtime_error("Error sending message size");
   }
