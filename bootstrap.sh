@@ -15,7 +15,7 @@ cd flatbuffers
 cmake -G "Unix Makefiles"
 make -j 10
 cd ../../src/common/schemas
-make
+./../../../third_party/flatbuffers/flatc --cpp *.fbs
 cd ../../../third_party
 
 # get keyutils library
