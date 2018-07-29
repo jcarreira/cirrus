@@ -367,8 +367,9 @@ void PSSparseServerTask::gradient_f() {
       const unsigned char* index_buf = sparse_req->index_info()->data();
       if (sparse_req->model_type() ==
           message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
-        process_get_lr_sparse_model(sparse_req->index_info()->size(), index_buf,
-                                    req.sock);
+        process_get_lr_sparse_model(sparse_req->index_info()->size() / sizeof(uint32_t), 
+          index_buf,
+          req.sock);
       } else if (sparse_req->model_type() ==
                  message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
         process_get_mf_sparse_model(sparse_req->index_info()->size() - 2,

@@ -72,13 +72,18 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
   unsigned char* msg_start = msg;
   uint32_t num_bytes = 0;
+  int num_entries = 0;
 
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       num_bytes += sizeof(w.first);
       store_value<uint32_t>(msg, w.first);  // encode the index
+      num_entries += 1;
     }
   }
+
+  std::cout<<"Sending indices: "<<num_entries<<std::endl;
+
   auto index_vec = builder.CreateVector(msg_start, num_bytes);
 
   auto sparse_msg = message::WorkerMessage::CreateSparseModelRequest(
@@ -285,9 +290,9 @@ void PSSparseServerInterface::send_gradient(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   int grad_size = gradient.getSerializedSize();
   unsigned char buf[grad_size];
-  auto grad_vec = builder.CreateUninitializedVector(
-      grad_size, reinterpret_cast<unsigned char**>(&buf));
   gradient.serialize(buf);
+  auto grad_vec = builder.CreateVector(
+      buf, grad_size);
   auto grad_msg =
       message::WorkerMessage::CreateGradientMessage(builder, grad_vec, mt);
 
