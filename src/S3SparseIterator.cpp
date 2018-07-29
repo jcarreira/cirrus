@@ -262,7 +262,6 @@ void S3SparseIterator::thread_function(const Configuration& config) {
       std::cout << "S3SparseIterator: error in s3_get_object"
                 << " obj_id_str: " << obj_id_str << std::endl;
       goto try_start;
-      exit(-1);
     }
 
     uint64_t num_passes = (count / (right_id - left_id));

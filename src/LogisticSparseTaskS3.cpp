@@ -71,6 +71,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
+  psint->connect();
   sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
 
   std::cout << "[WORKER] "

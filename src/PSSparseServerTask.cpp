@@ -38,7 +38,9 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
              nworkers,
              worker_id,
              ps_ip,
-             ps_port) {
+             ps_port),
+      kill_signal(false),
+      main_thread(0) {
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
@@ -60,7 +62,6 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
     thread_msg_buffer[i] =
         new char[THREAD_MSG_BUFFER_SIZE];  // per-thread buffer
   }
-  kill_signal = false;
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -479,7 +480,6 @@ void PSSparseServerTask::gradient_f() {
 
 /**
  * FORMAT
- * operation (uint32_t)
  * incoming size (uint32_t)
  * buffer with previous size
  */
@@ -491,11 +491,6 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 
   // TODO: Change Request object; change this function and remove
   // vestigial code.
-  uint32_t operation = 0;
-#ifdef DEBUG
-  std::cout << "Operation: " << operation << " - "
-            << operation_to_name[operation] << std::endl;
-#endif
 
   uint32_t incoming_size = 0;
 // TODO: Is this being set? I don't quite understand what's happening.
@@ -503,8 +498,8 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
   to_process_lock.lock();
-  poll_fd.events = 0;  // explain this
-  to_process.push(Request(operation, sock, thread_id, incoming_size, poll_fd));
+  poll_fd.events = 0; // explain this
+  to_process.push(Request(sock, thread_id, incoming_size, poll_fd));
   to_process_lock.unlock();
   sem_post(&sem_new_req);
   return true;
@@ -700,7 +695,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
     assert(pipe(pipefds[i]) != -1);
-    curr_indexes[i] == 0;
+    curr_indexes[i] = 0;
     fdses[i].resize(max_fds);
   }
 
