@@ -6,7 +6,8 @@ CXX = g++
 
 bin_PROGRAMS = parameter_server ps_test csv_to_libsvm $(TOP_DIR)/tests/test_travis/test_lr \
 	       $(TOP_DIR)/tests/test_travis/test_ps $(TOP_DIR)/tests/test_travis/worker \
-	       $(TOP_DIR)/tests/test_travis/error
+	       $(TOP_DIR)/tests/test_travis/error $(TOP_DIR)/tests/test_travis/mnist_test/test_sm \
+	       $(TOP_DIR)/tests/test_travis/mnist_test/worker_sm $(TOP_DIR)/tests/test_travis/mnist_test/error_sm
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
@@ -43,7 +44,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
               Checksum.cpp \
               ErrorSparseTask.cpp \
 	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
+	      MFNetflixTask.cpp SoftmaxTask.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
@@ -71,3 +72,9 @@ __TOP_DIR__tests_test_travis_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis/ps_t
 __TOP_DIR__tests_test_travis_worker_SOURCES = $(TOP_DIR)/tests/test_travis/worker.cpp $(CPP_SOURCES)
 
 __TOP_DIR__tests_test_travis_error_SOURCES = $(TOP_DIR)/tests/test_travis/error.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_mnist_test_test_sm_SOURCES = $(TOP_DIR)/tests/test_travis/mnist_test/sm_test.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_mnist_test_worker_sm_SOURCES = $(TOP_DIR)/tests/test_travis/mnist_test/worker_sm.cpp $(CPP_SOURCES)
+
+__TOP_DIR__tests_test_travis_mnist_test_error_sm_SOURCES = $(TOP_DIR)/tests/test_travis/mnist_test/error_sm.cpp $(CPP_SOURCES)

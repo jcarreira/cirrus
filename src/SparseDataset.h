@@ -6,6 +6,9 @@
 #include <memory>
 #include <config.h>
 
+#include "Dataset.h"
+#include "Configuration.h"
+
 namespace cirrus {
 
 /**
@@ -110,6 +113,8 @@ class SparseDataset {
   SparseDataset random_sample(uint64_t n_samples) const;
   
   SparseDataset sample_from(uint64_t start, uint64_t n_samples) const;
+
+  Dataset to_dataset(const Configuration& config) const;
 
   void normalize(uint64_t hash_size);
 

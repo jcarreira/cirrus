@@ -26,16 +26,11 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
   }
 
   // READ the kaggle criteo dataset
-  return input.read_input_criteo_kaggle_sparse(
-      config.get_input_path(),
-      delimiter,
-      config);
+  return input.read_input_criteo_kaggle_sparse(config.get_input_path(),
+                                               delimiter, config);
 }
 
 void LoadingSparseTaskS3::check_label(FEATURE_TYPE label) {
-  if (label != 1.0 && label != 0.0) {
-    throw std::runtime_error("Wrong label value");
-  }
 }
 
 /**
@@ -45,13 +40,12 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
                                         std::unique_ptr<S3Client>& s3_client) {
   std::cout << "[LOADER] Trying to get sample with id: " << 0 << std::endl;
 
-  std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
+  std::string obj_id =
+      std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
   std::string data =
       s3_client->s3_get_object_value(obj_id, config.get_s3_bucket());
 
   SparseDataset dataset(data.data(), true);
-  dataset.check();
-  dataset.check_labels();
 
   //std::cout << "[LOADER] Checking label values.." << std::endl;
   //check_label(sample.get()[0]);
@@ -67,9 +61,6 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
   for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
     //const auto& s = dataset.get_row(i);
     const auto& label = dataset.labels_[i];
-    if (label != 0.0 && label != 1.0) {
-      throw std::runtime_error("Wrong label");
-    }
   }
 }
 
@@ -86,7 +77,7 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
   std::unique_ptr<S3Client> s3_client = std::make_unique<S3Client>();
 
   SparseDataset dataset = read_dataset(config);
-  dataset.check();
+  dataset.print_info();
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "
@@ -108,7 +99,9 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
       dataset.build_serialized_s3_obj(first_sample, last_sample, &len);
 
     std::cout << "Putting object in S3 with size: " << len << std::endl;
-    std::string obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) + "-CRITEO";
+    std::string obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
+        "-CRITEO";
     s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
   }
