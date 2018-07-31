@@ -287,7 +287,7 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
 
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
-  thread_buffer.resize(120 * 1024 * 1024); // 120 MB
+  thread_buffer.resize(12 * 1024 * 1024); // 120 MB
 
   int thread_number = thread_count++;
   while (1) {
@@ -463,13 +463,11 @@ void PSSparseServerTask::start_server() {
   sem_init(&sem_new_req, 0, 0);
 
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     server_threads.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     gradient_thread.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::gradient_f, this)));
   }
@@ -509,7 +507,7 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_);
+    serv_addr.sin_port = htons(ps_port);
     std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
     int ret = bind(server_sock_,
