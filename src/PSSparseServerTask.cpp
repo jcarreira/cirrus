@@ -462,7 +462,9 @@ void PSSparseServerTask::start_server() {
 
   sem_init(&sem_new_req, 0, 0);
 
-  for (int i = 0; i < NUM_POLL_THREADS; i++) {
+  // Since poll thread 0 handles new connections, it should start last
+  // after all other threads have initialized
+  for (int i = NUM_POLL_THREADS - 1; i >= 0; i++) {
     server_threads.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
