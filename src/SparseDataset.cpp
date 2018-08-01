@@ -54,7 +54,6 @@ SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labe
 
 #ifdef DEBUG
     if (has_labels) {
-      assert(FLOAT_EQ(label, 0.0) || FLOAT_EQ(label, 1.0));
     }
     //std::cout << "num_sample_values: " << num_sample_values <<  std::endl;
     assert(num_sample_values >= 0 && num_sample_values < 1000000);
@@ -94,7 +93,6 @@ SparseDataset::SparseDataset(const char* data, bool from_s3, bool has_labels) {
     FEATURE_TYPE label;
     if (has_labels) {
       label = load_value<FEATURE_TYPE>(data);
-      assert(label == 0.0 || label == 1.0);
     }
     int num_sample_values = load_value<int>(data);
 
@@ -118,6 +116,22 @@ SparseDataset::SparseDataset(const char* data, bool from_s3, bool has_labels) {
 
 uint64_t SparseDataset::num_samples() const {
     return data_.size();
+}
+
+Dataset SparseDataset::to_dataset(const Configuration& config) const {
+  std::vector<std::vector<FEATURE_TYPE>> data;
+  for (int i = 0; i < data_.size(); i++) {
+    std::vector<FEATURE_TYPE> row;
+    for (int j = 0; j < config.get_num_features(); j++) {
+      if (j == data_[i][j].first) {
+        row.push_back(data_[i][j].second);
+      } else {
+        row.push_back(0);
+      }
+    }
+    data.push_back(row);
+  }
+  return Dataset(data, labels_);
 }
 
 void SparseDataset::check() const {

@@ -32,9 +32,12 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
       }
     }
   }
-
+  bool use_softmax = config.get_model_type() == Configuration::SOFTMAX;
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+  if (use_softmax) {
+    return psi->get_sm_full_model(config);
+  }
   return psi->get_full_model(use_col_filtering);
 }
 
@@ -94,7 +97,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "Creating sequential S3Iterator" << std::endl;
 
   uint32_t left, right;
-  if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+  if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+      config.get_model_type() == Configuration::SOFTMAX) {
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
@@ -104,10 +108,11 @@ void ErrorSparseTask::run(const Configuration& config) {
     exit(-1);
   }
 
-  S3SparseIterator s3_iter(left, right, config,
-      config.get_s3_size(), config.get_minibatch_size(),
+  S3SparseIterator s3_iter(
+      left, right, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
-      config.get_model_type() == Configuration::LOGISTICREGRESSION,
+      config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+          config.get_model_type() == Configuration::SOFTMAX,
       0, false);
 
   // get data first
@@ -122,9 +127,11 @@ void ErrorSparseTask::run(const Configuration& config) {
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
     const void* minibatch_data = s3_iter.get_next_fast();
-    SparseDataset ds(reinterpret_cast<const char*>(minibatch_data),
+    SparseDataset ds(
+        reinterpret_cast<const char*>(minibatch_data),
         config.get_minibatch_size(),
-        config.get_model_type() == Configuration::LOGISTICREGRESSION);
+        config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+            config.get_model_type() == Configuration::SOFTMAX);
     minibatches_vec.push_back(ds);
   }
 
@@ -165,8 +172,13 @@ void ErrorSparseTask::run(const Configuration& config) {
       uint64_t start_index = 0;
 
       for (auto& ds : minibatches_vec) {
-        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-          model->calc_loss(ds, start_index);
+        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
+        if (config.get_model_type() == Configuration::SOFTMAX) {
+          Dataset intermediate = ds.to_dataset(config);
+          ret = model->calc_loss(intermediate);
+        } else {
+          ret = model->calc_loss(ds, start_index);
+        }
         total_loss += ret.first;
         total_accuracy += ret.second;
         total_num_samples += ds.num_samples();
@@ -181,7 +193,8 @@ void ErrorSparseTask::run(const Configuration& config) {
       }
 
       last_time = (get_time_us() - start_time) / 1000000.0;
-      if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+      if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+          config.get_model_type() == Configuration::SOFTMAX) {
         last_error = (total_loss / total_num_samples);
         std::cout << "[ERROR_TASK] Loss (Total/Avg): " << total_loss << "/"
                   << last_error
@@ -194,11 +207,10 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-    } catch(...) {
+    } catch (...) {
       std::cout << "run_compute_error_task unknown id" << std::endl;
     }
   }
 }
 
 } // namespace cirrus
-

@@ -7,6 +7,8 @@
 #include <Matrix.h>
 #include <config.h>
 
+//#include "SparseDataset.h"
+
 namespace cirrus {
 
 /**
@@ -118,7 +120,13 @@ class Dataset {
    */
   Dataset random_sample(uint64_t n_samples) const;
 
-  public:
+  Matrix get_samples() const;
+
+  std::shared_ptr<const FEATURE_TYPE> get_labels() const;
+
+  // SparseDataset to_sparse() const;
+
+ public:
   Matrix samples_;  //< dataset in matrix format
   std::shared_ptr<const FEATURE_TYPE> labels_;  //< vector of labels
 };
