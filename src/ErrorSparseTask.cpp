@@ -184,7 +184,8 @@ void ErrorSparseTask::run(const Configuration& config) {
         total_num_samples += ds.num_samples();
         total_num_features += ds.num_features();
         start_index += config.get_minibatch_size();
-        if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+        if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+            config.get_model_type() == Configuration::SOFTMAX) {
           curr_error = (total_loss / total_num_features);
         } else if (config.get_model_type() ==
                    Configuration::COLLABORATIVE_FILTERING) {
