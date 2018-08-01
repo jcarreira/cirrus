@@ -9,7 +9,7 @@
 
 //#define DEBUG
 
-#define MAX_MSG_SIZE (1024*1024)
+#define MAX_MSG_SIZE (1024*1024*1000)
 
 namespace cirrus {
 
@@ -339,9 +339,12 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
   if (ret == -1 || ret == 0) {
     throw std::runtime_error("Error sending grad");
   }
+
+  mem.reset();
 }
 
-LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
+void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_bucket, std::unique_ptr<LDAModel>& model) {
+
 #ifdef DEBUG
   std::cout << "Getting LDA model " << std::endl;
 #endif
@@ -364,7 +367,8 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
   send_all(sock, &msg_size, sizeof(uint32_t));
 
   // 3. Send slice
-  if (send_all(sock, info.serialize_slice(), msg_size) == -1) {
+  char* msg_slice_begin = info.serialize_slice();
+  if (send_all(sock, msg_slice_begin, msg_size) == -1) {
     throw std::runtime_error("Error getting lda model");
   }
 
@@ -379,12 +383,14 @@ LDAModel PSSparseServerInterface::get_lda_model(LDAStatistics& info) {
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
-  LDAModel lda_model(buffer, info.serialize());
 
-  // delete[] msg_begin;
+  char* msg_begin = info.serialize();
+
+  model.reset(new LDAModel(buffer, msg_begin, update_bucket));
+
+  delete[] msg_slice_begin;
+  delete[] msg_begin;
   delete[] buffer;
-
-  return lda_model;
 }
 
 }  // namespace cirrus

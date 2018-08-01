@@ -49,6 +49,7 @@ bool LDATaskS3::get_dataset_minibatch(
 #ifdef DEBUG
   auto finish1 = get_time_us();
 #endif
+
   local_vars.reset(new LDAStatistics(reinterpret_cast<const char*>(minibatch)));
 
 #ifdef DEBUG
@@ -98,12 +99,13 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
-  LDAModel model;
+  std::unique_ptr<LDAModel> model;
 
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  std::unique_ptr<LDAStatistics> s3_local_vars;
+  std::shared_ptr<LDAStatistics> s3_local_vars;
+  // LDAStatistics s3_local_vars;
   // get_dataset_minibatch(s3_local_vars, s3_iter);
 
   s3_initialize_aws();
@@ -113,22 +115,35 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
   std::ostringstream* s3_obj =
       s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
-  const std::string tmp = s3_obj->str();
-  const char* s3_data = tmp.c_str();
-  s3_local_vars.reset(new LDAStatistics(s3_data));
+
+  // const std::string tmp = s3_obj->str();
+  // const char* s3_data = tmp.c_str();
+  // char* s3_data = new
+  s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
   s3_local_vars->set_slice_size(config.get_slice_size());
+  delete s3_obj;
+
+  int update_bucket = 0;
 
   while (1) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
     std::unique_ptr<LDAStatistics> local_vars;
+
     // only gets partial LDAStatistics corresponding to one vocabulary slice
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
+
+      char* mem = s3_local_vars->serialize();
+
       s3_client->s3_put_object(
           obj_id_str, config.get_s3_bucket(),
-          std::string(s3_local_vars->serialize(),
+          std::string(mem,
                       s3_local_vars->get_serialize_size()));
+
+      delete[] mem;
+
+      update_bucket = cur_train_idx;
 
       cur_train_idx += 1;
       if (cur_train_idx == end) {
@@ -138,13 +153,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       obj_id_str =
           std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) +
           "-LDA";
-      s3_obj = s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
-      const std::string tmp = s3_obj->str();
-      const char* s3_data = tmp.c_str();
-      s3_local_vars.reset(new LDAStatistics(s3_data));
-      continue;
+
+      std::ostringstream* s3_obj =
+          s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
+      s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
+      delete s3_obj;
 
       s3_local_vars->set_slice_size(config.get_slice_size());
+      continue;
     }
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model"
@@ -156,7 +172,10 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     // TODO can be improved
-    model = std::move(psint->get_lda_model(*local_vars));
+    psint->get_lda_model(*local_vars, update_bucket, model);
+
+    if(update_bucket != 0)
+      update_bucket = 0;
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -168,7 +187,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient = model.sample_model();
+      gradient = model->sample_model();
     } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -176,7 +195,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
-    s3_local_vars->store_new_stats(model);
+    s3_local_vars->store_new_stats(*model.get());
 
 #ifdef DEBUG
     auto elapsed_us = get_time_us() - now;

@@ -153,6 +153,7 @@ bool PSSparseServerTask::process_send_lda_update(
   // std::cout  << "1111111\n";
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      std::cout << "qqqqqqqqqqqq\n";
       return false;
     }
   } catch (...) {
@@ -165,10 +166,16 @@ bool PSSparseServerTask::process_send_lda_update(
 
   LDAUpdates gradient;
   gradient.loadSerialized(data);
+  std::vector<int> vocabs_to_update;
 
   model_lock.lock();
   // std::cout  << "1111111\n";
-  lda_global_vars->update(gradient);
+  int update_bucket = lda_global_vars->update(gradient, vocabs_to_update);
+
+  // update_nvt_nt(vocabs_to_update);
+  // if(update_bucket != 0){
+  //   update_ndt(update_bucket);
+  // }
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -281,6 +288,7 @@ bool PSSparseServerTask::process_get_lda_model(
 #endif
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      std::cout << "aaaaaaaaaaaaaa\n";
       return false;
     }
   } catch (...) {
@@ -288,8 +296,11 @@ bool PSSparseServerTask::process_get_lda_model(
   }
   const char* data = thread_buffer.data();
   uint32_t to_send_size;
+  model_lock.lock();
   auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size);
+  model_lock.unlock();
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+    std::cout << "bbbbbbbbbbbb\n";
     return false;
   }
   return true;
@@ -572,11 +583,17 @@ void PSSparseServerTask::start_server() {
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
 
+    s3_shutdown_aws();
+
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
-    std::cout << "Finished getting initial statistics.\n";
-    s3_shutdown_aws();
+
+    // init_loglikelihood();
     compute_loglikelihood();
+
+    std::cout << "Finished getting initial statistics.\n";
+
+    // compute_loglikelihood();
     // s3_shutdown_aws();
   }
 
@@ -825,7 +842,8 @@ void PSSparseServerTask::run(const Configuration& config) {
         << std::endl;
       gradientUpdatesCount = 0;
       // compute_loglikelihood();
-      if ((int) since_start_sec % 10 == 0 && since_start_sec != 0) {
+      if ((int) since_start_sec % 5 == 0 && since_start_sec != 0) {
+        // init_loglikelihood();
         compute_loglikelihood();
       }
     }
@@ -868,6 +886,22 @@ void PSSparseServerTask::checkpoint_model_file(
   fout.write(data.get(), model_size);
   fout.close();
 }
+
+// void PSSparseServerTask::compute_loglikelihood() {
+//
+//   double ll = ll_base;
+//   for(int i=0; i<ll_nvt.size(); ++i){
+//     ll += ll_nvt[i];
+//   }
+//   for(int i=0; i<ll_ndt.size(); ++i){
+//     ll += ll_ndt[i];
+//   }
+//   for(int i=0; i<ll_nt.size(); ++i){
+//     ll += ll_nt[i];
+//   }
+//
+//   std::cout << "loglikelihood: " << ll << std::endl;
+// }
 
 void PSSparseServerTask::compute_loglikelihood() {
   std::vector<int> nvt, nt;
@@ -926,6 +960,145 @@ void PSSparseServerTask::compute_loglikelihood() {
   s3_shutdown_aws();
 
   std::cout << "loglikelihood: " << ll << std::endl;
+}
+
+void PSSparseServerTask::init_loglikelihood(){
+
+  std::vector<int> nvt, nt;
+  lda_global_vars->get_nvt(nvt);
+  lda_global_vars->get_nt(nt);
+
+  double alpha = 0.1, eta = .01;
+
+  K = nt.size();
+  V = nvt.size() / K;
+
+  lgamma_eta = lda_lgamma(eta);
+  lgamma_alpha = lda_lgamma(alpha);
+
+  ll_base += K * lda_lgamma(eta * V);
+
+  ll_nvt.clear();
+  ll_nt.clear();
+  ll_nvt.resize(V);
+  ll_nt.resize(K);
+  for (int i = 0; i < K; ++i) {
+    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    for (int v = 0; v < V; ++v) {
+      if (nvt[v * K + i] > 0) {
+        ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+      }
+    }
+  }
+
+  s3_initialize_aws();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+
+  auto train_range = task_config.get_train_range();
+  ll_ndt.clear();
+  ll_ndt.resize(train_range.second - train_range.first);
+
+  for (int i = train_range.first; i < train_range.second; ++i) {
+    std::string obj_id_str =
+        std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
+    std::ostringstream* s3_obj =
+        s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+
+    const std::string tmp = s3_obj->str();
+    const char* s3_data = tmp.c_str();
+    LDAStatistics ndt_partial(s3_data);
+
+    std::vector<std::vector<int>> ndt;
+    ndt_partial.get_ndt(ndt);
+
+    for (int j = 0; j < ndt.size(); ++j) {
+      int ndj = 0;
+      for (int k = 0; k < K; ++k) {
+        ndj += ndt[j][k];
+        if (ndt[j][k] > 0) {
+          ll_ndt[i - train_range.first] += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+        }
+      }
+      ll_ndt[i - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+    }
+  }
+
+  s3_shutdown_aws();
+
+}
+
+void PSSparseServerTask::update_ndt(int bucket_id){
+
+  double alpha = 0.1, eta = .01;
+
+  s3_initialize_aws();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+  auto train_range = task_config.get_train_range();
+
+  ll_ndt[bucket_id - train_range.first] = 0.0;
+
+  std::string obj_id_str =
+      std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
+  std::ostringstream* s3_obj =
+      s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+
+  const std::string tmp = s3_obj->str();
+  const char* s3_data = tmp.c_str();
+  LDAStatistics ndt_partial(s3_data);
+
+  std::vector<std::vector<int>> ndt;
+  ndt_partial.get_ndt(ndt);
+
+  for (int j = 0; j < ndt.size(); ++j) {
+    int ndj = 0;
+    for (int k = 0; k < K; ++k) {
+      ndj += ndt[j][k];
+      if (ndt[j][k] > 0) {
+        ll_ndt[bucket_id - train_range.first] += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+      }
+    }
+    ll_ndt[bucket_id - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+  }
+
+  s3_shutdown_aws();
+
+}
+
+void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
+
+  double alpha = 0.1, eta = .01;
+
+  std::vector<int> nvt, nt;
+  lda_global_vars->get_nvt(nvt);
+  lda_global_vars->get_nt(nt);
+
+  ll_nt.clear();
+  // for (int i = 0; i < vocabs_to_update.size(); ++i) {
+  //   ll_nvt[vocabs_to_update[i]] = 0.0;
+  // }
+  for (int i = 0; i < V; ++i) {
+    ll_nvt[i] = 0.0;
+  }
+
+  for (int i = 0; i < K; ++i) {
+    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    for (int v = 0; v < V; ++v) {
+      if (nvt[v * K + i] > 0) {
+        ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+      }
+    }
+  }
+
+  // for (int i = 0; i < K; ++i) {
+  //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+  //   for (int j = 0; j < vocabs_to_update.size(); ++j) {
+  //     int v = vocabs_to_update[j];
+  //     if (nvt[v * K + i] > 0) {
+  //       ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+  //     }
+  //   }
+  // }
+
 }
 
 } // namespace cirrus

@@ -279,6 +279,10 @@ class PSSparseServerTask : public MLTask {
 
   void compute_loglikelihood();
 
+  void init_loglikelihood();
+  void update_ndt(int bucket_id);
+  void update_nvt_nt(std::vector<int> vocabs_to_update);
+
  private:
   /**
     * Handle the situation when a socket read fails within worker threads
@@ -366,6 +370,11 @@ class PSSparseServerTask : public MLTask {
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
   std::unique_ptr<LDAUpdates> lda_global_vars;
+
+  std::vector<double> ll_nvt, ll_ndt, ll_nt;
+  double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
+  int K = 0, V = 0;
+
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
 

@@ -18,7 +18,10 @@
 
 namespace cirrus {
 
-LDAModel::LDAModel(const char* buffer, const char* info) {
+LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
+
+  update_bucket = to_update;
+
   const int* V_by_K = reinterpret_cast<const int*>(buffer);
   buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +
                                          sizeof(int));
@@ -113,6 +116,7 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     std::vector<std::vector<int>>& nvt,
     std::vector<std::vector<int>>& ndt,
     std::vector<int>& slice) {
+
   std::map<int, int> slice_map;
   int idx = 0;
   for (int i : slice) {
@@ -128,11 +132,14 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
   std::vector<int> change_nvt(nvt.size() * K_);
   std::vector<int> change_nt(K_);
 
+  int temp = 0;
+
   for (int i = 0; i < t.size(); i++) {
     top = t[i], doc = d[i], gindex = w[i];
     if (slice_map.find(gindex) == slice_map.end())
       continue;
     lindex = slice_map[gindex];
+    temp++;
 
     nvt[lindex][top] -= 1;
     ndt[doc][top] -= 1;
@@ -159,12 +166,15 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     change_nvt[lindex * K_ + new_top] += 1;
     change_nt[top] -= 1;
     change_nt[new_top] += 1;
+
   }
+
+  std::cout << temp << " ------\n";
 
   delete[] rate;
 
   std::unique_ptr<LDAUpdates> ret =
-      std::make_unique<LDAUpdates>(change_nvt, change_nt, slice);
+      std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
   return ret;
 }
 }

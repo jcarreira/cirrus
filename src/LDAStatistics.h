@@ -31,6 +31,7 @@ class LDAStatistics {
                 std::vector<int>& t,
                 std::vector<int>& d,
                 std::vector<int>& w);
+
   /**
     * Cast all the local variables into memory
     */
@@ -64,7 +65,7 @@ class LDAStatistics {
     * Return partial LDAStatistics corresponding to minibatch_size
     * number of documents stored in this LDAStatistics
     */
-  char* pop_partial_docs(int minibatch_size);
+  // char* pop_partial_docs(int minibatch_size);
   /**
     * @param s
     *
@@ -76,13 +77,14 @@ class LDAStatistics {
     */
   int pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat);
 
-  void store_new_stats(LDAModel model);
+  void store_new_stats(LDAModel& model);
+  // void store_new_stats();
 
   void get_ndt(std::vector<std::vector<int> >& ndt) { ndt = ndt_; }
   void get_slice(std::vector<int>& slice) { slice = slice_; }
   void reset_current() { current = 0; }
 
- private:
+ // private:
   int K_, slice_size = 1000, current = 0;
   std::vector<std::vector<int> > ndt_;
   std::vector<int> slice_, t_, d_, w_;

@@ -8,6 +8,7 @@
 #include <Model.h>
 #include <LDADataset.h>
 #include <ModelGradient.h>
+// #include <LDAStatistics.h>
 
 namespace cirrus {
 
@@ -24,7 +25,7 @@ class LDAModel {
     * @param info Serialized memory containing local statistics
     *               (ndt, topics assignments, vocab slice)
     */
-  LDAModel(const char* buffer, const char* info);
+  LDAModel(const char* buffer, const char* info, int to_update);
   /**
     * LDA sampling function (currently using Gibbs Sampler)
     * Sampling is based on all the statistics stored in the object
@@ -45,7 +46,7 @@ class LDAModel {
     * K_: number of topics
     * V_: number of words
     */
-  int K_, V_;
+  int K_, V_, update_bucket;
   /**
     * Set to fixed constants:
     * alpha = .1, eta = .01

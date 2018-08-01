@@ -176,48 +176,48 @@ void S3SparseIterator::push_samples(std::ostringstream* oss) {
 }
 
 void S3SparseIterator::push_samples_lda(std::ostringstream* oss) {
-#ifdef DEBUG
-  auto start = get_time_us();
-#endif
-  // save s3 object into list of string
-  list_strings[str_version] = oss->str();
-  delete oss;
-#ifdef DEBUG
-  uint64_t elapsed_us = (get_time_us() - start);
-  std::cout << "oss->str() time (us): " << elapsed_us << std::endl;
-#endif
-
-  auto str_iter = list_strings.find(str_version);
-  // print_progress(str_iter->second);
-  // create a pointer to each minibatch within s3 object and push it
-
-  const char* s3_data = reinterpret_cast<const char*>(str_iter->second.c_str());
-  LDAStatistics s3_lda_stat(s3_data);
-  uint64_t n_minibatches = s3_lda_stat.get_num_docs() / minibatch_rows;
-
-#ifdef DEBUG
-  std::cout << "# of documents covered: " << s3_lda_stat.get_num_docs()
-            << std::endl;
-#endif
-  auto new_queue = new std::queue<std::pair<const void*, int>>;
-  for (uint64_t i = 0; i < n_minibatches; ++i) {
-    // if it's the last minibatch in object we mark it so it can be deleted
-    int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
-
-    // pop partial LDAStatistics according to minibatch_rows
-    char* minibatch_s3_data = s3_lda_stat.pop_partial_docs(minibatch_rows);
-    new_queue->push(std::make_pair(
-        reinterpret_cast<const void*>(minibatch_s3_data), is_last));
-  }
-
-  ring_lock.lock();
-  minibatches_list.add(new_queue);
-  ring_lock.unlock();
-  for (uint64_t i = 0; i < n_minibatches; ++i) {
-    num_minibatches_ready++;
-    sem_post(&semaphore);
-  }
-  str_version++;
+// #ifdef DEBUG
+//   auto start = get_time_us();
+// #endif
+//   // save s3 object into list of string
+//   list_strings[str_version] = oss->str();
+//   delete oss;
+// #ifdef DEBUG
+//   uint64_t elapsed_us = (get_time_us() - start);
+//   std::cout << "oss->str() time (us): " << elapsed_us << std::endl;
+// #endif
+//
+//   auto str_iter = list_strings.find(str_version);
+//   // print_progress(str_iter->second);
+//   // create a pointer to each minibatch within s3 object and push it
+//
+//   const char* s3_data = reinterpret_cast<const char*>(str_iter->second.c_str());
+//   LDAStatistics s3_lda_stat(s3_data);
+//   uint64_t n_minibatches = s3_lda_stat.get_num_docs() / minibatch_rows;
+//
+// #ifdef DEBUG
+//   std::cout << "# of documents covered: " << s3_lda_stat.get_num_docs()
+//             << std::endl;
+// #endif
+//   auto new_queue = new std::queue<std::pair<const void*, int>>;
+//   for (uint64_t i = 0; i < n_minibatches; ++i) {
+//     // if it's the last minibatch in object we mark it so it can be deleted
+//     int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
+//
+//     // pop partial LDAStatistics according to minibatch_rows
+//     char* minibatch_s3_data = s3_lda_stat.pop_partial_docs(minibatch_rows);
+//     new_queue->push(std::make_pair(
+//         reinterpret_cast<const void*>(minibatch_s3_data), is_last));
+//   }
+//
+//   ring_lock.lock();
+//   minibatches_list.add(new_queue);
+//   ring_lock.unlock();
+//   for (uint64_t i = 0; i < n_minibatches; ++i) {
+//     num_minibatches_ready++;
+//     sem_post(&semaphore);
+//   }
+//   str_version++;
 }
 
 uint64_t S3SparseIterator::get_obj_id(uint64_t left, uint64_t right) {

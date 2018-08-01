@@ -4,7 +4,7 @@
 #include <Utils.h>
 #include <LDAStatistics.h>
 
-#define MAX_MSG_SIZE (1024 * 1024 * 100)
+#define MAX_MSG_SIZE (1024 * 1024 * 1000)
 
 namespace cirrus {
 LDAStatistics::LDAStatistics() {}
@@ -78,6 +78,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
 }
 
 char* LDAStatistics::serialize() {
+
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
@@ -132,40 +133,40 @@ int LDAStatistics::get_receive_size() {
   return sizeof(uint32_t) * (1 + (slice_.size() + 1) * K_);
 }
 
-char* LDAStatistics::pop_partial_docs(int minibatch_size) {
-  std::vector<std::vector<int> > ndt_partial;
-  std::vector<int> t_partial, d_partial, w_partial;
-  std::set<int> slice_partial;
-
-  int start = d_.front(), cur = d_.front(), count = 1;
-  while (count < minibatch_size) {
-    if (d_.front() != cur) {
-      cur = d_.front();
-      count += 1;
-      ndt_partial.push_back(ndt_.front());
-      ndt_.erase(ndt_.begin());
-    } else {
-      int gindex = w_.front();
-      t_partial.push_back(t_.front());
-      d_partial.push_back(d_.front() - start);
-      w_partial.push_back(w_.front());
-      t_.erase(t_.begin());
-      d_.erase(d_.begin());
-      w_.erase(w_.begin());
-      if (slice_partial.find(gindex) == slice_partial.end())
-        slice_partial.insert(slice_partial.end(), gindex);
-    }
-    if (d_.size() == 0)
-      break;
-  }
-
-  std::vector<int> slice_partial_vec(slice_partial.begin(),
-                                     slice_partial.end());
-
-  LDAStatistics partial(K_, ndt_partial, slice_partial_vec, t_partial,
-                        d_partial, w_partial);
-  return partial.serialize();
-}
+// char* LDAStatistics::pop_partial_docs(int minibatch_size) {
+//   std::vector<std::vector<int> > ndt_partial;
+//   std::vector<int> t_partial, d_partial, w_partial;
+//   std::set<int> slice_partial;
+//
+//   int start = d_.front(), cur = d_.front(), count = 1;
+//   while (count < minibatch_size) {
+//     if (d_.front() != cur) {
+//       cur = d_.front();
+//       count += 1;
+//       ndt_partial.push_back(ndt_.front());
+//       ndt_.erase(ndt_.begin());
+//     } else {
+//       int gindex = w_.front();
+//       t_partial.push_back(t_.front());
+//       d_partial.push_back(d_.front() - start);
+//       w_partial.push_back(w_.front());
+//       t_.erase(t_.begin());
+//       d_.erase(d_.begin());
+//       w_.erase(w_.begin());
+//       if (slice_partial.find(gindex) == slice_partial.end())
+//         slice_partial.insert(slice_partial.end(), gindex);
+//     }
+//     if (d_.size() == 0)
+//       break;
+//   }
+//
+//   std::vector<int> slice_partial_vec(slice_partial.begin(),
+//                                      slice_partial.end());
+//
+//   LDAStatistics partial(K_, ndt_partial, slice_partial_vec, t_partial,
+//                         d_partial, w_partial);
+//   return partial.serialize();
+// }
 
 int LDAStatistics::pop_partial_slice(
     std::unique_ptr<LDAStatistics>& partial_stat) {
@@ -185,10 +186,15 @@ int LDAStatistics::pop_partial_slice(
   return 1;
 }
 
-void LDAStatistics::store_new_stats(LDAModel model) {
+void LDAStatistics::store_new_stats(LDAModel& model) {
+// void LDAStatistics::store_new_stats() {
+
+  ndt_.clear();
+  t_.clear();
   ndt_ = model.ndt;
   t_ = model.t;
 
   current += slice_size;
 }
+
 }

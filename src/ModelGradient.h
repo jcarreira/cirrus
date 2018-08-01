@@ -202,6 +202,10 @@ class LDAUpdates {
   LDAUpdates(const std::vector<int>& nvt,
              const std::vector<int>& nt,
              const std::vector<int>& s);
+  LDAUpdates(const std::vector<int>& nvt,
+             const std::vector<int>& nt,
+             const std::vector<int>& s,
+             int to_update);
   LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
   LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
 
@@ -211,7 +215,7 @@ class LDAUpdates {
   std::shared_ptr<char> serialize(uint64_t*);
   uint64_t getSerializedSize() const;
 
-  void update(const LDAUpdates& gradient);
+  int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);
   char* get_partial_model(const char* slice, uint32_t& to_send_size);
 
   void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
@@ -230,6 +234,7 @@ class LDAUpdates {
   std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<int> slice;
   uint64_t version = 0;
+  int update_bucket = 0;
 };
 
 } // namespace cirrus
