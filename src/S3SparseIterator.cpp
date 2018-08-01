@@ -149,7 +149,6 @@ void S3SparseIterator::push_samples(std::ostringstream* oss) {
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
       if (use_label) {
         FEATURE_TYPE label = load_value<FEATURE_TYPE>(s3_data); // read label
-        assert(label == 0.0 || label == 1.0);
       }
       int num_values = load_value<int>(s3_data); 
 #ifdef DEBUG
@@ -235,6 +234,9 @@ void S3SparseIterator::thread_function(const Configuration& config) {
     if (config.get_s3_bucket() == "cirrus-criteo-kaggle-19b-random" ||
       config.get_s3_bucket() == "cirrus-criteo-kaggle-20b-random") {
       obj_id_str = std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-CRITEO";
+    } else if (config.get_s3_bucket() == "cirrus-mnist") {
+      obj_id_str =
+          std::to_string(hash_f(std::to_string(obj_id).c_str())) + "-MNIST";
     } else {
       obj_id_str = "CIRRUS" + std::to_string(obj_id);
     }

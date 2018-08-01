@@ -128,11 +128,10 @@ void SoftmaxModel::sgd_update(
     if (grad == nullptr) {
         throw std::runtime_error("Error in dynamic cast");
     }
-
-    for (uint64_t i = 0; i < d; ++i) {
-        for (uint64_t j = 0; j < nclasses; ++j) {
-            weights[i][j] -= learning_rate * grad->weights[i][j];
-        }
+    for (uint64_t i = 0; i < d - 1; i++) {
+      for (uint64_t j = 0; j < nclasses; j++) {
+        weights[i][j] -= learning_rate * grad->weights[i][j];
+      }
     }
 }
 
@@ -146,26 +145,23 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
             uint64_t labels_size,
             double epsilon) const {
     assert(labels_size == m.rows);
-
     const FEATURE_TYPE* m_data = reinterpret_cast<const FEATURE_TYPE*>(m.data.get());
     Eigen::Matrix<FEATURE_TYPE, -1, -1> dataset(m.rows, m.cols);
     //Eigen::MatrixXd dataset(m.rows, m.cols);
     for (unsigned int row = 0; row < m.rows; ++row) {
         for (unsigned int col = 0; col < m.cols; ++col) {
-            dataset(row, col) = m_data[row * m.cols + col];
+          dataset(row, col) = m_data[row * m.cols + col];
         }
     }
-
     Eigen::Matrix<FEATURE_TYPE, -1, -1> W(dataset.cols(), nclasses);
     //Eigen::MatrixXd W(dataset.cols(), nclasses);
     for (unsigned int d = 0; d < dataset.cols(); ++d) {
         for (unsigned int k = 0; k < nclasses; ++k) {
-            W(d, k) = weights[d][k];
+          W(d, k) = weights[d][k];
         }
     }
 
     auto scores = dataset * W;
-
     // we exponentiate those scores
     // [N * K]
     auto exp_scores = scores.unaryExpr([](FEATURE_TYPE v) {
@@ -173,7 +169,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
         if (std::isnan(new_v) || std::isinf(new_v)) {
             throw std::runtime_error("Invalid value after exp");
         }
-
         return new_v;
     });
 
@@ -187,7 +182,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
 
     std::vector<FEATURE_TYPE> logprobs(dataset.rows());
     FEATURE_TYPE sum = 0;
-
     for (unsigned int i = 0; i < dataset.rows(); ++i) {
         if (probs(i, labels[i]) < 1e-10) {
             logprobs[i] -= 1e-10;
@@ -200,7 +194,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
         }
         sum += logprobs[i];
     }
-
     // [N * K]
     Eigen::Matrix<FEATURE_TYPE, -1, -1> dscores;
     //Eigen::MatrixXd dscores;
@@ -215,7 +208,6 @@ std::unique_ptr<ModelGradient> SoftmaxModel::minibatch_grad(
     // [D * N] * [N * K] = [D * K]
     dW.noalias() = dataset.transpose() * dscores;
     dW += epsilon * W;
-
     assert(static_cast<uint64_t>(dW.rows()) == d &&
            static_cast<uint64_t>(dW.cols()) == nclasses);
 
@@ -251,9 +243,7 @@ std::pair<double, double> SoftmaxModel::calc_loss(Dataset& data) const {
             W(d, k) = weights[d][k];
         }
     }
-
     auto scores = dataset * W;
-
     // we exponentiate those scores
     // [N * K]
     auto exp_scores = scores.unaryExpr([](FEATURE_TYPE v) {
@@ -303,10 +293,10 @@ std::pair<double, double> SoftmaxModel::calc_loss(Dataset& data) const {
     }
 
     FEATURE_TYPE accuracy = (1.0 - (1.0 * count_wrong / dataset.rows()));
-    std::cout
-        << "Accuracy: " << accuracy
-        << " wrong: " << count_wrong << " samples: " << dataset.rows()
-        << std::endl;
+    // std::cout
+    //<< "Accuracy: " << accuracy
+    //<< " wrong: " << count_wrong << " samples: " << dataset.rows()
+    //<< std::endl;
 
     // constant
     FEATURE_TYPE data_loss = sum / dataset.rows();
