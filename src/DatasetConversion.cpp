@@ -1,7 +1,7 @@
 #include <DatasetConversion.h>
 
 namespace cirrus {
-SparseDataset to_sparse(Dataset& d) const {
+SparseDataset to_sparse(const Dataset& d) {
   Matrix samples_ = d.get_samples();
   std::shared_ptr<const FEATURE_TYPE> labels_ = d.get_labels();
   const FEATURE_TYPE* m_data = reinterpret_cast<const
@@ -21,7 +21,7 @@ SparseDataset to_sparse(Dataset& d) const {
   return SparseDataset(std::move(sparse_data), std::move(labels));
 }
 
-Dataset to_dataset(SparseDataset& sd) const {
+Dataset to_dataset(const SparseDataset& sd, const Configuration& config) {
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> data_ = sd.data_;
   std::vector<FEATURE_TYPE> labels_ = sd.labels_;
   std::vector<std::vector<FEATURE_TYPE>> data;

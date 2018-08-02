@@ -5,6 +5,8 @@
 #include <SparseDataset.h>
 
 namespace cirrus {
-  SparseDataset to_sparse(Dataset& d);
-  Dataset to_dataset(SparseDataset& sd);
+  SparseDataset to_sparse(const Dataset& d);
+  Dataset to_dataset(const SparseDataset& sd, const Configuration& config);
 }
+
+#endif

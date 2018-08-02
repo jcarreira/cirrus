@@ -9,6 +9,7 @@
 #include "PSSparseServerInterface.h"
 #include "Configuration.h"
 #include "Constants.h"
+#include "DatasetConversion.h"
 
 #include <atomic>
 
@@ -196,7 +197,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
         if (config.get_model_type() == Configuration::SOFTMAX) {
-          Dataset intermediate = ds.to_dataset(config);
+          Dataset intermediate = to_dataset(ds, config);
           ret = model->calc_loss(intermediate);
         } else {
           ret = model->calc_loss(ds, start_index);

@@ -121,7 +121,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      Dataset ds = to_dataset(dataset);
+      Dataset ds = to_dataset(*(dataset.get()), config);
       gradient = model.minibatch_grad(
           ds.get_samples(), (float*) ds.get_labels().get(),
           config.get_minibatch_size(), config.get_learning_rate());
