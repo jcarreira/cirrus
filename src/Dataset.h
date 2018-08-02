@@ -6,6 +6,7 @@
 #include <memory>
 #include <Matrix.h>
 #include <config.h>
+#include <Configuration.h>
 
 //#include "SparseDataset.h"
 
@@ -90,7 +91,7 @@ class Dataset {
   /**
    * Sanity check values in the dataset
    */
-  void check() const;
+  void check(const Configuration& config) const;
 
   /**
    * Compute checksum of values in the dataset

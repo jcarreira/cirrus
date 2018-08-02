@@ -236,7 +236,7 @@ class LoadingSparseTaskS3 : public MLTask {
     SparseDataset read_dataset(const Configuration& config);
     void check_loading(const Configuration&,
                        std::unique_ptr<S3Client>& s3_client);
-    void check_label(FEATURE_TYPE label);
+    void check_label(FEATURE_TYPE label, const Configuration& config);
 
   private:
 };

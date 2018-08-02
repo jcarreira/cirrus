@@ -35,7 +35,10 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
   }
 }
 
-void LoadingSparseTaskS3::check_label(FEATURE_TYPE label) {
+void LoadingSparseTaskS3::check_label(FEATURE_TYPE label, const Configuration& config) {
+  if (label != 1.0 && label != 0.0 && config.get_model_type() != Configuration::SOFTMAX) {
+    throw std::runtime_error("Wrong label value");
+  }
 }
 
 /**
@@ -55,6 +58,8 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
       s3_client->s3_get_object_value(obj_id, config.get_s3_bucket());
 
   SparseDataset dataset(data.data(), true);
+  dataset.check();
+  dataset.check_labels();
 
   //std::cout << "[LOADER] Checking label values.." << std::endl;
   //check_label(sample.get()[0]);
@@ -70,6 +75,7 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
   for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
     //const auto& s = dataset.get_row(i);
     const auto& label = dataset.labels_[i];
+    check_label(label, config);
   }
 }
 
@@ -86,6 +92,7 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
   std::unique_ptr<S3Client> s3_client = std::make_unique<S3Client>();
 
   SparseDataset dataset = read_dataset(config);
+  dataset.check();
   dataset.print_info();
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
