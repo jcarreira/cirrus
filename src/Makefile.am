@@ -49,7 +49,9 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
 	      S3Iterator.cpp S3SparseIterator.cpp \
 	      PerformanceLambdaTask.cpp \
 	      S3.cpp SparseDataset.cpp \
-	      PSSparseServerTask.cpp PSSparseServerInterface.cpp
+	      PSSparseServerTask.cpp PSSparseServerInterface.cpp \
+		LDAStatistics.cpp LoadingLDATaskS3.cpp LDATaskS3.cpp \
+		LDADataset.cpp LDAModel.cpp gamma.cpp
 
 CPP_SOURCES_SOFTMAX = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp Model.cpp LRModel.cpp \
