@@ -4,7 +4,7 @@
 #include <Utils.h>
 #include <LDAStatistics.h>
 
-#define MAX_MSG_SIZE (1024 * 1024 * 1000)
+#define MAX_MSG_SIZE (1024 * 1024 * 100)
 
 namespace cirrus {
 LDAStatistics::LDAStatistics() {}
@@ -79,7 +79,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
 
 char* LDAStatistics::serialize() {
 
-  char* msg = new char[MAX_MSG_SIZE];
+  char* msg = new char[get_serialize_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
   store_value<int>(msg, K_);
@@ -110,7 +110,7 @@ char* LDAStatistics::serialize() {
 }
 
 char* LDAStatistics::serialize_slice() {
-  char* msg = new char[MAX_MSG_SIZE];
+  char* msg = new char[get_serialize_slice_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
   store_value<int>(msg, slice_.size());

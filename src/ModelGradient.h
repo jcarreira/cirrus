@@ -212,7 +212,7 @@ class LDAUpdates {
   LDAUpdates& operator=(LDAUpdates&& other);
 
   void loadSerialized(const char* mem);
-  std::shared_ptr<char> serialize(uint64_t*);
+  std::shared_ptr<char> serialize(uint32_t*);
   uint64_t getSerializedSize() const;
 
   int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);

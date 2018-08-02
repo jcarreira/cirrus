@@ -512,7 +512,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   }
 }
 
-std::shared_ptr<char> LDAUpdates::serialize(uint64_t* serialize_size) {
+std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
   *serialize_size =
       sizeof(uint64_t) +
       sizeof(int) * (4 + change_nvt.size() + change_nt.size() + slice.size());

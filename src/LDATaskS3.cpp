@@ -66,14 +66,13 @@ bool LDATaskS3::get_dataset_minibatch(
 }
 
 void LDATaskS3::run(const Configuration& config, int worker) {
+
   std::cout << "Starting LDATaskS3" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
   psint->connect();
-
-  // lda_model_get = std::make_unique<LDAModelGet>(ps_ip, ps_port);
 
   std::cout << "[WORKER] "
             << "num s3 batches: " << num_s3_batches << std::endl;
@@ -88,11 +87,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     end = train_range.second;
   }
 
-  // Create iterator that goes from 0 to num_s3_batches
-  // S3SparseIterator s3_iter(
-  //     start, end,
-  //     config, config.get_s3_size(), config.get_minibatch_size(),
-  //     true, worker, false);
 
   int cur_train_idx = start;
 
@@ -105,23 +99,17 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   int count = 0;
   auto start_time = get_time_ms();
   std::shared_ptr<LDAStatistics> s3_local_vars;
-  // LDAStatistics s3_local_vars;
-  // get_dataset_minibatch(s3_local_vars, s3_iter);
 
   s3_initialize_aws();
-  // auto s3_client = s3_create_client();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
   std::ostringstream* s3_obj =
       s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
-
-  // const std::string tmp = s3_obj->str();
-  // const char* s3_data = tmp.c_str();
-  // char* s3_data = new
   s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
   s3_local_vars->set_slice_size(config.get_slice_size());
   delete s3_obj;
+  s3_shutdown_aws();
 
   int update_bucket = 0;
 
@@ -135,6 +123,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
       char* mem = s3_local_vars->serialize();
+
+      s3_initialize_aws();
+      std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
       s3_client->s3_put_object(
           obj_id_str, config.get_s3_bucket(),
@@ -157,11 +148,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::ostringstream* s3_obj =
           s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
       s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
-      delete s3_obj;
-
       s3_local_vars->set_slice_size(config.get_slice_size());
+
+      delete s3_obj;
+      s3_shutdown_aws();
+
       continue;
     }
+
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model"
               << std::endl;

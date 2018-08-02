@@ -9,7 +9,7 @@
 
 //#define DEBUG
 
-#define MAX_MSG_SIZE (1024*1024*1000)
+#define MAX_MSG_SIZE (1024*1024)
 
 namespace cirrus {
 
@@ -324,7 +324,7 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
     throw std::runtime_error("Error sending operation");
   }
 
-  uint64_t size;
+  uint32_t size;
   std::shared_ptr<char> mem = gradient.serialize(&size);
 #ifdef DEBUG
   std::cout << "Sending LDA updates with size: " << size << std::endl;
@@ -356,7 +356,7 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   // 1. Send operation
   uint32_t operation = GET_LDA_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
-    throw std::runtime_error("Error getting lda model");
+    throw std::runtime_error("Error sending operation");
   }
 
   // 2. Send the size of vocab slise
@@ -369,7 +369,7 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   // 3. Send slice
   char* msg_slice_begin = info.serialize_slice();
   if (send_all(sock, msg_slice_begin, msg_size) == -1) {
-    throw std::runtime_error("Error getting lda model");
+    throw std::runtime_error("Error sending slice");
   }
 
   // 4. receive partial_nvt from server

@@ -55,7 +55,7 @@ void run_tasks(int rank, int nworkers,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);
     } else if (config.get_model_type() == cirrus::Configuration::LDA) {
-      cirrus::LDATaskS3 lt((1 << config.get_model_bits()) + 1, batch_size,
+      cirrus::LDATaskS3 lt(1, batch_size,
                            samples_per_batch, features_per_sample, nworkers,
                            rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);

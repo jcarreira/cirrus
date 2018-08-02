@@ -111,7 +111,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   std::string obj_id =
       std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
 
-  uint64_t len;
+  uint32_t len;
   std::shared_ptr<char> s3_obj = initial_global_var.serialize(&len);
 
   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),

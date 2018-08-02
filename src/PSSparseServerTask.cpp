@@ -288,19 +288,19 @@ bool PSSparseServerTask::process_get_lda_model(
 #endif
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-      std::cout << "aaaaaaaaaaaaaa\n";
       return false;
     }
   } catch (...) {
     throw std::runtime_error("Uhandled error");
   }
+
   const char* data = thread_buffer.data();
   uint32_t to_send_size;
   model_lock.lock();
   auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size);
   model_lock.unlock();
+
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
-    std::cout << "bbbbbbbbbbbb\n";
     return false;
   }
   return true;
