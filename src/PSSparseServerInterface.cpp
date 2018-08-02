@@ -52,7 +52,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
-  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  int ret = send_all(sock, &operation, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending operation");
   }
@@ -61,7 +61,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
 #ifdef DEBUG
   std::cout << "Sending gradient with size: " << size << std::endl;
 #endif
-  ret = send(sock, &size, sizeof(uint32_t), 0);
+  ret = send_all(sock, &size, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
   }
@@ -80,7 +80,7 @@ void PSSparseServerInterface::send_sm_gradient(
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
-  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  int ret = send_all(sock, &operation, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending operation");
   }
@@ -89,7 +89,7 @@ void PSSparseServerInterface::send_sm_gradient(
 #ifdef DEBUG
   std::cout << "Sending gradient with size: " << size << std::endl;
 #endif
-  ret = send(sock, &size, sizeof(uint32_t), 0);
+  ret = send_all(sock, &size, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
   }
