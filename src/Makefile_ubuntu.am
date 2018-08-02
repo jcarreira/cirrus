@@ -33,6 +33,7 @@ CPPFLAGS = -I$(TOP_DIR) \
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
+              DatasetConversion.cpp \
 	      OptimizationMethod.cpp AdaGrad.cpp \
 	      Momentum.cpp SGD.cpp Nesterov.cpp\
               S3Client.cpp \
