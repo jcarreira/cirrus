@@ -38,4 +38,4 @@ Dataset to_dataset(const SparseDataset& sd, const Configuration& config) {
   }
   return Dataset(data, labels_);
 }
-} // namespace cirrus
+}  // namespace cirrus
