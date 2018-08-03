@@ -1,12 +1,12 @@
 #ifndef _DATASET_H_
 #define _DATASET_H_
 
-#include <vector>
-#include <cstdint>
-#include <memory>
+#include <Configuration.h>
 #include <Matrix.h>
 #include <config.h>
-#include <Configuration.h>
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 //#include "SparseDataset.h"
 

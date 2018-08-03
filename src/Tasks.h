@@ -3,14 +3,14 @@
 
 #include <Configuration.h>
 
-#include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SoftmaxModel.h"
-#include "SparseLRModel.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SoftmaxModel.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
 #include <string>
 #include <vector>
@@ -79,8 +79,8 @@ class SoftmaxTask : public MLTask {
         psint(nullptr) {}
 
   /**
-    * Worker here is a value 0..nworkers - 1
-    */
+   * Worker here is a value 0..nworkers - 1
+   */
   void run(const Configuration& config, int worker);
 
  private:
@@ -238,7 +238,7 @@ class LoadingSparseTaskS3 : public MLTask {
                        std::unique_ptr<S3Client>& s3_client);
     void check_label(FEATURE_TYPE label, const Configuration& config);
 
-  private:
+   private:
 };
 
 class LoadingNetflixTask : public MLTask {

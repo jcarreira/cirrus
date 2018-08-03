@@ -4,8 +4,8 @@ namespace cirrus {
 SparseDataset to_sparse(const Dataset& d) {
   Matrix samples_ = d.get_samples();
   std::shared_ptr<const FEATURE_TYPE> labels_ = d.get_labels();
-  const FEATURE_TYPE* m_data = reinterpret_cast<const
-  FEATURE_TYPE*>(samples_.data.get());
+  const FEATURE_TYPE* m_data =
+      reinterpret_cast<const FEATURE_TYPE*>(samples_.data.get());
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data;
   for (int i = 0; i < samples_.rows; i++) {
     std::vector<std::pair<int, FEATURE_TYPE>> row;
@@ -38,4 +38,4 @@ Dataset to_dataset(const SparseDataset& sd, const Configuration& config) {
   }
   return Dataset(data, labels_);
 }
-}
+} // namespace cirrus

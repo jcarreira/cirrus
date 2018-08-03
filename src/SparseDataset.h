@@ -6,8 +6,8 @@
 #include <memory>
 #include <config.h>
 
-#include "Dataset.h"
 #include "Configuration.h"
+#include "Dataset.h"
 
 namespace cirrus {
 

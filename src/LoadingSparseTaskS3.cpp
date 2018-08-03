@@ -1,12 +1,12 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
+#include "DatasetConversion.h"
 #include "InputReader.h"
 #include "S3.h"
 #include "S3Client.h"
+#include "Serializers.h"
 #include "Utils.h"
 #include "config.h"
-#include "DatasetConversion.h"
 
 namespace cirrus {
 
@@ -28,15 +28,18 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
 
   // READ the kaggle criteo dataset
   if (config.get_model_type() == Configuration::SOFTMAX) {
-    return to_sparse(input.read_input_csv(config.get_input_path(), ",", 10, 50000, 1000, true));
+    return to_sparse(input.read_input_csv(config.get_input_path(), ",", 10,
+                                          50000, 1000, true));
   } else {
     return input.read_input_criteo_kaggle_sparse(config.get_input_path(),
                                                  delimiter, config);
   }
 }
 
-void LoadingSparseTaskS3::check_label(FEATURE_TYPE label, const Configuration& config) {
-  if (label != 1.0 && label != 0.0 && config.get_model_type() != Configuration::SOFTMAX) {
+void LoadingSparseTaskS3::check_label(FEATURE_TYPE label,
+                                      const Configuration& config) {
+  if (label != 1.0 && label != 0.0 &&
+      config.get_model_type() != Configuration::SOFTMAX) {
     throw std::runtime_error("Wrong label value");
   }
 }
@@ -50,9 +53,11 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
 
   std::string obj_id;
   if (config.get_model_type() == Configuration::SOFTMAX) {
-    obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-MNIST";
+    obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-MNIST";
   } else {
-    obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
+    obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-CRITEO";
   }
   std::string data =
       s3_client->s3_get_object_value(obj_id, config.get_s3_bucket());
@@ -118,10 +123,10 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
     std::string obj_id;
     if (config.get_model_type() == Configuration::SOFTMAX) {
       obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
-        "-MNIST";
+               "-MNIST";
     } else {
       obj_id = std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
-        "-CRITEO";
+               "-CRITEO";
     }
     s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
