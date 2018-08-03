@@ -321,7 +321,7 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
 #endif
   int ret = send(sock, &operation, sizeof(uint32_t), 0);
   if (ret == -1) {
-    throw std::runtime_error("Error sending operation");
+    throw std::runtime_error("Error sending operation_u");
   }
 
   uint32_t size;
@@ -356,7 +356,7 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   // 1. Send operation
   uint32_t operation = GET_LDA_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
-    throw std::runtime_error("Error sending operation");
+    throw std::runtime_error("Error sending operation_m");
   }
 
   // 2. Send the size of vocab slise
@@ -378,6 +378,7 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
   char* buffer = new char[to_receive_size];
+
   read_all(sock, buffer, to_receive_size);  // XXX
 
 #ifdef DEBUG
