@@ -172,10 +172,12 @@ bool PSSparseServerTask::process_send_lda_update(
   // std::cout  << "1111111\n";
   int update_bucket = lda_global_vars->update(gradient, vocabs_to_update);
 
-  // update_nvt_nt(vocabs_to_update);
-  // if(update_bucket != 0){
-  //   update_ndt(update_bucket);
-  // }
+
+
+  update_nvt_nt(vocabs_to_update);
+  if(update_bucket != 0){
+    update_ndt(update_bucket);
+  }
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -588,8 +590,17 @@ void PSSparseServerTask::start_server() {
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
 
-    // init_loglikelihood();
+    // auto init_ll_thread = std::make_unique<std::thread>(
+    //       std::bind(&PSSparseServerTask::init_loglikelihood, this));
+
+    // auto compute_ll_thread = std::make_unique<std::thread>(
+    //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
+
+    // init_ll_thread->join();
+    // compute_ll_thread->join();
+    init_loglikelihood();
     compute_loglikelihood();
+    // compute_loglikelihood_orig();
 
     std::cout << "Finished getting initial statistics.\n";
 
@@ -825,6 +836,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();
+
   while (!kill_signal) {
     auto now = get_time_us();
     auto elapsed_us = now - last_tick;
@@ -841,10 +853,14 @@ void PSSparseServerTask::run(const Configuration& config) {
         << " #conns: " << num_connections
         << std::endl;
       gradientUpdatesCount = 0;
-      // compute_loglikelihood();
       if ((int) since_start_sec % 5 == 0 && since_start_sec != 0) {
-        // init_loglikelihood();
+        // auto compute_ll_thread = std::make_unique<std::thread>(
+        //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
+        // compute_ll_thread->join();
+        model_lock.lock();
         compute_loglikelihood();
+        // compute_loglikelihood_orig();
+        model_lock.unlock();
       }
     }
     sleep(1);
@@ -887,23 +903,23 @@ void PSSparseServerTask::checkpoint_model_file(
   fout.close();
 }
 
-// void PSSparseServerTask::compute_loglikelihood() {
-//
-//   double ll = ll_base;
-//   for(int i=0; i<ll_nvt.size(); ++i){
-//     ll += ll_nvt[i];
-//   }
-//   for(int i=0; i<ll_ndt.size(); ++i){
-//     ll += ll_ndt[i];
-//   }
-//   for(int i=0; i<ll_nt.size(); ++i){
-//     ll += ll_nt[i];
-//   }
-//
-//   std::cout << "loglikelihood: " << ll << std::endl;
-// }
-
 void PSSparseServerTask::compute_loglikelihood() {
+
+  double ll = ll_base;
+  for(int i=0; i<ll_nvt.size(); ++i){
+    ll += ll_nvt[i];
+  }
+  for(int i=0; i<ll_ndt.size(); ++i){
+    ll += ll_ndt[i];
+  }
+  for(int i=0; i<ll_nt.size(); ++i){
+    ll += ll_nt[i];
+  }
+
+  std::cout << "loglikelihood: " << ll << std::endl;
+}
+
+void PSSparseServerTask::compute_loglikelihood_orig() {
   std::vector<int> nvt, nt;
 
   lda_global_vars->get_nvt(nvt);
@@ -959,7 +975,7 @@ void PSSparseServerTask::compute_loglikelihood() {
 
   s3_shutdown_aws();
 
-  std::cout << "loglikelihood: " << ll << std::endl;
+  std::cout << "loglikelihood orig: " << ll << std::endl;
 }
 
 void PSSparseServerTask::init_loglikelihood(){
@@ -998,6 +1014,9 @@ void PSSparseServerTask::init_loglikelihood(){
   ll_ndt.clear();
   ll_ndt.resize(train_range.second - train_range.first);
 
+  // int i = train_range.first;
+  // double ll_temp = 0.0;
+
   for (int i = train_range.first; i < train_range.second; ++i) {
     std::string obj_id_str =
         std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
@@ -1017,13 +1036,18 @@ void PSSparseServerTask::init_loglikelihood(){
         ndj += ndt[j][k];
         if (ndt[j][k] > 0) {
           ll_ndt[i - train_range.first] += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+          // ll_temp += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
         }
       }
       ll_ndt[i - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+      // ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
     }
   }
 
   s3_shutdown_aws();
+
+  // ll_ndt.clear();
+  // ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
 
 }
 
@@ -1073,31 +1097,34 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
   lda_global_vars->get_nt(nt);
 
   ll_nt.clear();
-  // for (int i = 0; i < vocabs_to_update.size(); ++i) {
-  //   ll_nvt[vocabs_to_update[i]] = 0.0;
-  // }
-  for (int i = 0; i < V; ++i) {
-    ll_nvt[i] = 0.0;
+  ll_nt.resize(K);
+  for (int i = 0; i < vocabs_to_update.size(); ++i) {
+    int gindex = lda_global_vars->slice_map[vocabs_to_update[i]];
+    ll_nvt[gindex] = 0.0;
   }
 
-  for (int i = 0; i < K; ++i) {
-    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-    for (int v = 0; v < V; ++v) {
-      if (nvt[v * K + i] > 0) {
-        ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-      }
-    }
-  }
-
+  // ll_nvt.clear();
+  // ll_nvt.resize(V);
   // for (int i = 0; i < K; ++i) {
   //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-  //   for (int j = 0; j < vocabs_to_update.size(); ++j) {
-  //     int v = vocabs_to_update[j];
+  //   for (int v = 0; v < V; ++v) {
   //     if (nvt[v * K + i] > 0) {
   //       ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
   //     }
   //   }
   // }
+
+
+  for (int i = 0; i < K; ++i) {
+    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    for (int j = 0; j < vocabs_to_update.size(); ++j) {
+      int v = vocabs_to_update[j];
+      int gindex = lda_global_vars->slice_map[v];
+      if (nvt[gindex * K + i] > 0) {
+        ll_nvt[gindex] += lda_lgamma(eta + nvt[gindex * K + i]) - lgamma_eta;
+      }
+    }
+  }
 
 }
 

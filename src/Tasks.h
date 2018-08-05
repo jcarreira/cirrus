@@ -278,6 +278,7 @@ class PSSparseServerTask : public MLTask {
   };
 
   void compute_loglikelihood();
+  void compute_loglikelihood_orig();
 
   void init_loglikelihood();
   void update_ndt(int bucket_id);
@@ -374,6 +375,7 @@ class PSSparseServerTask : public MLTask {
   std::vector<double> ll_nvt, ll_ndt, ll_nt;
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
+  int init_ll_flag = 0;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections

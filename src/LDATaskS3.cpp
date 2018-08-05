@@ -67,6 +67,8 @@ bool LDATaskS3::get_dataset_minibatch(
 
 void LDATaskS3::run(const Configuration& config, int worker) {
 
+  double lambda_time_out = 3.0 * 60.0; // 3 min currently
+
   std::cout << "Starting LDATaskS3" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
@@ -111,15 +113,15 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   delete s3_obj;
   s3_shutdown_aws();
 
-  int update_bucket = 0;
+  int update_bucket = 0, stuck = 1;
 
   while (1) {
+
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
     std::unique_ptr<LDAStatistics> local_vars;
 
-    // only gets partial LDAStatistics corresponding to one vocabulary slice
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
       char* mem = s3_local_vars->serialize();
@@ -133,6 +135,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
                       s3_local_vars->get_serialize_size()));
 
       delete[] mem;
+
+      auto elapsed_ms = get_time_ms() - start_time;
+      float elapsed_sec = elapsed_ms / 1000.0;
+      if (elapsed_sec > (lambda_time_out - 20.0)) {
+        std::cout << "successfully exit\n";
+        break;
+      }
+
 
       update_bucket = cur_train_idx;
 
@@ -167,9 +177,13 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // we get the model subset with just the right amount of weights
     // TODO can be improved
     psint->get_lda_model(*local_vars, update_bucket, model);
+    // psint->get_lda_model(*local_vars, update_bucket, model);
+    // if (stuck == -1)
+    //   continue;
 
-    if(update_bucket != 0)
+    if (update_bucket != 0) {
       update_bucket = 0;
+    }
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;

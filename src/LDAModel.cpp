@@ -146,8 +146,14 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     nt[top] -= 1;
 
     rate_cum = 0.0;
+    std::vector<int> which_topic(K_);
+    which_topic[top] = 1;
+
     for (int j = 0; j < K_; ++j) {
+
+      // Naive Sampler
       r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta + nt[j]);
+
       if (r > 0)
         rate_cum += r;
 
