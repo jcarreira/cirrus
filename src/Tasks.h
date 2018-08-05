@@ -277,7 +277,7 @@ class PSSparseServerTask : public MLTask {
     struct pollfd& poll_fd;
   };
 
-  void compute_loglikelihood();
+  double compute_loglikelihood();
   void compute_loglikelihood_orig();
 
   void init_loglikelihood();

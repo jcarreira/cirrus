@@ -744,6 +744,7 @@ void PSSparseServerTask::loop(int poll_id) {
               << num_connections
               << std::endl;
             close(newsock);
+            num_connections -= 1;
           } else if (poll_id == 0 && curr_indexes[poll_id] == max_fds) {
             throw std::runtime_error("We reached capacity");
             close(newsock);
@@ -858,7 +859,12 @@ void PSSparseServerTask::run(const Configuration& config) {
         //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
         // compute_ll_thread->join();
         model_lock.lock();
-        compute_loglikelihood();
+        double ll = compute_loglikelihood();
+
+        std::ofstream ll_file;
+        ll_file.open ("ll.txt");
+        ll_file << ll << std::endl;
+        ll_file.close();
         // compute_loglikelihood_orig();
         model_lock.unlock();
       }
@@ -903,7 +909,7 @@ void PSSparseServerTask::checkpoint_model_file(
   fout.close();
 }
 
-void PSSparseServerTask::compute_loglikelihood() {
+double PSSparseServerTask::compute_loglikelihood() {
 
   double ll = ll_base;
   for(int i=0; i<ll_nvt.size(); ++i){
@@ -917,6 +923,7 @@ void PSSparseServerTask::compute_loglikelihood() {
   }
 
   std::cout << "loglikelihood: " << ll << std::endl;
+  return ll;
 }
 
 void PSSparseServerTask::compute_loglikelihood_orig() {
