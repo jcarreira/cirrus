@@ -599,7 +599,7 @@ void PSSparseServerTask::start_server() {
     // init_ll_thread->join();
     // compute_ll_thread->join();
     init_loglikelihood();
-    compute_loglikelihood();
+    // compute_loglikelihood();
     // compute_loglikelihood_orig();
 
     std::cout << "Finished getting initial statistics.\n";
@@ -854,7 +854,7 @@ void PSSparseServerTask::run(const Configuration& config) {
         << " #conns: " << num_connections
         << std::endl;
       gradientUpdatesCount = 0;
-      if ((int) since_start_sec % 5 == 0 && since_start_sec != 0) {
+      if ((int) since_start_sec % 5 == 0) {
         // auto compute_ll_thread = std::make_unique<std::thread>(
         //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
         // compute_ll_thread->join();
