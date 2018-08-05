@@ -430,7 +430,6 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_lr_gradient(req, thread_buffer)) {
         break;
       }
-<<<<<<< HEAD
     } else if (operation == SEND_SM_GRADIENT) {
       if (!process_send_sm_gradient(req, thread_buffer)) {
         break;
