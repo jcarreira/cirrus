@@ -101,7 +101,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::random_device rd;
   std::mt19937 rng(rd());
   std::uniform_int_distribution<int> udist(0, 1);
- 
+
   while (1) {
     // get data, labels and model
 #ifdef DEBUG
