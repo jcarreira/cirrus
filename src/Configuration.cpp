@@ -193,6 +193,18 @@ void Configuration::parse_line(const std::string& line) {
       train_set_range = std::make_pair(
           string_to<int>(left),
           string_to<int>(right));
+    } else if (s == "train_set2:") {
+      std::string range;
+      iss >> range;
+      size_t index = range.find("-");
+      if (index == std::string::npos) {
+        throw std::runtime_error("Wrong index");
+      }
+      std::string left = range.substr(0, index);
+      std::string right = range.substr(index + 1);
+      train_set_range2 = std::make_pair(
+          string_to<int>(left),
+          string_to<int>(right));
     } else if (s == "test_set:") {
       std::string range;
       iss >> range;
@@ -339,6 +351,10 @@ std::string Configuration::get_s3_bucket() const {
 
 std::pair<int, int> Configuration::get_train_range() const {
   return train_set_range;
+}
+
+std::pair<int, int> Configuration::get_train_range2() const {
+  return train_set_range2;
 }
 
 std::pair<int, int> Configuration::get_test_range() const {

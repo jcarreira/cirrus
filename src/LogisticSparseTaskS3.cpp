@@ -74,6 +74,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
+  psint->connect();
   sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
   
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
@@ -82,11 +83,16 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
-  S3SparseIterator s3_iter(
+  auto train_range2 = config.get_train_range2();
+  S3SparseIterator s3_iter1(
       train_range.first, train_range.second,
       config, config.get_s3_size(), config.get_minibatch_size(),
       true, worker);
 
+  S3SparseIterator s3_iter2(
+      train_range2.first, train_range2.second,
+      config, config.get_s3_size(), config.get_minibatch_size(),
+      true, worker);
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
@@ -95,14 +101,31 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
+  std::random_device rd;
+  std::mt19937 rng(rd());
+  std::uniform_int_distribution<int> udist(0, 1);
+  
   while (1) {
     // get data, labels and model
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
     std::unique_ptr<SparseDataset> dataset;
-    if (!get_dataset_minibatch(dataset, s3_iter)) {
-      continue;
+    if (train_range2.first < 0 && train_range2.second < 0) {
+      if (!get_dataset_minibatch(dataset, s3_iter1)) {
+        continue;
+      }
+    } else {
+      int selection = udist(rng);
+      bool success;
+      if (selection == 0) {
+        success = get_dataset_minibatch(dataset, s3_iter1);
+      } else {
+        success = get_dataset_minibatch(dataset, s3_iter2);
+      }
+      if (!success) {
+        continue;
+      }
     }
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
