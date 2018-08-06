@@ -41,6 +41,7 @@ S3SparseIterator::S3SparseIterator(
   try {
     s3_initialize_aws();
   } catch (...) {
+
   } 
   s3_client = std::make_shared<S3Client>();
 

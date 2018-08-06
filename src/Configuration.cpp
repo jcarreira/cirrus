@@ -202,9 +202,7 @@ void Configuration::parse_line(const std::string& line) {
       }
       std::string left = range.substr(0, index);
       std::string right = range.substr(index + 1);
-      train_set_range2 = std::make_pair(
-          string_to<int>(left),
-          string_to<int>(right));
+      train_set_range2 = std::make_pair(string_to<int>(left), string_to<int>(right));
     } else if (s == "test_set:") {
       std::string range;
       iss >> range;
