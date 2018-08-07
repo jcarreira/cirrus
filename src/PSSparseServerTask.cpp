@@ -50,8 +50,8 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
   operation_to_name[7] = "GET_TASK_STATUS";
   operation_to_name[8] = "REGISTER_TASK";
   operation_to_name[9] = "GET_NUM_CONNS";
-  operation_to_name[10] = "SEND_SM_GRADIENT";
-  operation_to_name[11] = "GET_SM_FULL_MODEL";
+  operation_to_name[11] = "SEND_SM_GRADIENT";
+  operation_to_name[12] = "GET_SM_FULL_MODEL";
 
   for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
     thread_msg_buffer[i] =
