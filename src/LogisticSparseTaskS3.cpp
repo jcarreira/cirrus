@@ -112,6 +112,10 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
       if (!get_dataset_minibatch(dataset, s3_iter1)) {
         continue;
       }
+    } else if (train_range.first < 0 && train_range.second < 0) {
+      if (!get_dataset_minibatch(dataset, s3_iter2)) {
+        continue;
+      }
     } else {
       int selection = udist(rng);
       bool success;
