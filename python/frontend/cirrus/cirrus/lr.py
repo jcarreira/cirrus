@@ -36,6 +36,7 @@ class LogisticRegressionTask(BaseTask):
                  "use_grad_threshold: %d \n" % grad_t + \
                  "grad_threshold: %lf \n" % self.grad_threshold + \
                  "train_set: %d-%d \n" % self.train_set + \
+                 "train_set2: %d-%d \n" % self.train_set2 + \
                  "test_set: %d-%d" % self.test_set
         return config
 
@@ -52,6 +53,7 @@ def LogisticRegression(
             key_path,
             train_set,
             test_set,
+            train_set2,
             minibatch_size,
             model_bits,
             ps_ip_public="",
@@ -83,6 +85,7 @@ def LogisticRegression(
             checkpoint_model=checkpoint_model,
             train_set=train_set,
             test_set=test_set,
+            train_set2 = train_set2,
             minibatch_size=minibatch_size,
             model_bits=model_bits,
             use_grad_threshold=use_grad_threshold,
