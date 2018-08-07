@@ -76,10 +76,11 @@ uint64_t Dataset::num_samples() const {
     return samples_.rows;
 }
 
-void Dataset::check() const {
+void Dataset::check(const Configuration& config) const {
   const FEATURE_TYPE* l = labels_.get();
   for (uint64_t i = 0; i < num_samples(); ++i) {
-    if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0)) {
+    if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0) &&
+        config.get_model_type() != Configuration::SOFTMAX) {
       throw std::runtime_error(
           "Dataset::check_values wrong label value: " + std::to_string(l[i]));
     }
@@ -140,24 +141,6 @@ Matrix Dataset::get_samples() const {
 std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
   return labels_;
 }
-
-// SparseDataset Dataset::to_sparse() const {
-// const FEATURE_TYPE* m_data = reinterpret_cast<const
-// FEATURE_TYPE*>(samples_.data.get());
-// std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data;
-// for (int i = 0; i < samples_.rows; i++) {
-// std::vector<std::pair<int, FEATURE_TYPE>> row;
-// for (int j = 0; j < samples_.cols; j++) {
-// row.push_back(std::make_pair(j, m_data[i * samples_.cols + j]));
-//}
-// sparse_data.push_back(row);
-//}
-// std::vector<FEATURE_TYPE> labels;
-// for (size_t i = 0; i < samples_.rows; i++) {
-// labels.push_back(labels_.get()[i]);
-//}
-// return SparseDataset(std::move(sparse_data), std::move(labels));
-//}
 
 Dataset Dataset::random_sample(uint64_t n_samples) const {
   std::random_device rd;

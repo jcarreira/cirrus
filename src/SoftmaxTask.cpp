@@ -1,9 +1,10 @@
 #include <Tasks.h>
 
+#include "DatasetConversion.h"
+#include "PSSparseServerInterface.h"
+#include "S3SparseIterator.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "S3SparseIterator.h"
-#include "PSSparseServerInterface.h"
 
 #include <pthread.h>
 
@@ -120,7 +121,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      Dataset ds = dataset->to_dataset(config);
+      Dataset ds = to_dataset(*(dataset.get()), config);
       gradient = model.minibatch_grad(
           ds.get_samples(), (float*) ds.get_labels().get(),
           config.get_minibatch_size(), config.get_learning_rate());

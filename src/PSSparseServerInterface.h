@@ -1,23 +1,23 @@
 #ifndef PS_SPARSE_SERVER_INTERFACE_H_
 #define PS_SPARSE_SERVER_INTERFACE_H_
 
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
 #include <unistd.h>
-#include <stdexcept>
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
+#include "Configuration.h"
+#include "Model.h"
 #include "ModelGradient.h"
-#include "Utils.h"
+#include "SoftmaxModel.h"
 #include "SparseLRModel.h"
 #include "SparseMFModel.h"
-#include "SoftmaxModel.h"
-#include "Model.h"
-#include "Configuration.h"
+#include "Utils.h"
 
 namespace cirrus {
 

@@ -3,14 +3,14 @@
 
 #include <Configuration.h>
 
-#include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SoftmaxModel.h"
-#include "SparseLRModel.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SoftmaxModel.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
 #include <string>
 #include <vector>
@@ -79,8 +79,8 @@ class SoftmaxTask : public MLTask {
         psint(nullptr) {}
 
   /**
-    * Worker here is a value 0..nworkers - 1
-    */
+   * Worker here is a value 0..nworkers - 1
+   */
   void run(const Configuration& config, int worker);
 
  private:
@@ -116,6 +116,7 @@ class LogisticSparseTaskS3 : public MLTask {
         SparseModelGet(const std::string& ps_ip, int ps_port) :
           ps_ip(ps_ip), ps_port(ps_port) {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+            psi->connect();
         }
 
         SparseLRModel get_new_model(const SparseDataset& ds,
@@ -186,17 +187,8 @@ class ErrorSparseTask : public MLTask {
                    uint64_t nworkers,
                    uint64_t worker_id,
                    const std::string& ps_ip,
-                   uint64_t ps_port)
-       : MLTask(model_size,
-                batch_size,
-                samples_per_batch,
-                features_per_sample,
-                nworkers,
-                worker_id,
-                ps_ip,
-                ps_port) {
-     this->ps_port = ps_port;
-   }
+                   uint64_t ps_port);
+
    void run(const Configuration& config);
    void error_response();
 
@@ -244,9 +236,9 @@ class LoadingSparseTaskS3 : public MLTask {
     SparseDataset read_dataset(const Configuration& config);
     void check_loading(const Configuration&,
                        std::unique_ptr<S3Client>& s3_client);
-    void check_label(FEATURE_TYPE label);
+    void check_label(FEATURE_TYPE label, const Configuration& config);
 
-  private:
+   private:
 };
 
 class LoadingNetflixTask : public MLTask {
@@ -290,18 +282,9 @@ class PSSparseServerTask : public MLTask {
 
   struct Request {
    public:
-    Request(int req_id,
-            int sock,
-            int id,
-            uint32_t incoming_size,
-            struct pollfd& poll_fd)
-        : req_id(req_id),
-          sock(sock),
-          id(id),
-          incoming_size(incoming_size),
-          poll_fd(poll_fd) {}
+    Request(int sock, int id, uint32_t incoming_size, struct pollfd& poll_fd)
+        : sock(sock), id(id), incoming_size(incoming_size), poll_fd(poll_fd) {}
 
-    int req_id;
     int sock;
     int id;
     uint32_t incoming_size;

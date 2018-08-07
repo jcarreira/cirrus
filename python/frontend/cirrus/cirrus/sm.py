@@ -40,7 +40,7 @@ class SoftmaxTask(BaseTask):
         return config
 
 
-def SoftmaxTask(
+def Softmax(
             n_workers,
             n_ps,
             worker_size,
