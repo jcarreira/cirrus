@@ -215,6 +215,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   assert(to_send_size < 1024 * 1024);
   char data_to_send[1024 * 1024]; // 1MB
   char* data_to_send_ptr = data_to_send;
+
 #ifdef DEBUG
   std::cout << "Sending back: " << num_entries
     << " weights from model. Size: " << to_send_size
@@ -484,14 +485,12 @@ void PSSparseServerTask::start_server() {
 
   sem_init(&sem_new_req, 0, 0);
 
-  for (int i = 0; i < NUM_POLL_THREADS; i++) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  for (int i = NUM_POLL_THREADS - 1; i >= 0; i--) {
     server_threads.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     gradient_thread.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::gradient_f, this)));
   }
