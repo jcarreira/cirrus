@@ -81,7 +81,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
     }
   }
 
-  std::cout << "Sending indices: " << num_entries << std::endl;
+  // std::cout << "Sending indices: " << num_entries << std::endl;
 
   auto index_vec = builder.CreateVector(msg_start, num_bytes);
 
@@ -100,8 +100,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #endif
   send_flatbuffer(sock, &builder);
 
-  std::cout << "Successfully sent request... Receiving sparse model response"
-            << std::endl;
+  // std::cout << "Successfully sent request... Receiving sparse model response"
+  //           << std::endl;
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
@@ -122,7 +122,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
-  std::cout << "Calling load serialized sparse" << std::endl;
+  // std::cout << "Calling load serialized sparse" << std::endl;
   // build a truly sparse model and return
   // TODO: Can this copy be avoided?
   lr_model.loadSerializedSparse((FEATURE_TYPE*) sparse_model->model()->data(),
@@ -157,7 +157,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     full_msg = message::WorkerMessage::CreateFullModelRequest(
         builder, message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
   }
-  std::cout << "Constructed FlatBuffer for FullModelRequest\n";
+  // std::cout << "Constructed FlatBuffer for FullModelRequest\n";
 
   auto worker_msg = message::WorkerMessage::CreateWorkerMessage(
       builder, message::WorkerMessage::Request_FullModelRequest,
@@ -165,7 +165,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
 
   builder.Finish(worker_msg);
   send_flatbuffer(sock, &builder);
-  std::cout << "Sent FlatBuffer\n";
+  // std::cout << "Sent FlatBuffer\n";
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
@@ -179,14 +179,14 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
-  std::cout << "Read response";
+  // std::cout << "Read response";
   auto msg =
       message::PSMessage::GetPSMessage(&buf)->payload_as_FullModelResponse();
-  std::cout << "Interpreted FullModelResponse";
+  // std::cout << "Interpreted FullModelResponse";
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
-    std::cout << "Made MFModel";
+    // std::cout << "Made MFModel";
     // TODO: Need to use delete[]?
     // delete[] buffer;
     return model;

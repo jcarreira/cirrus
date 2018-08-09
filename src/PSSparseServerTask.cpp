@@ -174,8 +174,8 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   unsigned char data_to_send[to_send_size];
   unsigned char* data_to_send_ptr = data_to_send;
   //#ifdef DEBUG
-  std::cout << "Sending back: " << num_entries
-            << " weights from model. Size: " << to_send_size << std::endl;
+  // std::cout << "Sending back: " << num_entries
+  //           << " weights from model. Size: " << to_send_size << std::endl;
   //#endif
 
   // Make the weights vector
@@ -327,27 +327,21 @@ void PSSparseServerTask::gradient_f() {
     } catch (...) {
       throw std::runtime_error("Unhandled error");
     }
-    std::cout << "Received message\n";
+    // std::cout << "Received message\n";
     const message::WorkerMessage::WorkerMessage* msg =
         message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
-    std::cout << "Attempting to verify message...\n";
+    // std::cout << "Attempting to verify message...\n";
     const unsigned char* buf =
         reinterpret_cast<unsigned char*>(thread_buffer.data());
     flatbuffers::Verifier verifier = flatbuffers::Verifier(buf, msg_size);
     if (!message::WorkerMessage::VerifyWorkerMessageBuffer(verifier)) {
       throw std::runtime_error("Flatbuffer verification failed!");
     }
-    std::cout << "Interpreted message as a WorkerMessage\n";
-    std::cout << msg->payload_type();
-    std::cout << "\n";
-    if (msg->payload_type() ==
-        message::WorkerMessage::Request_FullModelRequest) {
-      std::cout << "Message type is FullModelRequest...\n";
-    }
+    // std::cout << "Interpreted message as a WorkerMessage\n";
 
     switch (msg->payload_type()) {
     case message::WorkerMessage::Request_GradientMessage: {
-      std::cout << "Gradient message received\n";
+      // std::cout << "Gradient message received\n";
       auto gradient_msg = msg->payload_as_GradientMessage();
       const unsigned char* gradient_buf = gradient_msg->gradient()->data();
       if (gradient_msg->model_type() ==
@@ -362,7 +356,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_SparseModelRequest: {
-      std::cout << "Received SparseModelRequest\n";
+      // std::cout << "Received SparseModelRequest\n";
       auto sparse_req = msg->payload_as_SparseModelRequest();
       const unsigned char* index_buf = sparse_req->index_info()->data();
       if (sparse_req->model_type() ==
@@ -380,7 +374,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_FullModelRequest: {
-      std::cout << "Received FullModelRequest\n";
+      // std::cout << "Received FullModelRequest\n";
       auto full_req = msg->payload_as_FullModelRequest();
       if (full_req->model_type() ==
           message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
@@ -394,7 +388,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_TaskRequest: {
-      std::cout << "TaskRequest received\n";
+      // std::cout << "TaskRequest received\n";
 #ifdef DEBUG
       std::cout << "Get status task id: " << task_id << std::endl;
 #endif
@@ -427,7 +421,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_RegisterTaskMessage: {
-      std::cout << "Register task received\n";
+      // std::cout << "Register task received\n";
       // check if this task has already been registered
       int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
       uint32_t task_reg =
