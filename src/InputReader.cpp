@@ -267,8 +267,8 @@ Dataset InputReader::read_input_csv(const std::string& input_file,
   }
 
   std::vector<std::vector<FEATURE_TYPE>> samples;  // final result
-  std::vector<FEATURE_TYPE> labels;               // final result
-  std::queue<std::string> lines[nthreads];        // input to threads
+  std::vector<FEATURE_TYPE> labels;                // final result
+  std::queue<std::string> lines[nthreads];         // input to threads
 
   std::mutex input_mutex[nthreads];  // mutex to protect queue of raw samples
   std::mutex output_mutex;  // mutex to protect queue of processed samples
@@ -526,9 +526,9 @@ void InputReader::parse_criteo_sparse_line(
   char str[MAX_STR_SIZE];
 
   if (line.size() > MAX_STR_SIZE) {
-    throw std::runtime_error("Criteo input line is too big: " +
-                             std::to_string(line.size()) + " " +
-                             std::to_string(MAX_STR_SIZE));
+    throw std::runtime_error(
+        "Criteo input line is too big: " + std::to_string(line.size()) + " " +
+        std::to_string(MAX_STR_SIZE));
   }
 
   strncpy(str, line.c_str(), MAX_STR_SIZE - 1);
@@ -705,9 +705,9 @@ void InputReader::parse_rcv1_vw_sparse_line(
     std::vector<std::pair<int, FEATURE_TYPE>>& features,
     FEATURE_TYPE& label) {
   if (line.size() > RCV1_STR_SIZE) {
-    throw std::runtime_error("rcv1 input line is too big: " +
-                             std::to_string(line.size()) + " " +
-                             std::to_string(RCV1_STR_SIZE));
+    throw std::runtime_error(
+        "rcv1 input line is too big: " + std::to_string(line.size()) + " " +
+        std::to_string(RCV1_STR_SIZE));
   }
 
   // static int static_count = 0;
@@ -839,9 +839,9 @@ void InputReader::parse_criteo_kaggle_sparse_line(
   // std::cout << "line: " << line << std::endl;
 
   if (line.size() > MAX_STR_SIZE) {
-    throw std::runtime_error("Criteo input line is too big: " +
-                             std::to_string(line.size()) + " " +
-                             std::to_string(MAX_STR_SIZE));
+    throw std::runtime_error(
+        "Criteo input line is too big: " + std::to_string(line.size()) + " " +
+        std::to_string(MAX_STR_SIZE));
   }
 
   strncpy(str, line.c_str(), MAX_STR_SIZE - 1);

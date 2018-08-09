@@ -11,72 +11,72 @@ class Configuration {
   Configuration(const std::string& path);
 
   /**
-    * Read configuration file
-    * @param path Path to config file
-    */
+   * Read configuration file
+   * @param path Path to config file
+   */
   void read(const std::string& path);
 
   /**
-    * Get learning rate used for SGD
-    * @returns Learning rate
-    */
+   * Get learning rate used for SGD
+   * @returns Learning rate
+   */
   double get_learning_rate() const;
 
   /**
-    * Get regularization rate
-    * @returns Regularization rate
-    */
+   * Get regularization rate
+   * @returns Regularization rate
+   */
   double get_epsilon() const;
 
   /**
-    * Get size of each minibatch
-    * @returns minibatch size
-    */
+   * Get size of each minibatch
+   * @returns minibatch size
+   */
   uint64_t get_minibatch_size() const;
 
   /**
-    * Get size of each object in S3
-    * @returns s3 object size
-    */
+   * Get size of each object in S3
+   * @returns s3 object size
+   */
   uint64_t get_s3_size() const;
 
   /**
-    * Get number of classes in the dataset
-    * @returns Number of sample classes
-    */
+   * Get number of classes in the dataset
+   * @returns Number of sample classes
+   */
   uint64_t get_num_classes() const;
 
   /**
-    * Get path to the input file
-    */
+   * Get path to the input file
+   */
   std::string get_input_path() const;
 
   /**
-    * Get maximum value of features used by the system
-    * When set, the system only reads the first X features from the input
+   * Get maximum value of features used by the system
+   * When set, the system only reads the first X features from the input
    * datasets
-    * @params returns the max number of features to use
-    */
+   * @params returns the max number of features to use
+   */
   uint64_t get_limit_cols() const;
 
   /**
-    * Get the path to the file with the samples data
-    */
+   * Get the path to the file with the samples data
+   */
   std::string get_samples_path() const;
 
   /**
-    * Get the path to the file with the labels data
-    */
+   * Get the path to the file with the labels data
+   */
   std::string get_labels_path() const;
 
   /**
-    * Get the type of input file used
-    */
+   * Get the type of input file used
+   */
   std::string get_input_type() const;
 
   /**
-    * print the configuration parameters
-    */
+   * print the configuration parameters
+   */
   void print() const;
 
   enum ModelType {
@@ -87,23 +87,23 @@ class Configuration {
   };
 
   /**
-    * Get the type of model used by the system
-    */
+   * Get the type of model used by the system
+   */
   ModelType get_model_type() const;
 
   /**
-    * Return flag indicating whether to normalize the dataset
-    */
+   * Return flag indicating whether to normalize the dataset
+   */
   bool get_normalize() const;
 
   /**
-    * Get max number of training samples
-    */
+   * Get max number of training samples
+   */
   uint64_t get_limit_samples() const;
 
   /**
-    * Get max number of training samples
-    */
+   * Get max number of training samples
+   */
   uint64_t get_num_features() const;
 
   std::string get_s3_bucket() const;
@@ -122,15 +122,15 @@ class Configuration {
   uint64_t get_model_bits() const;
 
   /**
-    * Model checkpointing
-    */
+   * Model checkpointing
+   */
   uint64_t get_checkpoint_frequency() const;
   std::string get_checkpoint_s3_bucket() const;
   std::string get_checkpoint_s3_keyname() const;
 
   /**
-    * Netflix specific
-    */
+   * Netflix specific
+   */
   int get_users() const;
   int get_items() const;
 
@@ -141,9 +141,9 @@ class Configuration {
 
  public:
   /**
-    * Parse a specific line in the config file
-    * @param line Configuration line
-    */
+   * Parse a specific line in the config file
+   * @param line Configuration line
+   */
   void parse_line(const std::string& line);
 
   uint64_t n = 0;          //< number of samples

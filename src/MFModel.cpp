@@ -1,9 +1,9 @@
 #include <Checksum.h>
-#include <Eigen/Dense>
 #include <MFModel.h>
 #include <MlUtils.h>
 #include <ModelGradient.h>
 #include <Utils.h>
+#include <Eigen/Dense>
 #include <algorithm>
 
 #define DEBUG
@@ -400,8 +400,8 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset,
       //#endif
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") +
-                            std::to_string(rating) + " prediction: " +
-                            std::to_string(prediction);
+                            std::to_string(rating) +
+                            " prediction: " + std::to_string(prediction);
         throw std::runtime_error(error);
       }
       count++;

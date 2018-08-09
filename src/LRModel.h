@@ -17,16 +17,16 @@ namespace cirrus {
 class LRModel : public CirrusModel {
  public:
   /**
-    * LRModel constructor
-    * @param d Features dimension
-    */
+   * LRModel constructor
+   * @param d Features dimension
+   */
   explicit LRModel(uint64_t d);
 
   /**
-    * LRModel constructor from weight vector
-    * @param w Array of model weights
-    * @param d Features dimension
-    */
+   * LRModel constructor from weight vector
+   * @param w Array of model weights
+   * @param d Features dimension
+   */
   LRModel(const FEATURE_TYPE* w, uint64_t d);
 
   /**
@@ -41,14 +41,14 @@ class LRModel : public CirrusModel {
   void loadSerialized(const void* mem) override;
 
   /**
-    * serializes this model into memory
-    * @return pair of memory pointer and size of serialized model
-    */
+   * serializes this model into memory
+   * @return pair of memory pointer and size of serialized model
+   */
   std::pair<std::unique_ptr<char[]>, uint64_t> serialize() const override;
 
   /**
-    * serializes this model into memory pointed by mem
-    */
+   * serializes this model into memory pointed by mem
+   */
   void serializeTo(void* mem) const;
 
   /**
@@ -104,33 +104,33 @@ class LRModel : public CirrusModel {
   uint64_t getSerializedGradientSize() const override;
 
   /**
-    * Builds a gradient that is stored serialized
-    * @param mem Memory address where the gradient is serialized
-    * @return Pointer to new gradient object
-    */
+   * Builds a gradient that is stored serialized
+   * @param mem Memory address where the gradient is serialized
+   * @return Pointer to new gradient object
+   */
   std::unique_ptr<ModelGradient> loadGradient(void* mem) const override;
 
   /**
-    * Compute checksum of the model
-    * @return Checksum of the model
-    */
+   * Compute checksum of the model
+   * @return Checksum of the model
+   */
   double checksum() const override;
 
   /**
-    * Print the model's weights
-    */
+   * Print the model's weights
+   */
   void print() const;
 
   /**
-    * Return model size (should match sample size)
-    * @return Size of the model
-    */
+   * Return model size (should match sample size)
+   * @return Size of the model
+   */
   uint64_t size() const;
 
  private:
   /**
-    * Check whether value n is an integer
-    */
+   * Check whether value n is an integer
+   */
   bool is_integer(FEATURE_TYPE n) const;
 
   std::vector<FEATURE_TYPE> weights_;  //< vector of the model weights

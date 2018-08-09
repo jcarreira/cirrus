@@ -1,8 +1,8 @@
 #ifndef _MODELGRADIENT_H_
 #define _MODELGRADIENT_H_
 
-#include <cassert>
 #include <config.h>
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <unordered_map>

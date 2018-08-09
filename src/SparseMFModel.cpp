@@ -1,9 +1,9 @@
 #include <Checksum.h>
-#include <Eigen/Dense>
 #include <MlUtils.h>
 #include <ModelGradient.h>
 #include <SparseMFModel.h>
 #include <Utils.h>
+#include <Eigen/Dense>
 #include <algorithm>
 
 #define DEBUG

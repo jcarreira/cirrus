@@ -3,8 +3,8 @@
 #include <Utils.h>
 #include <config.h>
 
-#include <cstdint>
 #include <stdlib.h>
+#include <cstdint>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -59,8 +59,8 @@ void run_tasks(int rank,
       exit(-1);
     }
     /**
-      * SPARSE tasks
-      */
+     * SPARSE tasks
+     */
   } else if (rank == ERROR_SPARSE_TASK_RANK) {
     cirrus::ErrorSparseTask et((1 << config.get_model_bits()), batch_size,
                                samples_per_batch, features_per_sample, nworkers,

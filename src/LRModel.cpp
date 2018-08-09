@@ -1,8 +1,8 @@
 #include <Checksum.h>
-#include <Eigen/Dense>
 #include <LRModel.h>
 #include <MlUtils.h>
 #include <Utils.h>
+#include <Eigen/Dense>
 #include <algorithm>
 
 namespace cirrus {

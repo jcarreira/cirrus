@@ -142,8 +142,8 @@ class PSSparseTask : public MLTask {
   void publish_model_redis();
 
 /**
-  * Attributes
-  */
+ * Attributes
+ */
 #if defined(USE_REDIS)
   std::vector<unsigned int> gradientVersions;
 #endif

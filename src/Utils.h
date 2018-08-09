@@ -1,15 +1,15 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-#include "flatbuffers/flatbuffers.h"
+#include <sys/time.h>
+#include <unistd.h>
 #include <cfloat>
 #include <fstream>
 #include <iostream>
 #include <random>
 #include <sstream>
 #include <string>
-#include <sys/time.h>
-#include <unistd.h>
+#include "flatbuffers/flatbuffers.h"
 
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
             __builtin_clzll((X)) - 1)

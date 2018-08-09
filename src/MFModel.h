@@ -19,10 +19,10 @@ namespace cirrus {
 class MFModel : public CirrusModel {
  public:
   /**
-    * MFModel constructor from weight vector
-    * @param w Array of model weights
-    * @param d Features dimension
-    */
+   * MFModel constructor from weight vector
+   * @param w Array of model weights
+   * @param d Features dimension
+   */
   MFModel(const void*, uint64_t, uint64_t, uint64_t);
   MFModel(uint64_t users, uint64_t items, uint64_t factors);
 
@@ -38,14 +38,14 @@ class MFModel : public CirrusModel {
   void loadSerialized(const void* mem);
 
   /**
-    * serializes this model into memory
-    * @return pair of memory pointer and size of serialized model
-    */
+   * serializes this model into memory
+   * @return pair of memory pointer and size of serialized model
+   */
   std::pair<std::unique_ptr<char[]>, uint64_t> serialize() const;
 
   /**
-    * serializes this model into memory pointed by mem
-    */
+   * serializes this model into memory pointed by mem
+   */
   void serializeTo(void* mem) const;
 
   /**
@@ -115,27 +115,27 @@ class MFModel : public CirrusModel {
   uint64_t getSerializedGradientSize() const;
 
   /**
-    * Builds a gradient that is stored serialized
-    * @param mem Memory address where the gradient is serialized
-    * @return Pointer to new gradient object
-    */
+   * Builds a gradient that is stored serialized
+   * @param mem Memory address where the gradient is serialized
+   * @return Pointer to new gradient object
+   */
   std::unique_ptr<ModelGradient> loadGradient(void* mem) const;
 
   /**
-    * Compute checksum of the model
-    * @return Checksum of the model
-    */
+   * Compute checksum of the model
+   * @return Checksum of the model
+   */
   double checksum() const;
 
   /**
-    * Print the model's weights
-    */
+   * Print the model's weights
+   */
   void print() const;
 
   /**
-    * Return model size (should match sample size)
-    * @return Size of the model
-    */
+   * Return model size (should match sample size)
+   * @return Size of the model
+   */
   uint64_t size() const;
 
  private:

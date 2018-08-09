@@ -1,6 +1,16 @@
 #ifndef PS_SPARSE_SERVER_INTERFACE_H_
 #define PS_SPARSE_SERVER_INTERFACE_H_
 
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cstring>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
 #include "Model.h"
 #include "ModelGradient.h"
 #include "SparseLRModel.h"
@@ -8,16 +18,6 @@
 #include "Utils.h"
 #include "common/schemas/PSMessage_generated.h"
 #include "common/schemas/WorkerMessage_generated.h"
-#include <arpa/inet.h>
-#include <cstring>
-#include <iostream>
-#include <memory>
-#include <netinet/tcp.h>
-#include <poll.h>
-#include <stdexcept>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 namespace cirrus {
 

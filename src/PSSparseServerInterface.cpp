@@ -1,12 +1,12 @@
 #include "PSSparseServerInterface.h"
+#include <cassert>
+#include <stdexcept>
 #include "Checksum.h"
 #include "Constants.h"
 #include "Constants.h"
 #include "MFModel.h"
 #include "common/schemas/PSMessage_generated.h"
 #include "common/schemas/WorkerMessage_generated.h"
-#include <cassert>
-#include <stdexcept>
 
 //#define DEBUG
 
@@ -144,7 +144,7 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     // TODO: Maybe split up into two separate functions, or take ModelType enum
     // in this
     // and other functions.
-    ) {
+) {
 #ifdef DEBUG
   std::cout << "Getting full model isCollaborative: " << isCollaborative
             << std::endl;
