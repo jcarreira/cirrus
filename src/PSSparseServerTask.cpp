@@ -388,7 +388,7 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_TaskRequest: {
-      // std::cout << "TaskRequest received\n";
+    // std::cout << "TaskRequest received\n";
 #ifdef DEBUG
       std::cout << "Get status task id: " << task_id << std::endl;
 #endif
