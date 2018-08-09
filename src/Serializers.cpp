@@ -15,8 +15,8 @@ LRModel lr_model_deserializer::operator()(const void* data,
   if (des_size != model.getSerializedSize()) {
     throw std::runtime_error(
         std::string("Wrong deserializer size at lr_model_deserializer") +
-        " Expected: " + std::to_string(model.getSerializedSize()) + " Got: " +
-        std::to_string(des_size));
+        " Expected: " + std::to_string(model.getSerializedSize()) +
+        " Got: " + std::to_string(des_size));
   }
   model.loadSerialized(data);
 

@@ -9,8 +9,8 @@ namespace cirrus {
 float s_1_float(float x) {
   float res = 1.0 / (1.0 + exp(-x));
   if (std::isnan(res) || std::isinf(res)) {
-    throw std::runtime_error(std::string(
-        "s_1_float generated nan/inf x: " + std::to_string(x) +
+    throw std::runtime_error(
+        std::string("s_1_float generated nan/inf x: " + std::to_string(x) +
                     " res: " + std::to_string(res)));
   }
 

@@ -1,12 +1,12 @@
-#include <iostream>
 #include <stdio.h>
+#include <iostream>
 
 extern "C" {
 
-#include "Redis.h"
 #include <assert.h>
 #include <string.h>
-
+#include "Redis.h"
+  
 #undef REDIS_DEBUG
 
 static char cmd[10000];
