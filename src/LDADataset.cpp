@@ -3,7 +3,7 @@
 #include <string.h>
 #include <Utils.h>
 
-#define MAX_MSG_SIZE (1024 * 1024 * 100)
+// #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
 namespace cirrus {
 LDADataset::LDADataset() {}
@@ -87,7 +87,7 @@ void LDADataset::get_some_docs(
 }
 
 char* LDADataset::serialize() {
-  char* msg = new char[MAX_MSG_SIZE];
+  char* msg = new char[get_serialize_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
   uint32_t D = 0, N = 0, V_letter = 0, V_word = 0;

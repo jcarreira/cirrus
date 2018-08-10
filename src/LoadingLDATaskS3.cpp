@@ -28,12 +28,12 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   std::vector<std::vector<int>> ndt;
   std::set<int> local_vocab;
 
-  std::map<int, int> vocab_map;
-  int idx = 0;
-  for (int i : global_vocab) {
-    vocab_map.insert(std::make_pair(i, idx));
-    ++idx;
-  }
+  // std::map<int, int> vocab_map;
+  // int idx = 0;
+  // for (int i : global_vocab) {
+  //   vocab_map.insert(std::make_pair(i, idx));
+  //   ++idx;
+  // }
 
   for (const auto& doc : docs) {
     std::vector<int> ndt_row(K);
@@ -44,18 +44,19 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         local_vocab.insert(local_vocab.begin(), gindex);
       if (global_vocab.find(gindex) == global_vocab.end()){
         global_vocab.insert(global_vocab.begin(), gindex);
-        vocab_map.insert(std::make_pair(gindex, idx));
-        ++idx;
+        // vocab_map.insert(std::make_pair(gindex, idx));
+        // ++idx;
       }
       for (int i = 0; i < count; ++i) {
         int top = rand() % K;
 
         t.push_back(top);
         d.push_back(ndt.size());
-        w.push_back(vocab_map[gindex]);
+        // w.push_back(vocab_map[gindex]);
+        w.push_back(gindex-1);
         ++ndt_row[top];
 
-        nvt[gindex * K + top] += 1;
+        nvt[(gindex - 1) * K + top] += 1;
         nt[top] += 1;
       }
     }

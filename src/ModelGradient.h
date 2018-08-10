@@ -208,6 +208,7 @@ class LDAUpdates {
              int to_update);
   LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
   LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
+  LDAUpdates(int to_update);
 
   LDAUpdates& operator=(LDAUpdates&& other);
 

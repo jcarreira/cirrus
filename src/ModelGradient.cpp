@@ -451,6 +451,12 @@ LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
                        int to_update)
     : change_nvt(nvt), change_nt(nt), slice(s), update_bucket(to_update) {}
 
+LDAUpdates::LDAUpdates(int to_update) : update_bucket(to_update) {
+  slice.clear();
+  change_nvt.clear();
+  change_nt.clear();
+}
+
 LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
   change_nvt.resize(nvt_dim);
   change_nt.resize(nt_dim);
@@ -613,7 +619,6 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
 
   to_send_size = sizeof(uint32_t) * (1 + partial_nvt.size() + change_nt.size());
 
-  // char* mem = new char[1024*1024*100];
   char* mem = new char[to_send_size];
   char* mem_begin = mem;
 

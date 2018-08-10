@@ -18,7 +18,6 @@ void LDATaskS3::push_gradient(LDAUpdates* gradient) {
   std::cout << "Publishing gradients" << std::endl;
 #endif
   psint->send_lda_update(*gradient);
-// lda_model_get->send_lda_update(gradient);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -80,6 +79,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             << "num s3 batches: " << num_s3_batches << std::endl;
   wait_for_start(worker, nworkers);
 
+
+  // pre-assign the documents for workers
   auto train_range = config.get_train_range();
   int range_per_worker =
       (train_range.second - train_range.first + 1) / nworkers;
@@ -88,7 +89,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   if (end > train_range.second) {
     end = train_range.second;
   }
-
 
   int cur_train_idx = start;
 
@@ -102,6 +102,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   auto start_time = get_time_ms();
   std::shared_ptr<LDAStatistics> s3_local_vars;
 
+  // Load the first LDAStatistics from S3
   s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
@@ -113,7 +114,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   delete s3_obj;
   s3_shutdown_aws();
 
-  int update_bucket = 0, stuck = 1;
+  // used to inform server which bucket's ll needs to be updated
+  int update_bucket = 0;
 
   while (1) {
 
@@ -122,6 +124,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 #endif
     std::unique_ptr<LDAStatistics> local_vars;
 
+    // If current LDAStatistics has been finished,
+    // store the updated LDAStatistics back to S3
+    // and need to inform server to update the corresponding ll
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
       char* mem = s3_local_vars->serialize();
@@ -135,17 +140,26 @@ void LDATaskS3::run(const Configuration& config, int worker) {
                       s3_local_vars->get_serialize_size()));
 
       delete[] mem;
+      update_bucket = cur_train_idx;
 
+      // The early exit is added in case that
+      // worker expires even if it hasn't stored the
+      // updated LDAStatistics to S3
       auto elapsed_ms = get_time_ms() - start_time;
       float elapsed_sec = elapsed_ms / 1000.0;
+      // 20 seconds before lambda times out
       if (elapsed_sec > (lambda_time_out - 20.0)) {
+        // If there's a bucket that gets updated,
+        // send an empty LDAUpdates with only the bucket id
+        if (update_bucket != 0) {
+          auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
+          push_gradient(bucket_update.get());
+        }
         std::cout << "successfully exit\n";
         break;
       }
 
-
-      update_bucket = cur_train_idx;
-
+      // Get the next LDAStatistics from S3
       cur_train_idx += 1;
       if (cur_train_idx == end) {
         cur_train_idx = start;
@@ -171,16 +185,13 @@ void LDATaskS3::run(const Configuration& config, int worker) {
               << std::endl;
     auto now = get_time_us();
 #endif
-    // compute mini batch gradient
     std::unique_ptr<LDAUpdates> gradient;
 
     // we get the model subset with just the right amount of weights
-    // TODO can be improved
     psint->get_lda_model(*local_vars, update_bucket, model);
-    // psint->get_lda_model(*local_vars, update_bucket, model);
-    // if (stuck == -1)
-    //   continue;
 
+    // if update_bucket is not 0,
+    // then the bucket id has been sent to server in the above step
     if (update_bucket != 0) {
       update_bucket = 0;
     }

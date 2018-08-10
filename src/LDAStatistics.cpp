@@ -4,7 +4,7 @@
 #include <Utils.h>
 #include <LDAStatistics.h>
 
-#define MAX_MSG_SIZE (1024 * 1024 * 100)
+// #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
 namespace cirrus {
 LDAStatistics::LDAStatistics() {}
@@ -96,8 +96,6 @@ char* LDAStatistics::serialize() {
     store_value<int>(msg, v);
   }
 
-  // ndt should be sparse
-  // TODO: can be improved
   store_value<int>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
     // store_value<int>(msg, nt_di.size());
@@ -191,8 +189,8 @@ void LDAStatistics::store_new_stats(LDAModel& model) {
 
   ndt_.clear();
   t_.clear();
-  ndt_ = model.ndt;
-  t_ = model.t;
+  model.get_ndt(ndt_);
+  model.get_t(t_);
 
   current += slice_size;
 }

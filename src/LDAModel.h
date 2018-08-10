@@ -34,6 +34,7 @@ class LDAModel {
 
   void get_ndt(std::vector<std::vector<int>>& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
+  void get_t(std::vector<int>& t_) { t_ = t; }
 
   std::unique_ptr<LDAUpdates> sample_thread(std::vector<int>& t,
                                             std::vector<int>& d,
@@ -42,6 +43,7 @@ class LDAModel {
                                             std::vector<std::vector<int>>& nvt,
                                             std::vector<std::vector<int>>& ndt,
                                             std::vector<int>& slice);
+private:
   /**
     * K_: number of topics
     * V_: number of words

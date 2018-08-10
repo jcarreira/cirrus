@@ -14,7 +14,7 @@
 #include <gamma.h>
 #include <LDAModel.h>
 
-#define MAX_MSG_SIZE (1024 * 1024 * 100)
+// #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
 namespace cirrus {
 

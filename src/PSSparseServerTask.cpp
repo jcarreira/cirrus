@@ -153,7 +153,6 @@ bool PSSparseServerTask::process_send_lda_update(
   // std::cout  << "1111111\n";
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-      std::cout << "qqqqqqqqqqqq\n";
       return false;
     }
   } catch (...) {
@@ -171,8 +170,6 @@ bool PSSparseServerTask::process_send_lda_update(
   model_lock.lock();
   // std::cout  << "1111111\n";
   int update_bucket = lda_global_vars->update(gradient, vocabs_to_update);
-
-
 
   update_nvt_nt(vocabs_to_update);
   if(update_bucket != 0){
@@ -418,6 +415,10 @@ void PSSparseServerTask::gradient_f() {
         registered_tasks.insert(task_id);
       }
       send_all(sock, &task_reg, sizeof(uint32_t));
+
+      if (task_reg == 1){
+        num_connections -= 1;
+      }
       continue;
     } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
                operation == GET_LR_SPARSE_MODEL ||
@@ -599,7 +600,7 @@ void PSSparseServerTask::start_server() {
     // init_ll_thread->join();
     // compute_ll_thread->join();
     init_loglikelihood();
-    // compute_loglikelihood();
+    compute_loglikelihood();
     // compute_loglikelihood_orig();
 
     std::cout << "Finished getting initial statistics.\n";
@@ -689,6 +690,8 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
 }
 
 void PSSparseServerTask::loop(int poll_id) {
+
+  std::cout << poll_id << " *****\n";
   struct sockaddr_in cli_addr;
   socklen_t clilen = sizeof(cli_addr);
 
@@ -726,11 +729,11 @@ void PSSparseServerTask::loop(int poll_id) {
           if (curr_fd.revents & POLLHUP) {
             std::cout << "PS closing connection " << num_connections
                       << std::endl;
-            num_connections--;
             close(curr_fd.fd);
             curr_fd.fd = -1;
           }
         } else if (poll_id == 0 && curr_fd.fd == server_sock_) {
+          std::cout << poll_id << std::endl;
           std::cout << "PS new connection!" << std::endl;
           int newsock = accept(server_sock_,
               reinterpret_cast<struct sockaddr*> (&cli_addr),
@@ -749,6 +752,7 @@ void PSSparseServerTask::loop(int poll_id) {
             throw std::runtime_error("We reached capacity");
             close(newsock);
           } else if (poll_id == 0) {
+
             int r = rand() % NUM_POLL_THREADS;
             std::cout << "Random: " << r << std::endl;
             fdses[r][curr_indexes[r]].fd = newsock;
@@ -855,17 +859,16 @@ void PSSparseServerTask::run(const Configuration& config) {
         << std::endl;
       gradientUpdatesCount = 0;
       if ((int) since_start_sec % 5 == 0) {
+
         // auto compute_ll_thread = std::make_unique<std::thread>(
         //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
         // compute_ll_thread->join();
-        model_lock.lock();
-        double ll = compute_loglikelihood();
 
-        std::ofstream ll_file;
-        ll_file.open ("ll.txt");
-        ll_file << ll << std::endl;
-        ll_file.close();
+        model_lock.lock();
+
+        compute_loglikelihood();
         // compute_loglikelihood_orig();
+
         model_lock.unlock();
       }
     }
@@ -1109,18 +1112,6 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
     int gindex = lda_global_vars->slice_map[vocabs_to_update[i]];
     ll_nvt[gindex] = 0.0;
   }
-
-  // ll_nvt.clear();
-  // ll_nvt.resize(V);
-  // for (int i = 0; i < K; ++i) {
-  //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-  //   for (int v = 0; v < V; ++v) {
-  //     if (nvt[v * K + i] > 0) {
-  //       ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-  //     }
-  //   }
-  // }
-
 
   for (int i = 0; i < K; ++i) {
     ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
