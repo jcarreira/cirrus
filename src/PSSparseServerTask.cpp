@@ -998,7 +998,6 @@ void PSSparseServerTask::init_loglikelihood(){
 
   K = nt.size();
   V = nvt.size() / K;
-
   lgamma_eta = lda_lgamma(eta);
   lgamma_alpha = lda_lgamma(alpha);
 
@@ -1016,7 +1015,6 @@ void PSSparseServerTask::init_loglikelihood(){
       }
     }
   }
-
   s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
@@ -1026,7 +1024,6 @@ void PSSparseServerTask::init_loglikelihood(){
 
   // int i = train_range.first;
   // double ll_temp = 0.0;
-
   for (int i = train_range.first; i < train_range.second; ++i) {
     std::string obj_id_str =
         std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
@@ -1053,7 +1050,6 @@ void PSSparseServerTask::init_loglikelihood(){
       // ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
     }
   }
-
   s3_shutdown_aws();
 
   // ll_ndt.clear();

@@ -17,38 +17,32 @@ LDADataset::LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
 
 LDADataset::LDADataset(const char* msg_begin) {
   std::vector<std::pair<int, int> > doc;
-  const int* D = reinterpret_cast<const int*>(msg_begin);
-  msg_begin = reinterpret_cast<const char*>(
-      reinterpret_cast<const char*>(msg_begin) + sizeof(int));
+  doc.clear();
 
-  std::cout << "# of documents: " << *D << std::endl;
-  for (int i = 0; i < *D; ++i) {
-    const int* N = reinterpret_cast<const int*>(msg_begin);
-    msg_begin = reinterpret_cast<const char*>(
-        reinterpret_cast<const char*>(msg_begin) + sizeof(int));
-    for (int j = 0; j < *N; ++j) {
-      const int* word = reinterpret_cast<const int*>(msg_begin);
-      msg_begin = reinterpret_cast<const char*>(
-          reinterpret_cast<const char*>(msg_begin) + sizeof(int));
-      const int* count = reinterpret_cast<const int*>(msg_begin);
-      msg_begin = reinterpret_cast<const char*>(
-          reinterpret_cast<const char*>(msg_begin) + sizeof(int));
-      doc.push_back(std::make_pair(*word, *count));
+  int D = load_value<int>(msg_begin);
+  docs_.clear();
+  docs_.reserve(D);
+
+  std::cout << "# of documents: " << D << std::endl;
+  for (int i = 0; i < D; ++i) {
+    int N = load_value<int>(msg_begin);
+    doc.reserve(N);
+    for (int j = 0; j < N; ++j) {
+      int word = load_value<int>(msg_begin);
+      int count = load_value<int>(msg_begin);
+      doc.push_back(std::make_pair(word, count));
     }
     docs_.push_back(doc);
     doc.clear();
   }
+
   std::string vocab;
-  const int* V = reinterpret_cast<const int*>(msg_begin);
-  msg_begin = reinterpret_cast<const char*>(
-      reinterpret_cast<const char*>(msg_begin) + sizeof(int));
-  for (int i = 0; i < *V; ++i) {
-    const int* len = reinterpret_cast<const int*>(msg_begin);
+  int V = load_value<int>(msg_begin);
+  for (int i = 0; i < V; ++i) {
+    int len = load_value<int>(msg_begin);
+    vocabs_.push_back(std::string(msg_begin, msg_begin + len));
     msg_begin = reinterpret_cast<const char*>(
-        reinterpret_cast<const char*>(msg_begin) + sizeof(int));
-    vocabs_.push_back(std::string(msg_begin, msg_begin + *len));
-    msg_begin = reinterpret_cast<const char*>(
-        reinterpret_cast<const char*>(msg_begin) + *len);
+        reinterpret_cast<const char*>(msg_begin) + len);
   }
   sample_size = (docs_.size()) / 100;
 }
@@ -73,6 +67,7 @@ void LDADataset::check() const {
 
 void LDADataset::get_some_docs(
     std::vector<std::vector<std::pair<int, int> > >& docs) {
+  docs.clear();
   if (docs_.size() > sample_size)
     docs.resize(sample_size);
   else
@@ -113,12 +108,15 @@ char* LDADataset::serialize() {
     V_letter += strlen(a);
   }
 
-  serialize_size =
-      (2 * N + D + V_word + 2) * sizeof(int) + V_letter * sizeof(char);
+  serialize_size = (2 * N + D + 1) * sizeof(int) + // size of the corpus -> 1, size for each documents -> D, (word_idx, count) pairs for each entries -> 2 * N
+                  (V_word + 1) * sizeof(int) +  // vocab space dimension -> 1, length for each string -> V_word
+                  V_letter * sizeof(char); // total length for all words -> V_letter
   return msg_begin;
 }
 
 int LDADataset::get_serialize_size() {
+  // if the value has already been computed before,
+  // simply return it since it should remain the same
   if (serialize_size) {
     return serialize_size;
   }
@@ -129,9 +127,10 @@ int LDADataset::get_serialize_size() {
     }
   }
   for (const auto& vocab : vocabs_) {
-    V_letter += strlen(vocab.c_str());
+    V_letter += vocab.size();
   }
-  serialize_size = (2 * N + D + V + 2) * sizeof(int) + V_letter * sizeof(char);
+  serialize_size = (2 * N + D + V + 2) * sizeof(int) +
+                      V_letter * sizeof(char);
   return serialize_size;
 }
 }

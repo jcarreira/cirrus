@@ -7,6 +7,7 @@ import time
 import os
 import boto3
 from threading import Thread
+import time
 
 class LDATask:
     def __init__(self,
@@ -58,6 +59,8 @@ class LDATask:
         self.threshold_loss=threshold_loss
         self.progress_callback=progress_callback
 
+        self.ll = []
+
         # XXX: added for LDA
         self.K = 20
         self.slice_size = 500
@@ -101,13 +104,15 @@ class LDATask:
 
         cmd = 'ssh -o "StrictHostKeyChecking no" -i %s %s@%s ' \
                 % (self.key_path, self.ps_username, self.ps_ip_public) + \
-		'"nohup ./parameter_server --config config_lda.txt --nworkers 1 --rank 1 &> ps_output &"'
+		'"nohup ./parameter_server --config config_lda.txt --nworkers %i --rank 1 &> ps_output &"' \
+        % (self.n_workers)
         print("cmd:", cmd)
         client.exec_command("killall parameter_server")
         os.system(cmd)
         time.sleep(2)
 
     def fetch_num_lambdas(self):
+
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -116,13 +121,17 @@ class LDATask:
         remote_file = sftp_client.open('ps_output')
 
         num_connections = 0
+        found_latest_ll = False
         try:
             for line in remote_file:
                 if "conns: " in line:
                     s = line.split(" ")
                     num_connections = int(s[10])
-                if "loglikelihood" in line:
-                    print(line)
+                if "loglikelihood" in line and not found_latest_ll:
+                    if line not in self.ll:
+                        self.ll.append(line)
+                        print(line)
+
         finally:
             remote_file.close()
 
@@ -134,7 +143,11 @@ class LDATask:
         print "Launching lambdas"
         client = boto3.client('lambda', region_name='us-west-2')
         start_time = time.time()
+
         def launch():
+
+            num_task = 5
+            task_id = 1
 
             # if 0 run indefinitely
             while (timeout == 0) or (time.time() - start_time < timeout):
@@ -146,84 +159,41 @@ class LDATask:
 
                 # TODO: Make this grab the number of lambdas from PS log
                 num_lambdas = self.fetch_num_lambdas();
-                print "PS has %d lambdas" % num_lambdas
+                # print "PS has %d lambdas" % num_lambdas
                 # FIXME: Rename num_workers
-                num_task = 5
-                task_id = 1
 
-                if num_lambdas < num_workers:
+                # for lda, #conns = 2 * the actual # of connection somehow
+                if num_lambdas / 2 < num_workers:
                     # Launch more lambdas
 
                     payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port" : %d, "task_id": %d}' \
                                 % (num_task, num_workers, self.ps_ip_private, 1337, task_id)
                     task_id += 1
+                    num_task += 1
                     print "payload:", payload
 
                     try:
                         response = client.invoke(
                             #FunctionName="testfunc1",
                             FunctionName="jeff-lambda",
-                            InvocationType='RequestResponse',
+                            InvocationType='Event',
                             LogType='Tail',
                             Payload=payload)
                     except:
                         print "client.invoke exception caught"
 
         # def error_task():
-        #     print "Starting error task"
-        #     cmd = 'ssh -o "StrictHostKeyChecking no" -i %s %s@%s ' \
-        #             % (self.key_path, self.ps_username, self.ps_ip_public) + \
-    	# 	  '"./parameter_server --config config_lda.txt --nworkers 10 --rank 2 --ps_ip \"%s\"" > error_out &' \
-        #           % self.ps_ip_private
-        #     print('cmd', cmd)
-        #     os.system(cmd)
         #
-        #     while True:
-        #         try:
-        #             file = open('error_out')
-        #             break
-        #         except Exception, e:
-        #             print "Waiting for error task to start"
-        #             time.sleep(2)
+        #     key = paramiko.RSAKey.from_private_key_file(self.key_path)
+        #     ssh_client = paramiko.SSHClient()
+        #     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        #     ssh_client.connect(hostname=self.ps_ip_public, username=self.ps_username, pkey=key)
+        #     sftp_client = ssh_client.open_sftp()
+        #     remote_file = sftp_client.open('ps_output')
         #
-        #
-        #     def tail(file):
-        #         file.seek(0, 2)
-        #         while not file.closed:
-        #             line = file.readline()
-        #             if not line:
-        #                 time.sleep(2)
-        #                 continue
-        #             if self.kill_signal.is_set():
-        #                 yield "END"
-        #             yield line
-        #
-        #     start_time = time.time()
-        #     cost_model = CostModel(
-        #             'm5.large',
-        #             self.n_ps,
-        #             0,
-        #             num_workers,
-        #             self.worker_size)
-        #
-        #     for line in tail(file):
-        #         if "Loss" in line:
-        #             s = line.split(" ")
-        #             loss = s[3].split("/")[1]
-        #             t = s[-1][:-2] # get time and get rid of newline
-        #
-        #             elapsed_time = time.time() - start_time
-        #             self.progress_callback((float(t), float(loss)), \
-        #                     cost_model.get_cost(elapsed_time), \
-        #                     "task1")
-        #
-        #             if self.timeout > 0 and float(t) > self.timeout:
-        #                 print("error is timing out")
-        #                 return
-        #         elif "END" in line:
-        #             print("Error task has received kill signal")
-        #             return
-
+        #     for line in remote_file:
+        #         if "loglikelihood" in line and line not in self.ll:
+        #             self.ll.append(line)
 
 
         self.lambda_launcher = Thread(target=launch)
@@ -235,6 +205,9 @@ class LDATask:
         print "Lambdas have been launched"
 
     def run(self):
+
+        start_time = time.time()
+
         if self.ps_ip_public == "" or self.ps_ip_private == "":
             print "Creating a spot VM"
             # create vm manager
@@ -258,6 +231,12 @@ class LDATask:
         self.launch_ps(self.ps_ip_public)
         self.kill_signal = threading.Event()
         self.launch_lambda(self.n_workers, self.timeout)
+
+        while time.time() - start_time < 3 * 60:
+            continue
+
+        self.manage_ll()
+        self.kill()
 
     def kill(self):
         self.kill_signal.set()
@@ -292,6 +271,16 @@ class LDATask:
         stdin, stdout, stderr = client.exec_command('cat config_lda.txt')
         print stdout.read()
         client.close()
+
+    def manage_ll(self):
+
+        ll_temp = []
+        for line in self.ll:
+            s = line.split(" ")
+            ll_temp.append(float(s[1]))
+            print ll_temp[-1]
+        self.ll = ll_temp
+
 
 def dataset_handle(path, format):
     print "path: ", path, " format: ", format

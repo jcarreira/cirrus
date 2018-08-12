@@ -112,7 +112,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
   s3_local_vars->set_slice_size(config.get_slice_size());
   delete s3_obj;
-  s3_shutdown_aws();
+  // s3_shutdown_aws();
 
   // used to inform server which bucket's ll needs to be updated
   int update_bucket = 0;
@@ -130,9 +130,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
       char* mem = s3_local_vars->serialize();
-
-      s3_initialize_aws();
-      std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
       s3_client->s3_put_object(
           obj_id_str, config.get_s3_bucket(),
@@ -175,7 +172,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       s3_local_vars->set_slice_size(config.get_slice_size());
 
       delete s3_obj;
-      s3_shutdown_aws();
+      // s3_shutdown_aws();
 
       continue;
     }
@@ -246,6 +243,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       }
     }
   }
+  s3_shutdown_aws();
 }
 
 }  // namespace cirrus

@@ -88,7 +88,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
             << " bucket: " << config.get_s3_bucket() << std::endl;
 
   std::vector<int> nvt, nt;
-  std::vector<std::vector<std::pair<int, int>>> partial_docs;
   nvt.resize(dataset.num_vocabs() * K);
   nt.resize(K);
 
@@ -99,6 +98,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
     // Only get corpus of size s3_obj_num_samples
+    std::vector<std::vector<std::pair<int, int>>> partial_docs;
     dataset.get_some_docs(partial_docs);
     LDAStatistics to_save =
         count_dataset(partial_docs, nvt, nt, K, global_vocab);

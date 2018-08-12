@@ -60,13 +60,6 @@ class LDAStatistics {
     */
   int get_num_docs() const { return ndt_.size(); }
   /**
-    * @param minibatch_size
-    *
-    * Return partial LDAStatistics corresponding to minibatch_size
-    * number of documents stored in this LDAStatistics
-    */
-  // char* pop_partial_docs(int minibatch_size);
-  /**
     * @param s
     *
     * Set the slice_size to s
@@ -86,6 +79,17 @@ class LDAStatistics {
   void reset_current() { current = 0; }
 
  private:
+   /**
+     *
+     * @variable K_: # of potential topics
+     * @variable ndt_: the statistics of word counts over documents and topics
+     *           size: D * K where D is the size of local corpus
+     * @variable t_: the current assigned latent topics for each words in the corpus
+     *           d_: the document id for each words in the corpus
+     *           w_: the global word id for each words in the corpus
+     *           size: # of words in the local corpus
+     * @variable slice_: the local vocabulary space
+     */
   int K_, slice_size = 1000, current = 0;
   std::vector<std::vector<int> > ndt_;
   std::vector<int> slice_, t_, d_, w_;

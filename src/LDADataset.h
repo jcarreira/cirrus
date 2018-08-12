@@ -17,6 +17,8 @@ class LDADataset {
   /**
    * Construct a dataset from a vector of documents
    * and a vector of vocabularies.
+   * @ param docs: vector of pairs (word index, counts)
+   * @ param vocabs: a vector of string
    */
   LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
              std::vector<std::string> vocabs);

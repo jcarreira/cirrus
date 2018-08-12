@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
-#include <map>
+#include <unordered_map>
 #include <ctime>
 #include <math.h>
 #include <set>
@@ -22,84 +22,65 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
 
   update_bucket = to_update;
 
-  const int* V_by_K = reinterpret_cast<const int*>(buffer);
-  buffer = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) +
-                                         sizeof(int));
+  int V_by_K = load_value<int>(buffer);
 
-  const int* K = reinterpret_cast<const int*>(info);
-  K_ = *K;
-  V_ = *V_by_K / K_;
-
-  info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                       sizeof(int));
+  K_ = load_value<int>(info);
+  V_ = V_by_K / K_;
 
   nvt.clear();
-  std::vector<int> nt_vi;
+  nvt.reserve(V_);
   for (int i = 0; i < V_; ++i) {
+    std::vector<int> nt_vi;
+    nt_vi.reserve(K_);
     for (int j = 0; j < K_; ++j) {
-      const int* temp = reinterpret_cast<const int*>(buffer);
-      buffer = reinterpret_cast<const char*>(
-          reinterpret_cast<const char*>(buffer) + sizeof(int));
-      nt_vi.push_back(*temp);
+      int temp = load_value<int>(buffer);
+      nt_vi.push_back(temp);
     }
     nvt.push_back(nt_vi);
-    nt_vi.clear();
   }
 
   nt.clear();
+  nt.reserve(K_);
   for (int i = 0; i < K_; ++i) {
-    const int* temp = reinterpret_cast<const int*>(buffer);
-    buffer = reinterpret_cast<const char*>(
-        reinterpret_cast<const char*>(buffer) + sizeof(int));
-    nt.push_back(*temp);
+    int temp = load_value<int>(buffer);
+    nt.push_back(temp);
   }
 
   t.clear();
   d.clear();
   w.clear();
-  const int* N = reinterpret_cast<const int*>(info);
-  info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                       sizeof(int));
-  for (int i = 0; i < *N; ++i) {
-    const int* top = reinterpret_cast<const int*>(info);
-    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                         sizeof(int));
-    const int* doc = reinterpret_cast<const int*>(info);
-    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                         sizeof(int));
-    const int* word = reinterpret_cast<const int*>(info);
-    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                         sizeof(int));
-    t.push_back(*top);
-    d.push_back(*doc);
-    w.push_back(*word);
+  int N = load_value<int>(info);
+  t.reserve(N);
+  d.reserve(N);
+  w.reserve(N);
+  for (int i = 0; i < N; ++i) {
+    int top = load_value<int>(info);
+    int doc = load_value<int>(info);
+    int word = load_value<int>(info);
+    t.push_back(top);
+    d.push_back(doc);
+    w.push_back(word);
   }
 
   slice.clear();
-  const int* S = reinterpret_cast<const int*>(info);
-  info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                       sizeof(int));
-  for (int i = 0; i < *S; ++i) {
-    const int* s = reinterpret_cast<const int*>(info);
-    info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                         sizeof(int));
-    slice.push_back(*s);
+  int S = load_value<int>(info);
+  slice.reserve(S);
+  for (int i = 0; i < S; ++i) {
+    int s = load_value<int>(info);
+    slice.push_back(s);
   }
 
   ndt.clear();
-  std::vector<int> nt_di;
-  const int* D = reinterpret_cast<const int*>(info);
-  info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                       sizeof(int));
-  for (int i = 0; i < *D; ++i) {
+  int D = load_value<int>(info);
+  ndt.reserve(D);
+  for (int i = 0; i < D; ++i) {
+    std::vector<int> nt_di;
+    nt_di.reserve(K_);
     for (int j = 0; j < K_; ++j) {
-      const int* temp = reinterpret_cast<const int*>(info);
-      info = reinterpret_cast<const char*>(reinterpret_cast<const char*>(info) +
-                                           sizeof(int));
-      nt_di.push_back(*temp);
+      int temp = load_value<int>(info);
+      nt_di.push_back(temp);
     }
     ndt.push_back(nt_di);
-    nt_di.clear();
   }
 }
 
@@ -117,7 +98,7 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     std::vector<std::vector<int>>& ndt,
     std::vector<int>& slice) {
 
-  std::map<int, int> slice_map;
+  std::unordered_map<int, int> slice_map;
   int idx = 0;
   for (int i : slice) {
     slice_map.insert(std::make_pair(i, idx));
@@ -146,8 +127,8 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     nt[top] -= 1;
 
     rate_cum = 0.0;
-    std::vector<int> which_topic(K_);
-    which_topic[top] = 1;
+    // std::vector<int> which_topic(K_);
+    // which_topic[top] = 1;
 
     for (int j = 0; j < K_; ++j) {
 
@@ -179,8 +160,11 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
 
   delete[] rate;
 
-  std::unique_ptr<LDAUpdates> ret =
-      std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
+  std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
+
+
+  // std::unique_ptr<LDAUpdates> ret =
+  //     std::make_unique<LDAUpdates>(std::move(change_nvt), std::move(change_nt), slice, update_bucket);
   return ret;
 }
 }

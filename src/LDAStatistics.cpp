@@ -24,52 +24,46 @@ LDAStatistics::LDAStatistics(int K,
 }
 
 LDAStatistics::LDAStatistics(const char* msg) {
-  const int* K = reinterpret_cast<const int*>(msg);
-  msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                      sizeof(int));
-  K_ = *K;
 
-  const int* t_size = reinterpret_cast<const int*>(msg);
-  msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                      sizeof(int));
-  for (int i = 0; i < *t_size; ++i) {
-    const int* t = reinterpret_cast<const int*>(msg);
-    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                        sizeof(int));
-    t_.push_back(*t);
+  K_ = load_value<int>(msg);
 
-    const int* d = reinterpret_cast<const int*>(msg);
-    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                        sizeof(int));
-    d_.push_back(*d);
+  int t_size = load_value<int>(msg);
+  t_.clear();
+  d_.clear();
+  w_.clear();
+  t_.reserve(t_size);
+  d_.reserve(t_size);
+  w_.reserve(t_size);
+  for (int i = 0; i < t_size; ++i) {
+    int t = load_value<int>(msg);
+    t_.push_back(t);
 
-    const int* w = reinterpret_cast<const int*>(msg);
-    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                        sizeof(int));
-    w_.push_back(*w);
+    int d = load_value<int>(msg);
+    d_.push_back(d);
+
+    int w = load_value<int>(msg);
+    w_.push_back(w);
   }
 
-  const int* slice_size_ = reinterpret_cast<const int*>(msg);
+  int s = load_value<int>(msg);
   slice_.clear();
-  msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                      sizeof(int));
-  for (int i = 0; i < *slice_size_; ++i) {
-    const int* slice_i = reinterpret_cast<const int*>(msg);
-    msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                        sizeof(int));
-    slice_.push_back(*slice_i);
+  slice_.reserve(s);
+
+  for (int i = 0; i < s; ++i) {
+    int slice_i = load_value<int>(msg);
+    slice_.push_back(slice_i);
   }
 
-  const int* num_docs = reinterpret_cast<const int*>(msg);
-  msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                      sizeof(int));
-  for (int i = 0; i < *num_docs; ++i) {
+  int num_docs = load_value<int>(msg);
+  ndt_.clear();
+  ndt_.reserve(num_docs);
+
+  for (int i = 0; i < num_docs; ++i) {
     std::vector<int> ndt_row;
-    for (int j = 0; j < *K; ++j) {
-      const int* ndt_ij = reinterpret_cast<const int*>(msg);
-      msg = reinterpret_cast<const char*>(reinterpret_cast<const char*>(msg) +
-                                          sizeof(int));
-      ndt_row.push_back(*ndt_ij);
+    ndt_row.reserve(K_);
+    for (int j = 0; j < K_; ++j) {
+      int ndt_ij = load_value<int>(msg);
+      ndt_row.push_back(ndt_ij);
     }
     ndt_.push_back(ndt_row);
   }
@@ -111,14 +105,19 @@ char* LDAStatistics::serialize_slice() {
   char* msg = new char[get_serialize_slice_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
+  // issue is here
   store_value<int>(msg, slice_.size());
   for (const auto& v : slice_) {
     store_value<int>(msg, v);
   }
+  // std::copy(slice_.begin(), slice_.end(), msg);
 
   return msg_begin;
 }
 
+// 1. store the total number of words and the current topic assignments
+// 2. store the size of corpus and word counts for each (doc_id, topic) entries
+// 3. store the length of local slice and word_idx for each vocabularies
 int LDAStatistics::get_serialize_size() {
   return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int);
 }
@@ -130,41 +129,6 @@ int LDAStatistics::get_serialize_slice_size() {
 int LDAStatistics::get_receive_size() {
   return sizeof(uint32_t) * (1 + (slice_.size() + 1) * K_);
 }
-
-// char* LDAStatistics::pop_partial_docs(int minibatch_size) {
-//   std::vector<std::vector<int> > ndt_partial;
-//   std::vector<int> t_partial, d_partial, w_partial;
-//   std::set<int> slice_partial;
-//
-//   int start = d_.front(), cur = d_.front(), count = 1;
-//   while (count < minibatch_size) {
-//     if (d_.front() != cur) {
-//       cur = d_.front();
-//       count += 1;
-//       ndt_partial.push_back(ndt_.front());
-//       ndt_.erase(ndt_.begin());
-//     } else {
-//       int gindex = w_.front();
-//       t_partial.push_back(t_.front());
-//       d_partial.push_back(d_.front() - start);
-//       w_partial.push_back(w_.front());
-//       t_.erase(t_.begin());
-//       d_.erase(d_.begin());
-//       w_.erase(w_.begin());
-//       if (slice_partial.find(gindex) == slice_partial.end())
-//         slice_partial.insert(slice_partial.end(), gindex);
-//     }
-//     if (d_.size() == 0)
-//       break;
-//   }
-//
-//   std::vector<int> slice_partial_vec(slice_partial.begin(),
-//                                      slice_partial.end());
-//
-//   LDAStatistics partial(K_, ndt_partial, slice_partial_vec, t_partial,
-//                         d_partial, w_partial);
-//   return partial.serialize();
-// }
 
 int LDAStatistics::pop_partial_slice(
     std::unique_ptr<LDAStatistics>& partial_stat) {
@@ -189,6 +153,8 @@ void LDAStatistics::store_new_stats(LDAModel& model) {
 
   ndt_.clear();
   t_.clear();
+
+  // TODO: use smart pointer / std::move
   model.get_ndt(ndt_);
   model.get_t(t_);
 

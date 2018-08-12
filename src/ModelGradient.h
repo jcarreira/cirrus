@@ -228,10 +228,18 @@ class LDAUpdates {
 
   void print() const;
 
-  std::map<int, int> slice_map;
+  std::unordered_map<int, int> slice_map;
 
   // void check_values() const;
  protected:
+ /**
+   *
+   * @variable change_nvt: the statistics of word counts over vocabularies and topics
+   *           size: V * K where V is the size of vocabulary space
+   * @variable change_nt: the statistics of word counts over topics
+   *           size: K
+   * @variable slice_: the local vocabulary space
+   */
   std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<int> slice;
   uint64_t version = 0;
