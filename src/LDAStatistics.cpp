@@ -58,6 +58,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
   ndt_.clear();
   ndt_.reserve(num_docs);
 
+
   for (int i = 0; i < num_docs; ++i) {
     std::vector<int> ndt_row;
     ndt_row.reserve(K_);

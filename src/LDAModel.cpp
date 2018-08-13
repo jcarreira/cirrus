@@ -84,9 +84,9 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   }
 }
 
-std::unique_ptr<LDAUpdates> LDAModel::sample_model() {
+std::unique_ptr<LDAUpdates> LDAModel::sample_model(int& total_sampled_tokens) {
   return sample_thread(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
-                       std::ref(nvt), std::ref(ndt), std::ref(slice));
+                       std::ref(nvt), std::ref(ndt), std::ref(slice), total_sampled_tokens);
 }
 
 std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
@@ -96,7 +96,8 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     std::vector<int>& nt,
     std::vector<std::vector<int>>& nvt,
     std::vector<std::vector<int>>& ndt,
-    std::vector<int>& slice) {
+    std::vector<int>& slice,
+    int& total_sampled_tokens) {
 
   std::unordered_map<int, int> slice_map;
   int idx = 0;
@@ -156,7 +157,7 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
 
   }
 
-  std::cout << temp << " ------\n";
+  total_sampled_tokens += temp;
 
   delete[] rate;
 

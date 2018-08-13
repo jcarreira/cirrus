@@ -221,6 +221,7 @@ class LDAUpdates {
 
   void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
   void get_nt(std::vector<int>& nt) { nt = change_nt; }
+  void get_slice_map(std::unordered_map<int, int>& s) { s = slice_map; }
   int get_vocab_map(int key) { return slice_map[key]; }
 
   void setVersion(int v) { version = v; }

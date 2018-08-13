@@ -42,6 +42,8 @@ class PSSparseServerInterface {
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
 
+  double time_send = 0.0, time_receive = 0.0;
+
  private:
   std::string ip;
   int port;

@@ -353,6 +353,8 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   std::cout << "Sending operation and size" << std::endl;
 #endif
 
+  auto start_time_benchmark = get_time_ms();
+
   // 1. Send operation
   uint32_t operation = GET_LDA_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
@@ -372,6 +374,10 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
     throw std::runtime_error("Error sending slice");
   }
 
+  time_send += (get_time_ms() - start_time_benchmark) / 1000.0;
+
+  start_time_benchmark = get_time_ms();
+
   // 4. receive partial_nvt from server
   uint32_t to_receive_size = info.get_receive_size();
 #ifdef DEBUG
@@ -384,6 +390,8 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
+
+  time_receive += (get_time_ms() - start_time_benchmark) / 1000.0;
 
   char* msg_begin = info.serialize();
 

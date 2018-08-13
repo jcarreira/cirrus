@@ -78,6 +78,8 @@ class LDAStatistics {
   void get_slice(std::vector<int>& slice) { slice = slice_; }
   void reset_current() { current = 0; }
 
+  int current = 0;
+
  private:
    /**
      *
@@ -90,7 +92,7 @@ class LDAStatistics {
      *           size: # of words in the local corpus
      * @variable slice_: the local vocabulary space
      */
-  int K_, slice_size = 1000, current = 0;
+  int K_, slice_size = 1000;
   std::vector<std::vector<int> > ndt_;
   std::vector<int> slice_, t_, d_, w_;
 };

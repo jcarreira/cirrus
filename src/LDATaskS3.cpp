@@ -7,6 +7,7 @@
 #include "S3Client.h"
 
 #include <pthread.h>
+#include <thread>
 
 #undef DEBUG
 
@@ -64,9 +65,49 @@ bool LDATaskS3::get_dataset_minibatch(
   return true;
 }
 
+// void LDATaskS3::pre_fetch_with_bucket_fn(std::shared_ptr<LDAStatistics>& pre_fetch_vars,
+//                                          std::mutex& pre_fetch_lock,
+//                                          int bucket_id) {
+//
+//   pre_fetch_lock.lock();
+//
+//   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+//   std::string obj_id_str =
+//        std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
+//   std::ostringstream* s3_obj =
+//        s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
+//
+//   pre_fetch_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
+//   // pre_fetch_vars->set_slice_size(this->config.get_slice_size());
+//   delete s3_obj;
+//
+//   pre_fetch_lock.unlock();
+//
+// }
+
+void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics>& to_save,
+                             std::mutex& upload_lock,
+                             int bucket_id){
+
+  // upload_lock.lock();
+
+  char* mem = to_save->serialize();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+  std::string obj_id_str =
+       std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
+  s3_client->s3_put_object(
+       obj_id_str, this->config.get_s3_bucket(),
+       std::string(mem, to_save->get_serialize_size()));
+
+  // upload_lock.unlock();
+  delete[] mem;
+}
+
 void LDATaskS3::run(const Configuration& config, int worker) {
 
   double lambda_time_out = 3.0 * 60.0; // 3 min currently
+  double time_upload = 0.0, time_download = 0.0,
+         time_update = 0.0, time_get_model = 0.0, time_sample = 0.0;
 
   std::cout << "Starting LDATaskS3" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
@@ -90,7 +131,10 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     end = train_range.second;
   }
 
-  int cur_train_idx = start;
+  int cur_train_idx = start; //, pre_fetch_idx = start + 1;
+  // if (pre_fetch_idx == end) {
+  //   pre_fetch_idx = start;
+  // }
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
@@ -100,9 +144,10 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  std::shared_ptr<LDAStatistics> s3_local_vars;
+  std::shared_ptr<LDAStatistics> s3_local_vars; //, pre_fetch_vars;
 
   // Load the first LDAStatistics from S3
+  auto start_time_benchmark = get_time_ms();
   s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
@@ -112,10 +157,25 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
   s3_local_vars->set_slice_size(config.get_slice_size());
   delete s3_obj;
+  time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
   // s3_shutdown_aws();
+
+  // if (pre_fetch_idx != cur_train_idx) {
+  //   pre_fetch_threads.push_back(std::make_unique<std::thread>(
+  //         std::bind(&LDATaskS3::pre_fetch_with_bucket_fn, this,
+  //                   std::placeholders::_1, std::placeholders::_2,
+  //                   std::placeholders::_3),
+  //         std::ref(pre_fetch_vars), std::ref(pre_fetch_lock), pre_fetch_idx)
+  //   );
+  // }
 
   // used to inform server which bucket's ll needs to be updated
   int update_bucket = 0;
+  int benchmark_time = 5, full_iteration = 0;
+
+  int total_sampled_tokens = 0, total_sampled_doc = 0;
+
+  // double averaged_iteration_time = 0.0, index = 1.0;
 
   while (1) {
 
@@ -129,15 +189,26 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // and need to inform server to update the corresponding ll
     if (s3_local_vars->pop_partial_slice(local_vars) == -1) {
 
-      char* mem = s3_local_vars->serialize();
+      // char* mem = s3_local_vars->serialize();
 
-      s3_client->s3_put_object(
-          obj_id_str, config.get_s3_bucket(),
-          std::string(mem,
-                      s3_local_vars->get_serialize_size()));
+      // start_time_benchmark = get_time_ms();
+      // s3_client->s3_put_object(
+      //     obj_id_str, config.get_s3_bucket(),
+      //     std::string(mem,
+      //                 s3_local_vars->get_serialize_size()));
+      // time_upload += (get_time_ms() - start_time_benchmark) / 1000.0;
 
-      delete[] mem;
+      // delete[] mem;
+
       update_bucket = cur_train_idx;
+      total_sampled_doc += s3_local_vars->get_num_docs();
+
+      help_upload_threads.push_back(std::make_unique<std::thread>(
+            std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3),
+            std::ref(s3_local_vars), std::ref(upload_lock), update_bucket)
+      );
 
       // The early exit is added in case that
       // worker expires even if it hasn't stored the
@@ -152,6 +223,26 @@ void LDATaskS3::run(const Configuration& config, int worker) {
           auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
           push_gradient(bucket_update.get());
         }
+
+        std::cout << "--------------------------\n";
+        std::cout << "Time to upload to S3: " << time_upload << std::endl;
+        std::cout << "Time to download from S3: " << time_download << std::endl;
+        std::cout << "Time to send update to server: " << time_update << std::endl;
+        std::cout << "Time to get model from server: " << time_get_model << std::endl;
+        std::cout << "\tTime to receive: " << psint->time_receive << std::endl;
+        std::cout << "Time to sample: " << time_sample << std::endl;
+
+        std::cout << "--------------------------\n";
+        std::cout << "documents/sec: " << (double)total_sampled_doc / ((get_time_ms() - start_time) / 1000) << std::endl;
+        std::cout << "tokens/sec: " << (double)total_sampled_tokens / ((get_time_ms() - start_time) / 1000) << std::endl;
+
+        std::cout << "--------------------------\n";
+        if (full_iteration == 0 ){
+          std::cout << "sec/iteration: N/A yet \n";
+        } else{
+          std::cout << "sec/iteration: " << (double)full_iteration / ((get_time_ms() - start_time) / 1000) << std::endl;
+        }
+
         std::cout << "successfully exit\n";
         break;
       }
@@ -160,20 +251,51 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       cur_train_idx += 1;
       if (cur_train_idx == end) {
         cur_train_idx = start;
+        full_iteration += 1;
       }
 
+      // int ttemp = cur_train_idx + 1;
+      // if (ttemp == end) {
+      //   ttemp = start;
+      // }
       obj_id_str =
           std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) +
           "-LDA";
-
+      start_time_benchmark = get_time_ms();
       std::ostringstream* s3_obj =
           s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
       s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
       s3_local_vars->set_slice_size(config.get_slice_size());
+      time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
 
       delete s3_obj;
-      // s3_shutdown_aws();
 
+      // // s3_shutdown_aws();
+
+      // if (pre_fetch_idx == cur_train_idx) {
+      //   s3_local_vars->reset_current();
+      //   continue;
+      // }
+      //
+      // pre_fetch_lock.lock();
+      //
+      // s3_local_vars = std::shared_ptr<LDAStatistics>(pre_fetch_vars);
+      // pre_fetch_vars.reset();
+      //
+      // pre_fetch_lock.unlock();
+      //
+      // // Get the next LDAStatistics from S3
+      // cur_train_idx = pre_fetch_idx;
+      // pre_fetch_idx += 1;
+      // if (pre_fetch_idx == end) {
+      //   pre_fetch_idx = start;
+      // }
+      // pre_fetch_threads.push_back(std::make_unique<std::thread>(
+      //       std::bind(&LDATaskS3::pre_fetch_with_bucket_fn, this,
+      //                 std::placeholders::_1, std::placeholders::_2,
+      //                 std::placeholders::_3),
+      //       std::ref(pre_fetch_vars), std::ref(pre_fetch_lock), pre_fetch_idx)
+      // );
       continue;
     }
 
@@ -185,7 +307,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     std::unique_ptr<LDAUpdates> gradient;
 
     // we get the model subset with just the right amount of weights
+    start_time_benchmark = get_time_ms();
     psint->get_lda_model(*local_vars, update_bucket, model);
+    time_get_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
     // if update_bucket is not 0,
     // then the bucket id has been sent to server in the above step
@@ -203,7 +327,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 #endif
 
     try {
-      gradient = model->sample_model();
+      start_time_benchmark = get_time_ms();
+      gradient = model->sample_model(total_sampled_tokens);
+      time_sample += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
@@ -222,7 +348,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     gradient->setVersion(version++);
 
     try {
+      start_time_benchmark = get_time_ms();
       push_gradient(gradient.get());
+      time_update += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (...) {
       std::cout << "[WORKER] "
                 << "Worker task error doing put of gradient"
@@ -241,6 +369,28 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         std::cout << "Update rate/sec last 2 mins: "
                   << (1.0 * count / elapsed_sec) << std::endl;
       }
+    }
+    int since_start_sec = (get_time_ms() - start_time) / 1000;
+    if (since_start_sec > benchmark_time) {
+      std::cout << "--------------------------\n";
+      std::cout << "Time to upload to S3: " << time_upload << std::endl;
+      std::cout << "Time to download from S3: " << time_download << std::endl;
+      std::cout << "Time to send update to server: " << time_update << std::endl;
+      std::cout << "Time to get model from server: " << time_get_model << std::endl;
+      std::cout << "\tTime to receive: " << psint->time_receive << std::endl;
+      std::cout << "Time to sample: " << time_sample << std::endl;
+
+      std::cout << "--------------------------\n";
+      std::cout << "documents/sec: " << (double)total_sampled_doc / ((get_time_ms() - start_time) / 1000) << std::endl;
+      std::cout << "tokens/sec: " << (double)total_sampled_tokens / ((get_time_ms() - start_time) / 1000) << std::endl;
+
+      std::cout << "--------------------------\n";
+      if (full_iteration == 0 ){
+        std::cout << "sec/iteration: N/A yet \n";
+      } else{
+        std::cout << "sec/iteration: " << (double)full_iteration / ((get_time_ms() - start_time) / 1000) << std::endl;
+      }
+      benchmark_time += 5;
     }
   }
   s3_shutdown_aws();
