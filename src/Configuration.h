@@ -2,6 +2,7 @@
 #define _CONFIGURATION_H_
 
 #include <string>
+#include <vector>
 
 namespace cirrus {
 
@@ -109,8 +110,7 @@ class Configuration {
 
     void check() const;
 
-    std::pair<int, int> get_train_range() const;
-    std::pair<int, int> get_train_range2() const;
+    std::vector<std::pair<int, int>> get_train_range() const;
     std::pair<int, int> get_test_range() const;
 
     bool get_use_bias() const;
@@ -176,9 +176,7 @@ class Configuration {
 
     std::string s3_bucket_name; //< bucket used for training dataset
 
-    std::pair<int, int> train_set_range; // range of S3 ids for training
-    std::pair<int, int> train_set_range2 =
-        std::make_pair(-1, -1); //second range for S3 ids for training
+    std::vector<std::pair<int, int>> train_set_range; // range of S3 ids for training
     std::pair<int, int> test_set_range;  // range of S3 ids for testing
 
     bool use_bias = false; // whether to use bias value for every sample

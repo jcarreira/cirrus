@@ -120,8 +120,8 @@ void ErrorSparseTask::run(const Configuration& config) {
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
-    left = config.get_train_range().first;
-    right = config.get_train_range().second;
+    left = config.get_train_range()[0].first;
+    right = config.get_train_range()[0].second;
   } else {
     exit(-1);
   }
@@ -135,11 +135,17 @@ void ErrorSparseTask::run(const Configuration& config) {
   // get data first
   // what we are going to use as a test set
   std::vector<SparseDataset> minibatches_vec;
-  std::cout << "[ERROR_TASK] getting minibatches from "
-    << config.get_train_range().first << " to "
-    << config.get_train_range().second
-    << std::endl;
-
+  if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
+    std::cout << "[ERROR_TASK] getting minibatches from "
+      << config.get_train_range()[0].first << " to "
+      << config.get_train_range()[0].second
+      << std::endl;
+  } else {
+    std::cout << "[ERROR_TASK] getting minibatches from "
+      << config.get_test_range().first << " to "
+      << config.get_test_range().second
+      << std::endl;
+  }
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {

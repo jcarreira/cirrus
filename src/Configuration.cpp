@@ -60,8 +60,11 @@ void Configuration::print() const {
     std::cout << "grad_threshold: " << grad_threshold << std::endl;
     std::cout << "model_bits: " << model_bits << std::endl;
     std::cout << "netflix_workers: " << netflix_workers << std::endl;
-    std::cout << "train_set: "
-      << train_set_range.first << "-" << train_set_range.second << std::endl;
+    std::cout << "train_set: ";
+    for (std::vector<std::pair<int, int>>::const_iterator i = train_set_range.begin(); i != train_set_range.end(); ++i) {
+      std::cout << (*i).first << "-" << (*i).second << ",";
+    }
+    std::cout << std::endl;
     std::cout << "test_set: "
       << test_set_range.first << "-" << test_set_range.second << std::endl;
     std::cout << "checkpoint_frequency: " << checkpoint_frequency << std::endl;
@@ -182,28 +185,23 @@ void Configuration::parse_line(const std::string& line) {
           throw std::runtime_error(std::string("Unknown model : ") + model);
       }
     } else if (s == "train_set:") {
-      std::string range;
-      iss >> range;
-      size_t index = range.find("-");
-      if (index == std::string::npos) {
-        throw std::runtime_error("Wrong index");
+      std::string token;
+      std::vector<std::pair<int, int>> v;
+      while (std::getline(iss, token, ',')) {
+        std::string range;
+        range = token;
+        size_t index = range.find("-");
+        if (index == std::string::npos) {
+          throw std::runtime_error("Wrong index");
+        }
+        std::string left = range.substr(0, index);
+        std::string right = range.substr(index + 1);
+        std::pair<int, int> train_range = std::make_pair(
+            string_to<int>(left),
+            string_to<int>(right));
+        v.push_back(train_range);
       }
-      std::string left = range.substr(0, index);
-      std::string right = range.substr(index + 1);
-      train_set_range = std::make_pair(
-          string_to<int>(left),
-          string_to<int>(right));
-    } else if (s == "train_set2:") {
-      std::string range;
-      iss >> range;
-      size_t index = range.find("-");
-      if (index == std::string::npos) {
-        throw std::runtime_error("Wrong index");
-      }
-      std::string left = range.substr(0, index);
-      std::string right = range.substr(index + 1);
-      train_set_range2 =
-          std::make_pair(string_to<int>(left), string_to<int>(right));
+      train_set_range = v;
     } else if (s == "test_set:") {
       std::string range;
       iss >> range;
@@ -231,11 +229,11 @@ void Configuration::parse_line(const std::string& line) {
       throw std::runtime_error("Unrecognized option: " + line);
     }
 
-    if (iss.fail() &&
-        s.find_first_not_of("\t\n\v\f\r") !=
-            std::string::npos) {  // Don't error on whitespace lines
-      throw std::runtime_error("Error parsing configuration file");
-    }
+    //if (iss.fail() &&
+        //s.find_first_not_of("\t\n\v\f\r") !=
+            //std::string::npos) {  // Don't error on whitespace lines
+      //throw std::runtime_error("Error parsing configuration file");
+    //}
 }
 
 std::string Configuration::get_input_path() const {
@@ -348,12 +346,8 @@ std::string Configuration::get_s3_bucket() const {
   return s3_bucket_name;
 }
 
-std::pair<int, int> Configuration::get_train_range() const {
+std::vector<std::pair<int, int>> Configuration::get_train_range() const {
   return train_set_range;
-}
-
-std::pair<int, int> Configuration::get_train_range2() const {
-  return train_set_range2;
 }
 
 std::pair<int, int> Configuration::get_test_range() const {
