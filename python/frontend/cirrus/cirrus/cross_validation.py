@@ -25,7 +25,6 @@ class CrossValidationTask():
             threshold_loss,
             progress_callback
             ):
-        self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
         self.lambda_size = lambda_size
         self.n_ps = n_ps
@@ -59,87 +58,31 @@ class CrossValidationTask():
     	set_size = self.num_sets // 10
     	pairs = [(i * set_size, (i + 1) * set_size - 1) for i in range(10)]
     	for i in range(10):
-    		if i == 0:
-    			curr = cirrus.LogisticRegression(
-            				self.n_workers,
-            				self.n_ps,
-            				self.worker_size,
-            				self.dataset,
-            				self.learning_rate, self.epsilon,
-            				self.progress_callback,
-            				'model_v1',
-            				self.key_name,
-            				self.key_path,
-            				(-1, -1),
-            				pairs[i],
-            				(pairs[i + 1][0], pairs[9][1]),
-            				self.minibatch_size,
-            				self.model_bits,
-            				self.ps_ip_public,
-            				self.ps_ip_private,
-            				self.ps_ip_port,
-            				self.ps_username,
-            				self.opt_method,
-            				self.checkpoint_model,
-            				self.use_grad_threshold,
-            				self.grad_threshold,
-            				self.timeout,
-            				self.threshold_loss
-            				)
-    		elif i == 9:
-    			curr = cirrus.LogisticRegression(
-            				self.n_workers,
-            				self.n_ps,
-            				self.worker_size,
-            				self.dataset,
-            				self.learning_rate, self.epsilon,
-            				self.progress_callback,
-            				'model_v1',
-            				self.key_name,
-            				self.key_path,
-            				(pairs[0][0], pairs[i - 1][1]),
-            				pairs[i],
-            				(-1, -1),
-            				self.minibatch_size,
-            				self.model_bits,
-            				self.ps_ip_public,
-            				self.ps_ip_private,
-            				self.ps_ip_port,
-            				self.ps_username,
-            				self.opt_method,
-            				self.checkpoint_model,
-            				self.use_grad_threshold,
-            				self.grad_threshold,
-            				self.timeout,
-            				self.threshold_loss
-            				)
-    		else:
-    			curr = cirrus.LogisticRegression(
-            				self.n_workers,
-            				self.n_ps,
-            				self.worker_size,
-            				self.dataset,
-            				self.learning_rate, self.epsilon,
-            				self.progress_callback,
-            				'model_v1',
-            				self.key_name,
-            				self.key_path,
-            				(pairs[0][0], pairs[i - 1][1]),
-            				pairs[i],
-            				(pairs[i + 1][0], pairs[9][1]),
-            				self.minibatch_size,
-            				self.model_bits,
-            				self.ps_ip_public,
-            				self.ps_ip_private,
-            				self.ps_ip_port,
-            				self.ps_username,
-            				self.opt_method,
-            				self.checkpoint_model,
-            				self.use_grad_threshold,
-            				self.grad_threshold,
-            				self.timeout,
-            				self.threshold_loss
-            				)
+              curr = cirrus.LogisticRegression(
+                                self.n_workers,
+                                self.n_ps,
+                                self.worker_size,
+                                self.dataset,
+                                self.learning_rate, self.epsilon,
+                                self.progress_callback,
+                                'model_v1',
+                                self.key_name,
+                                self.key_path,
+                                pairs[:i] + pairs[i + 1:],
+                                pairs[i],
+                                self.minibatch_size,
+                                self.model_bits,
+                                self.ps_ip_public,
+                                self.ps_ip_private,
+                                self.ps_ip_port,
+                                self.ps_username,
+                                self.opt_method,
+                                self.checkpoint_model,
+                                self.use_grad_threshold,
+                                self.grad_threshold,
+                                self.timeout,
+                                self.threshold_loss
+                                )
     		curr.run()
         	self.models.append(curr)
         	self.running = True

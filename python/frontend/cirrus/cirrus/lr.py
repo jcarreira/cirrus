@@ -35,11 +35,16 @@ class LogisticRegressionTask(BaseTask):
                  "s3_bucket: %s \n" % self.dataset + \
                  "use_grad_threshold: %d \n" % grad_t + \
                  "grad_threshold: %lf \n" % self.grad_threshold + \
-                 "train_set: %d-%d \n" % self.train_set + \
-                 "train_set2: %d-%d \n" % self.train_set2 + \
+                 "train_set: " + create_train_string(self.train_set) + " \n" + \
                  "test_set: %d-%d" % self.test_set
         return config
 
+def create_train_string(train_set):
+  result = str(train_set[0][0]) + "-" + str(train_set[0][1])
+  if len(train_set) > 1:
+    for s in train_set[1:]:
+      result = result + "," + str(s[0]) + "-" + str(s[1])
+  return result
 
 def LogisticRegression(
             n_workers,
@@ -53,7 +58,6 @@ def LogisticRegression(
             key_path,
             train_set,
             test_set,
-            train_set2,
             minibatch_size,
             model_bits,
             ps_ip_public="",
@@ -85,7 +89,6 @@ def LogisticRegression(
             checkpoint_model=checkpoint_model,
             train_set=train_set,
             test_set=test_set,
-            train_set2 = train_set2,
             minibatch_size=minibatch_size,
             model_bits=model_bits,
             use_grad_threshold=use_grad_threshold,
