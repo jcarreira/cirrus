@@ -52,7 +52,7 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
   operation_to_name[9] = "GET_NUM_CONNS";
   operation_to_name[10] = "GET_NUM_UPDATES";
   operation_to_name[11] = "GET_LAST_TIME_ERROR";
-  operation_to_name[12] = "KILL_SIGNAL"; 
+  operation_to_name[12] = "KILL_SIGNAL";
   operation_to_name[13] = "SEND_SM_GRADIENT";
   operation_to_name[14] = "GET_SM_FULL_MODEL";
 
