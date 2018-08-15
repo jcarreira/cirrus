@@ -283,7 +283,7 @@ class PSSparseServerTask : public MLTask {
 
   void init_loglikelihood();
   void update_ndt(int bucket_id);
-  void update_nvt_nt(std::vector<int> vocabs_to_update);
+  void update_nvt_nt(const std::vector<int>& vocabs_to_update);
 
  private:
   /**

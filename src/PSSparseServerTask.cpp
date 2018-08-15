@@ -142,13 +142,13 @@ bool PSSparseServerTask::process_send_lr_gradient(
 bool PSSparseServerTask::process_send_lda_update(
     const Request& req,
     std::vector<char>& thread_buffer) {
+
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
   std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
             << std::endl;
 #endif
   if (incoming_size > thread_buffer.size()) {
-    std::cout << "aa " << incoming_size << " " << thread_buffer.size() << std::endl;
     throw std::runtime_error("Not enough buffer");
   }
   // buffer.resize(incoming_size);
@@ -160,8 +160,6 @@ bool PSSparseServerTask::process_send_lda_update(
   } catch (...) {
     throw std::runtime_error("Uhandled error");
   }
-
-  // std::cout  << "1111111\n";
 
   const char* data = thread_buffer.data();
 
@@ -956,72 +954,76 @@ double PSSparseServerTask::compute_loglikelihood() {
   return ll;
 }
 
-void PSSparseServerTask::compute_loglikelihood_orig() {
-  std::vector<int> nvt, nt;
-
-  lda_global_vars->get_nvt(nvt);
-  lda_global_vars->get_nt(nt);
-
-  double alpha = 0.1, eta = .01;
-  int K = nt.size();
-  int V = nvt.size() / K;
-  double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
-  double ll = K * lda_lgamma(eta * V);
-
-  for (int i = 0; i < K; ++i) {
-    int nti = 0;
-    ll -= lda_lgamma(eta * V + nt[i]);
-    for (int v = 0; v < V; ++v) {
-      if (nvt[v * K + i] > 0) {
-        ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-        nti += nvt[v * K + i];
-      }
-    }
-  }
-
-  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
-
-  auto train_range = task_config.get_train_range();
-  for (int i = train_range.first; i < train_range.second; ++i) {
-    std::string obj_id_str =
-        std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
-    std::ostringstream* s3_obj =
-        s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
-
-    const std::string tmp = s3_obj->str();
-    const char* s3_data = tmp.c_str();
-    LDAStatistics ndt_partial(s3_data);
-
-    std::vector<std::vector<int>> ndt;
-    std::vector<int> slice;
-    ndt_partial.get_ndt(ndt);
-    ndt_partial.get_slice(slice);
-
-    for (int j = 0; j < ndt.size(); ++j) {
-      int ndj = 0;
-      for (int k = 0; k < K; ++k) {
-        ndj += ndt[j][k];
-        if (ndt[j][k] > 0) {
-          ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
-        }
-      }
-      ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
-    }
-  }
-
-  std::cout << "loglikelihood orig: " << ll << std::endl;
-}
+// void PSSparseServerTask::compute_loglikelihood_orig() {
+//   std::vector<int> nvt, nt;
+//
+//   lda_global_vars->get_nvt(nvt);
+//   lda_global_vars->get_nt(nt);
+//
+//   double alpha = 0.1, eta = .01;
+//   int K = nt.size();
+//   int V = nvt.size() / K;
+//   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
+//   double ll = K * lda_lgamma(eta * V);
+//
+//   for (int i = 0; i < K; ++i) {
+//     int nti = 0;
+//     ll -= lda_lgamma(eta * V + nt[i]);
+//     for (int v = 0; v < V; ++v) {
+//       if (nvt[v * K + i] > 0) {
+//         ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+//         nti += nvt[v * K + i];
+//       }
+//     }
+//   }
+//
+//   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+//
+//   auto train_range = task_config.get_train_range();
+//   for (int i = train_range.first; i < train_range.second; ++i) {
+//     std::string obj_id_str =
+//         std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
+//     std::ostringstream* s3_obj =
+//         s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+//
+//     const std::string tmp = s3_obj->str();
+//     const char* s3_data = tmp.c_str();
+//     LDAStatistics ndt_partial(s3_data);
+//
+//     std::vector<std::vector<int>> ndt;
+//     std::vector<int> slice;
+//     ndt_partial.get_ndt(ndt);
+//     ndt_partial.get_slice(slice);
+//
+//     for (int j = 0; j < ndt.size(); ++j) {
+//       int ndj = 0;
+//       for (int k = 0; k < K; ++k) {
+//         ndj += ndt[j][k];
+//         if (ndt[j][k] > 0) {
+//           ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+//         }
+//       }
+//       ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+//     }
+//   }
+//
+//   std::cout << "loglikelihood orig: " << ll << std::endl;
+// }
 
 void PSSparseServerTask::init_loglikelihood(){
 
-  std::vector<int> nvt, nt;
-  lda_global_vars->get_nvt(nvt);
-  lda_global_vars->get_nt(nt);
+  // std::vector<int> nvt, nt;
+  // lda_global_vars->get_nvt(nvt);
+  // lda_global_vars->get_nt(nt);
+
+  std::shared_ptr<std::vector<int>> nvt_ptr, nt_ptr;
+  lda_global_vars->get_nvt_pointer(nvt_ptr);
+  lda_global_vars->get_nt_pointer(nt_ptr);
 
   double alpha = 0.1, eta = .01;
 
-  K = nt.size();
-  V = nvt.size() / K;
+  K = nt_ptr->size();
+  V = nvt_ptr->size() / K;
   lgamma_eta = lda_lgamma(eta);
   lgamma_alpha = lda_lgamma(alpha);
 
@@ -1032,10 +1034,13 @@ void PSSparseServerTask::init_loglikelihood(){
   ll_nvt.resize(V);
   ll_nt.resize(K);
   for (int i = 0; i < K; ++i) {
-    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    ll_nt[i] -= lda_lgamma(eta * V + nt_ptr->operator[](i));
     for (int v = 0; v < V; ++v) {
-      if (nvt[v * K + i] > 0) {
-        ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+      // if (nvt[v * K + i] > 0) {
+      if (nvt_ptr->operator[](v * K + i) > 0) {
+        // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+        ll_nvt[v] += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
       }
     }
   }
@@ -1125,16 +1130,28 @@ void PSSparseServerTask::update_ndt(int bucket_id){
 
 }
 
-void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
+void PSSparseServerTask::update_nvt_nt(const std::vector<int>& vocabs_to_update){
 
   double alpha = 0.1, eta = .01;
 
-  std::vector<std::vector<int>> nvt_sparse;
-  std::vector<int> nt, slice;
+  int K = lda_global_vars->get_nt_size();
 
-  nvt_sparse.reserve(vocabs_to_update.size());
-  nt.reserve(lda_global_vars->get_nt_size());
-  slice.reserve(lda_global_vars->get_slice_size());
+  // std::vector<std::vector<int>> nvt_sparse;
+  // std::vector<int> nt, slice;
+  //
+  // nvt_sparse.reserve(vocabs_to_update.size());
+  // nt.reserve(lda_global_vars->get_nt_size());
+  // slice.reserve(lda_global_vars->get_slice_size());
+
+  std::shared_ptr<std::vector<std::vector<int>>> nvt_ptr;
+  std::shared_ptr<std::vector<int>> nt_ptr;
+  std::vector<int> slice;
+
+  nvt_ptr.reset(new std::vector<std::vector<int>>);
+  nvt_ptr->reserve(vocabs_to_update.size());
+
+  nt_ptr.reset(new std::vector<int>());
+  nt_ptr->reserve(lda_global_vars->get_nt_size());
 
   // XXX:
 
@@ -1142,11 +1159,13 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
 
   // lda_global_vars->get_nvt(nvt);
   // lda_global_vars->get_partial_nvt(nvt, vocabs_to_update);
-  lda_global_vars->get_partial_sparse_nvt(nvt_sparse, vocabs_to_update);
+  // lda_global_vars->get_partial_sparse_nvt(nvt_sparse, vocabs_to_update);
+  lda_global_vars->get_partial_sparse_nvt_ptr(nvt_ptr, vocabs_to_update);
 
   time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
 
-  lda_global_vars->get_nt(nt);
+  // lda_global_vars->get_nt(nt);
+  lda_global_vars->get_nt_pointer(nt_ptr);
   lda_global_vars->get_slice(slice);
 
 
@@ -1179,13 +1198,13 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
   //   }
   // }
   for (int i = 0; i < K; ++i) {
-    ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+    ll_nt[i] -= lda_lgamma(eta * V + nt_ptr->operator[](i));
   }
 
   for (int i = 0; i < vocabs_to_update.size(); ++i) {
     int v = vocabs_to_update[i];
     int gindex = slice_map[v];
-    for (auto& nvt_i: nvt_sparse[i]) {
+    for (auto& nvt_i: nvt_ptr->operator[](i)) {
       ll_nvt[gindex] += lda_lgamma(eta + nvt_i) - lgamma_eta;
     }
   }
