@@ -6,6 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
+#include <array>
 #include <config.h>
 #include <memory>
 #include <map>
@@ -216,20 +217,32 @@ class LDAUpdates {
   std::shared_ptr<char> serialize(uint32_t*);
   uint64_t getSerializedSize() const;
 
+  void loadSparseSerialized(const char* mem);
+  std::shared_ptr<char> serialize_sparse(uint32_t*);
+
   int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);
   char* get_partial_model(const char* slice, uint32_t& to_send_size);
 
   void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
   void get_nt(std::vector<int>& nt) { nt = change_nt; }
-  void get_slice_map(std::unordered_map<int, int>& s) { s = slice_map; }
-  int get_vocab_map(int key) { return slice_map[key]; }
+  void get_slice(std::vector<int>& s) { s = slice; }
+  int get_nvt_size() { return change_nvt.size(); }
+  int get_nt_size() { return change_nt.size(); }
+  int get_slice_size() { return slice.size(); }
+
+  void get_partial_nvt(std::vector<int>& nvt, std::vector<int>& local_slice);
+  void get_partial_sparse_nvt(
+                  std::vector<std::vector<int>>& nvt_sparse,
+                  std::vector<int>& local_slice);
+  // void get_slice_map(std::array<int, int>& s) { s = slice_map; }
+  // int get_vocab_map(int key) { return slice_map[key]; }
 
   void setVersion(int v) { version = v; }
   int getVersion() const { return version; }
 
   void print() const;
 
-  std::unordered_map<int, int> slice_map;
+  std::array<int, 1000000> slice_map;
 
   // void check_values() const;
  protected:
@@ -241,6 +254,7 @@ class LDAUpdates {
    *           size: K
    * @variable slice_: the local vocabulary space
    */
+  // std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr; 
   std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<int> slice;
   uint64_t version = 0;

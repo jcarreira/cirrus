@@ -12,6 +12,7 @@
 #include "Nesterov.h"
 #include "S3.h"
 #include "gamma.h"
+#include <array>
 
 #undef DEBUG
 
@@ -147,6 +148,7 @@ bool PSSparseServerTask::process_send_lda_update(
             << std::endl;
 #endif
   if (incoming_size > thread_buffer.size()) {
+    std::cout << "aa " << incoming_size << " " << thread_buffer.size() << std::endl;
     throw std::runtime_error("Not enough buffer");
   }
   // buffer.resize(incoming_size);
@@ -164,7 +166,8 @@ bool PSSparseServerTask::process_send_lda_update(
   const char* data = thread_buffer.data();
 
   LDAUpdates gradient;
-  gradient.loadSerialized(data);
+  // gradient.loadSerialized(data);
+  gradient.loadSparseSerialized(data);
   std::vector<int> vocabs_to_update;
 
   model_lock.lock();
@@ -281,6 +284,7 @@ bool PSSparseServerTask::process_get_lda_model(
   // to send back to the client
   uint32_t incoming_size = req.incoming_size;
   if (incoming_size > thread_buffer.size()) {
+    std::cout << "bb " << incoming_size << " " << thread_buffer.size() << std::endl;
     throw std::runtime_error("Not enough buffer");
   }
 #ifdef DEBUG
@@ -298,14 +302,30 @@ bool PSSparseServerTask::process_get_lda_model(
   uint32_t to_send_size;
 
   auto start_time_benchmark = get_time_ms();
+
   model_lock.lock();
+
+  auto pure_partial_benchmark = get_time_ms();
   auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size);
+  time_pure_find_partial += (get_time_ms() - pure_partial_benchmark) / 1000.0;
+
   model_lock.unlock();
 
+  time_find_partial += (get_time_ms() - start_time_benchmark) / 1000.0;
+
+  start_time_benchmark = get_time_ms();
+
+  // send the size of partial model
+  if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+
+  // send the partial model
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;
   }
-  time_process_get += (get_time_ms() - start_time_benchmark) / 1000.0;
+  // time_process_get += (get_time_ms() - start_time_benchmark) / 1000.0;
+  time_send += (get_time_ms() - start_time_benchmark) / 1000.0;
   return true;
 }
 
@@ -749,7 +769,6 @@ void PSSparseServerTask::loop(int poll_id) {
               << num_connections
               << std::endl;
             close(newsock);
-            num_connections -= 1;
           } else if (poll_id == 0 && curr_indexes[poll_id] == max_fds) {
             throw std::runtime_error("We reached capacity");
             close(newsock);
@@ -866,11 +885,18 @@ void PSSparseServerTask::run(const Configuration& config) {
         //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
         // compute_ll_thread->join();
 
-        model_lock.lock();
-        compute_loglikelihood();
-        model_lock.unlock();
+        // model_lock.lock();
+        ll_lock.lock();
 
-        std::cout << "Time to find partial model: " << time_process_get << std::endl;
+        compute_loglikelihood();
+
+        // model_lock.unlock();
+        ll_lock.unlock();
+
+        std::cout << "Time to find partial model: " << time_find_partial << std::endl;
+        std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
+        std::cout << "Time to send: " << time_send << std::endl;
+        std::cout << "XXX: " << time_temp << std::endl;
       }
     }
     sleep(1);
@@ -1072,10 +1098,14 @@ void PSSparseServerTask::update_ndt(int bucket_id){
   const char* s3_data = tmp.c_str();
   LDAStatistics ndt_partial(s3_data);
 
+  delete s3_obj;
+
   std::vector<std::vector<int>> ndt;
   ndt_partial.get_ndt(ndt);
 
-  model_lock.lock();
+  // model_lock.lock();
+  ll_lock.lock();
+
   ll_ndt[bucket_id - train_range.first] = 0.0;
   for (int j = 0; j < ndt.size(); ++j) {
     int ndj = 0;
@@ -1087,7 +1117,9 @@ void PSSparseServerTask::update_ndt(int bucket_id){
     }
     ll_ndt[bucket_id - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
   }
-  model_lock.unlock();
+
+  // model_lock.unlock();
+  ll_lock.unlock();
 
   // s3_shutdown_aws();
 
@@ -1097,12 +1129,36 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
 
   double alpha = 0.1, eta = .01;
 
-  std::vector<int> nvt, nt;
-  std::unordered_map<int, int> slice_map;
+  std::vector<std::vector<int>> nvt_sparse;
+  std::vector<int> nt, slice;
 
-  lda_global_vars->get_nvt(nvt);
+  nvt_sparse.reserve(vocabs_to_update.size());
+  nt.reserve(lda_global_vars->get_nt_size());
+  slice.reserve(lda_global_vars->get_slice_size());
+
+  // XXX:
+
+  auto start_time_benchmark = get_time_ms();
+
+  // lda_global_vars->get_nvt(nvt);
+  // lda_global_vars->get_partial_nvt(nvt, vocabs_to_update);
+  lda_global_vars->get_partial_sparse_nvt(nvt_sparse, vocabs_to_update);
+
+  time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
+
   lda_global_vars->get_nt(nt);
-  lda_global_vars->get_slice_map(slice_map);
+  lda_global_vars->get_slice(slice);
+
+
+  std::array<int, 1000000> slice_map;
+
+  int idx = 0;
+  for (int i : slice) {
+    slice_map.at(i) = idx;
+    ++idx;
+  }
+
+  ll_lock.lock();
 
   ll_nt.clear();
   ll_nt.resize(K);
@@ -1111,16 +1167,30 @@ void PSSparseServerTask::update_nvt_nt(std::vector<int> vocabs_to_update){
     ll_nvt[gindex] = 0.0;
   }
 
+  // for (int i = 0; i < K; ++i) {
+  //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+  //   for (int j = 0; j < vocabs_to_update.size(); ++j) {
+  //     int v = vocabs_to_update[j];
+  //     int gindex = slice_map[v];
+  //     if (nvt[j * K + i] > 0) {
+  //       ll_nvt[gindex] += lda_lgamma(eta + nvt[j * K + i]) - lgamma_eta;
+  //       // ll_nvt[gindex] += lda_lgamma(eta + nvt[gindex * K + i]) - lgamma_eta;
+  //     }
+  //   }
+  // }
   for (int i = 0; i < K; ++i) {
     ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-    for (int j = 0; j < vocabs_to_update.size(); ++j) {
-      int v = vocabs_to_update[j];
-      int gindex = slice_map[v];
-      if (nvt[gindex * K + i] > 0) {
-        ll_nvt[gindex] += lda_lgamma(eta + nvt[gindex * K + i]) - lgamma_eta;
-      }
+  }
+
+  for (int i = 0; i < vocabs_to_update.size(); ++i) {
+    int v = vocabs_to_update[i];
+    int gindex = slice_map[v];
+    for (auto& nvt_i: nvt_sparse[i]) {
+      ll_nvt[gindex] += lda_lgamma(eta + nvt_i) - lgamma_eta;
     }
   }
+
+  ll_lock.unlock();
 
 }
 

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <random>
 #include <unordered_map>
+#include <array>
 #include <ctime>
 #include <math.h>
 #include <set>
@@ -22,20 +23,27 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
 
   update_bucket = to_update;
 
-  int V_by_K = load_value<int>(buffer);
+  // int V_by_K = load_value<int>(buffer);
+  V_ = load_value<int>(buffer);
 
   K_ = load_value<int>(info);
-  V_ = V_by_K / K_;
+  // V_ = V_by_K / K_;
 
   nvt.clear();
   nvt.reserve(V_);
   for (int i = 0; i < V_; ++i) {
-    std::vector<int> nt_vi;
-    nt_vi.reserve(K_);
-    for (int j = 0; j < K_; ++j) {
-      int temp = load_value<int>(buffer);
-      nt_vi.push_back(temp);
+    std::vector<int> nt_vi(K_, 0);
+    // nt_vi.reserve(K_);
+    int len = load_value<int>(buffer);
+    for (int j = 0; j < len; ++j) {
+      int top = load_value<int>(buffer);
+      int count = load_value<int>(buffer);
+      nt_vi[top] = count;
     }
+    // for (int j = 0; j < K_; ++j) {
+    //   int temp = load_value<int>(buffer);
+    //   nt_vi.push_back(temp);
+    // }
     nvt.push_back(nt_vi);
   }
 
@@ -99,10 +107,15 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     std::vector<int>& slice,
     int& total_sampled_tokens) {
 
-  std::unordered_map<int, int> slice_map;
+  std::array<int , 1000000> slice_map;
+  slice_map.fill(-1);
+
+  // std::unordered_map<int, int> slice_map;
   int idx = 0;
   for (int i : slice) {
-    slice_map.insert(std::make_pair(i, idx));
+    // slice_map.insert(std::make_pair(i, idx));
+    // ++idx;
+    slice_map.at(i) = idx;
     ++idx;
   }
 
@@ -118,9 +131,11 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
 
   for (int i = 0; i < t.size(); i++) {
     top = t[i], doc = d[i], gindex = w[i];
-    if (slice_map.find(gindex) == slice_map.end())
+    // if (slice_map.find(gindex) == slice_map.end())
+    //   continue;
+    if (slice_map.at(gindex) == -1)
       continue;
-    lindex = slice_map[gindex];
+    lindex = slice_map.at(gindex);
     temp++;
 
     nvt[lindex][top] -= 1;

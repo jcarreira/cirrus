@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <deque>
 
 #include <poll.h>
 #include <sys/socket.h>
@@ -376,7 +377,8 @@ class PSSparseServerTask : public MLTask {
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
   int init_ll_flag = 0;
-  double time_process_get = 0.0;
+  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send = 0.0, time_temp = 0.0;
+  std::mutex ll_lock;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
@@ -466,14 +468,15 @@ class LDATaskS3 : public MLTask {
  private:
   bool get_dataset_minibatch(std::unique_ptr<LDAStatistics>& local_vars,
                              S3SparseIterator& s3_iter);
-  void upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics>& to_save,
-                               std::mutex& upload_lock,
+  void upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
+                               int& upload_lock,
                                int bucket_id);
   void push_gradient(LDAUpdates*);
 
   // std::shared_ptr<LDAStatistics> pre_fetch_vars;
   std::vector<std::unique_ptr<std::thread>> help_upload_threads;
   std::mutex redis_lock, upload_lock;
+  std::vector<int> upload_lock_indicators;
   // bool pre_fetch_done = false;
   PSSparseServerInterface* psint;
 };

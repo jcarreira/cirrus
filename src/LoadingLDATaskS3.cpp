@@ -7,10 +7,15 @@
 #include "config.h"
 #include <random>
 #include <set>
+#include <array>
 
 namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
+
+// std::array<int, 1000000> lookup_map;
+// lookup_map.fill(-1);
+// int idx = 0;
 
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
   InputReader input;
@@ -35,15 +40,22 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   //   ++idx;
   // }
 
+  // std::array<int, 1000000> lookup_map;
+  // lookup_map.fill(-1);
+  // int idx = 0;
+
   for (const auto& doc : docs) {
     std::vector<int> ndt_row(K);
 
     for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
-      if (local_vocab.find(gindex) == local_vocab.end())
+      if (local_vocab.find(gindex) == local_vocab.end()) {
         local_vocab.insert(local_vocab.begin(), gindex);
+      }
       if (global_vocab.find(gindex) == global_vocab.end()){
         global_vocab.insert(global_vocab.begin(), gindex);
+        // lookup_map.at(gindex) = idx;
+        // idx++;
         // vocab_map.insert(std::make_pair(gindex, idx));
         // ++idx;
       }
@@ -53,10 +65,10 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         t.push_back(top);
         d.push_back(ndt.size());
         // w.push_back(vocab_map[gindex]);
-        w.push_back(gindex-1);
+        w.push_back(gindex);
         ++ndt_row[top];
 
-        nvt[(gindex - 1) * K + top] += 1;
+        nvt[gindex * K + top] += 1;
         nt[top] += 1;
       }
     }

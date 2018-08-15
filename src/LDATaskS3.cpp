@@ -85,11 +85,17 @@ bool LDATaskS3::get_dataset_minibatch(
 //
 // }
 
-void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics>& to_save,
-                             std::mutex& upload_lock,
+void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
+                             int& upload_lock,
                              int bucket_id){
 
-  // upload_lock.lock();
+  while (true) {
+    std::this_thread::sleep_for (std::chrono::milliseconds(10));
+    if (upload_lock == -1){
+      upload_lock = 1;
+      break;
+    }
+  }
 
   char* mem = to_save->serialize();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
@@ -99,8 +105,11 @@ void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics>& to_save,
        obj_id_str, this->config.get_s3_bucket(),
        std::string(mem, to_save->get_serialize_size()));
 
-  // upload_lock.unlock();
+  to_save.reset();
+
+  upload_lock = -1;
   delete[] mem;
+
 }
 
 void LDATaskS3::run(const Configuration& config, int worker) {
@@ -131,6 +140,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     end = train_range.second;
   }
 
+  upload_lock_indicators.resize(end - start, -1);
+  // temp_locks.fill(-1);
+
   int cur_train_idx = start; //, pre_fetch_idx = start + 1;
   // if (pre_fetch_idx == end) {
   //   pre_fetch_idx = start;
@@ -158,6 +170,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   s3_local_vars->set_slice_size(config.get_slice_size());
   delete s3_obj;
   time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
+
   // s3_shutdown_aws();
 
   // if (pre_fetch_idx != cur_train_idx) {
@@ -207,7 +220,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3),
-            std::ref(s3_local_vars), std::ref(upload_lock), update_bucket)
+            s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start]), update_bucket)
       );
 
       // The early exit is added in case that
@@ -258,12 +271,40 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       // if (ttemp == end) {
       //   ttemp = start;
       // }
+
+      // upload_locks[cur_train_idx - train_range.first].lock();
+
+      if (end == start + 1) {
+        s3_local_vars->reset_current();
+        continue;
+      }
+
+      while (true) {
+        std::this_thread::sleep_for (std::chrono::milliseconds(10));
+        if (upload_lock_indicators[cur_train_idx - start] == -1){
+          upload_lock_indicators[cur_train_idx - start] = 1;
+          break;
+        }
+      }
+      // while (true) {
+      //   // std::cout << "222\n";
+      //   if (temp_locks[cur_train_idx - start] == -1){
+      //     temp_locks[cur_train_idx - start] = 1;
+      //     break;
+      //   }
+      // }
+
       obj_id_str =
           std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) +
           "-LDA";
       start_time_benchmark = get_time_ms();
       std::ostringstream* s3_obj =
           s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
+
+      // upload_locks[cur_train_idx - train_range.first].lock();
+
+      upload_lock_indicators[cur_train_idx - start] = -1;
+
       s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
       s3_local_vars->set_slice_size(config.get_slice_size());
       time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
