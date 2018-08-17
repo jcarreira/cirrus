@@ -41,8 +41,7 @@ class MLTask {
          nworkers(nworkers),
          worker_id(worker_id),
          ps_ip(ps_ip),
-         ps_port(ps_port) {
-   }
+         ps_port(ps_port) {}
    MLTask(uint64_t model_size,
           uint64_t batch_size,
           uint64_t samples_per_batch,
@@ -150,12 +149,12 @@ class LogisticSparseTaskS3 : public MLTask {
 
         SparseLRModel get_new_model(const SparseDataset& ds,
                                     const Configuration& config) {
-            return std::move(psi->get_lr_sparse_model(ds, config));
+          return std::move(psi->get_lr_sparse_model(ds, config));
         }
         void get_new_model_inplace(const SparseDataset& ds,
                                    SparseLRModel& model,
                                    const Configuration& config) {
-            psi->get_lr_sparse_model_inplace(ds, model, config);
+          psi->get_lr_sparse_model_inplace(ds, model, config);
         }
 
         std::unique_ptr<PSSparseServerInterface> psi;
