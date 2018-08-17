@@ -484,6 +484,8 @@ void PSSparseServerTask::start_server() {
 
   sem_init(&sem_new_req, 0, 0);
 
+  std::cout << "NUM_PS_WORK_THREADS: " << NUM_PS_WORK_THREADS << std::endl;
+  std::cout << "NUM_POLL_THREADS: " << NUM_POLL_THREADS << std::endl;
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     server_threads.push_back(std::make_unique<std::thread>(

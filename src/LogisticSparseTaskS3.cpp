@@ -94,15 +94,17 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
+
+  std::shared_ptr<SparseDataset> dataset;
+  if (!get_dataset_minibatch(dataset, s3_iter)) {
+     exit(-1);
+  }
+
   while (1) {
     // get data, labels and model
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    std::shared_ptr<SparseDataset> dataset;
-    if (!get_dataset_minibatch(dataset, s3_iter)) {
-      continue;
-    }
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
     //dataset->check();
