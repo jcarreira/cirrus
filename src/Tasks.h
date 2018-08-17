@@ -100,10 +100,8 @@ class LogisticSparseTaskS3 : public MLTask {
                 worker_id,
                 ps_ip,
                 ps_port) {
-        
-          sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port); 
-
-       }
+     sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
+   }
    LogisticSparseTaskS3(uint64_t model_size,
                         uint64_t batch_size,
                         uint64_t samples_per_batch,
@@ -120,9 +118,8 @@ class LogisticSparseTaskS3 : public MLTask {
                 worker_id,
                 ps_ips,
                 ps_ports) {
-           sparse_model_get = std::make_unique<SparseModelGet>(ps_ips, ps_ports); 
-
-       }
+     sparse_model_get = std::make_unique<SparseModelGet>(ps_ips, ps_ports);
+   }
 
    /**
     * Worker here is a value 0..nworkers - 1
@@ -148,7 +145,7 @@ class LogisticSparseTaskS3 : public MLTask {
        SparseModelGet(const std::vector<std::string> ps_ips,
                       std::vector<uint64_t> ps_ports) {
          psi = std::make_unique<MultiplePSSparseServerInterface>(ps_ips,
-                                                                  ps_ports);
+                                                                 ps_ports);
         }
 
         SparseLRModel get_new_model(const SparseDataset& ds,
@@ -227,10 +224,10 @@ class ErrorSparseTask : public MLTask {
 
    void run(const Configuration& config);
    void error_response();
-   
+
   private:
    // Stores last recorded time/loss values
-   int port_num; // Error Resonpse port number
+   int port_num;  // Error Resonpse port number
    double last_time = 0.0;
    double last_error = 0.0;
    std::atomic<double> curr_error;

@@ -65,7 +65,8 @@ void MultiplePSSparseServerInterface::send_lr_gradient(
 
 void MultiplePSSparseServerInterface::send_mf_gradient(
     const MFSparseGradient&) {
-  throw std::runtime_error("MultiplePSSparseServerInterface::send_mf_gradient is not implemented!");
+  throw std::runtime_error(
+      "MultiplePSSparseServerInterface::send_mf_gradient is not implemented!");
 }
 
 SparseLRModel MultiplePSSparseServerInterface::get_lr_sparse_model(
@@ -140,18 +141,20 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
 }
 
 SparseMFModel MultiplePSSparseServerInterface::get_sparse_mf_model(
-    const SparseDataset& ds, 
+    const SparseDataset& ds,
     uint32_t a,
     uint32_t b) {
-  
-  throw std::runtime_error("MultiplePSSparseServerInterface::get_sparse_mf_model_inplace not implemented!");
-
+  throw std::runtime_error(
+      "MultiplePSSparseServerInterface::get_sparse_mf_model_inplace not "
+      "implemented!");
 }
 
-std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(bool use_col_filtering) {
-
+std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
+    bool use_col_filtering) {
   if (use_col_filtering) {
-    throw std::runtime_error("MultiplePSSparseServerInterface::get_full_model does not support using collaborative filtering!");
+    throw std::runtime_error(
+        "MultiplePSSparseServerInterface::get_full_model does not support "
+        "using collaborative filtering!");
   }
 
   std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);

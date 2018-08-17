@@ -31,9 +31,9 @@ void run_tasks(int rank,
   int samples_per_batch = config.get_minibatch_size();
 
   if (rank == PS_SPARSE_SERVER_TASK_RANK) {
-    cirrus::PSSparseServerTask st((1 << config.get_model_bits()) + 1,
-        batch_size, samples_per_batch, features_per_sample,
-        nworkers, rank, ps_ips[0], ps_ports[0]);
+    cirrus::PSSparseServerTask st(
+        (1 << config.get_model_bits()) + 1, batch_size, samples_per_batch,
+        features_per_sample, nworkers, rank, ps_ips[0], ps_ports[0]);
     st.run(config);
   } else if (rank >= WORKERS_BASE && rank < WORKERS_BASE + nworkers) {
     /**

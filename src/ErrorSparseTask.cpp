@@ -82,7 +82,6 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
           std::cout << exc.what();
         }
       }
-
     }
   }
   bool use_col_filtering =
@@ -197,7 +196,7 @@ void ErrorSparseTask::run(const Configuration& config) {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model; 
+      std::unique_ptr<CirrusModel> model;
       model = get_model(config, ps_ips, ps_ports);
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
