@@ -5,6 +5,7 @@ import threading
 import time
 
 import graphCV
+from operator import itemgetter
 from utils import *
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
@@ -152,7 +153,7 @@ class CrossValidation:
                     loss_list = []
                     for key in time_to_loss:
                         loss_list.append((key, sum(time_to_loss[key]) / len(time_to_loss[key])))
-                    self.loss_lst_total = loss_list
+                    self.loss_lst_total = sorted(loss_list, key=itemgetter(0))
                 repeats = repeats + 1
 
                 print("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
