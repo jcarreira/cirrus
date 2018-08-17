@@ -4,7 +4,7 @@ urls = [
         "ec2-18-237-31-107.us-west-2.compute.amazonaws.com"]
 ips = [
        "172.31.6.212"]
-data_bucket = 'cirrus-criteo-kaggle-19b-random'
+data_bucket = 'criteo-kaggle-19b'
 model = 'model_v1'
 
 basic_params = {

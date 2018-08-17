@@ -114,7 +114,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "Compute error task connecting to store" << std::endl;
 
   std::cout << "Creating sequential S3Iterator" << std::endl;
-
+  s3_initialize_aws();
   uint32_t left, right;
   if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
     left = config.get_test_range().first;
@@ -149,7 +149,7 @@ void ErrorSparseTask::run(const Configuration& config) {
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
     std::shared_ptr<SparseDataset> ds = s3_iter.getNext();
-    minibatches_vec.push_back(ds);
+    minibatches_vec.push_back(*ds);
   }
 
   std::cout << "[ERROR_TASK] Got "
@@ -190,11 +190,11 @@ void ErrorSparseTask::run(const Configuration& config) {
 
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-            model->calc_loss(*ds, start_index);
+            model->calc_loss(ds, start_index);
         total_loss += ret.first;
         total_accuracy += ret.second;
-        total_num_samples += ds->num_samples();
-        total_num_features += ds->num_features();
+        total_num_samples += ds.num_samples();
+        total_num_features += ds.num_features();
         start_index += config.get_minibatch_size();
         if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
           curr_error = (total_loss / total_num_features);

@@ -10,6 +10,7 @@
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
 #include "OptimizationMethod.h"
+#include "S3.h"
 
 #include <string>
 #include <vector>

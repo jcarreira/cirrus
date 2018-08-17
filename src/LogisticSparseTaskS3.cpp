@@ -68,6 +68,7 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3"
     << std::endl;
+  s3_initialize_aws();
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -103,7 +104,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    std::unique_ptr<SparseDataset> dataset;
+    std::shared_ptr<SparseDataset> dataset;
     int index = udist(rng);
     if (!get_dataset_minibatch(dataset, *iters[index])) {
       continue;
