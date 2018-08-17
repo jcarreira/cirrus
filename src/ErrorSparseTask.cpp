@@ -35,7 +35,10 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              ps_ip,
              ps_port) {
   ps_port = ps_port;
+  ps_ips.push_back(ps_ip);
+  ps_ports.push_back(ps_port);
   std::atomic_init(&curr_error, 0.0);
+  port_num = ps_port + 1;
 }
 
 ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
@@ -55,42 +58,36 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              ps_ips,
              ps_ports) {
   ps_ports = ps_ports;
+  port_num = ps_ports.at(ps_ports.size() - 1) + 1;
   std::atomic_init(&curr_error, 0.0);
 }
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
-                                       const std::string& ps_ip,
-                                       uint64_t ps_port) {
+                                       const std::vector<std::string> ps_ips,
+                                       std::vector<uint64_t> ps_ports) {
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
     first_time = false;
-    psi = new PSSparseServerInterface(ps_ip, ps_port);
+    if (ps_ips.size() > 1) {
+      psi = new MultiplePSSparseServerInterface(ps_ips, ps_ports);
+    } else {
+      psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
 
-    while (true) {
-      try {
-        psi->connect();
-        break;
-      } catch (const std::exception& exc) {
-        std::cout << exc.what();
+      while (true) {
+        try {
+          psi->connect();
+          break;
+        } catch (const std::exception& exc) {
+          std::cout << exc.what();
+        }
       }
+
     }
   }
-
   bool use_col_filtering =
       config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   return psi->get_full_model(use_col_filtering);
-}
-std::unique_ptr<CirrusModel> get_model(const Configuration& config,
-                                       const std::vector<std::string> ps_ips,
-                                       std::vector<uint64_t> ps_ports) {
-  static MultiplePSSparseServerInterface* psi;
-  static bool first_time = true;
-  if (first_time) {
-    first_time = false;
-    psi = new MultiplePSSparseServerInterface(ps_ips, ps_ports);
-  }
-  return psi->get_full_model();
 }
 
 void ErrorSparseTask::error_response() {
@@ -102,12 +99,6 @@ void ErrorSparseTask::error_response() {
   struct sockaddr_in serveraddr;
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = INADDR_ANY;
-  int port_num;
-  if (is_sharded)
-    port_num = ps_ports.at(ps_ports.size() - 1) +
-               1;  // error response will bind to the port after the last PS
-  else
-    port_num = ps_port + 1;
   serveraddr.sin_port = htons(port_num);
   std::memset(serveraddr.sin_zero, 0, sizeof(serveraddr.sin_zero));
 
@@ -206,12 +197,8 @@ void ErrorSparseTask::run(const Configuration& config) {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model;
-      if (is_sharded) {
-        model = get_model(config, ps_ips, ps_ports);
-      } else {
-        model = get_model(config, ps_ip, ps_port);
-      }
+      std::unique_ptr<CirrusModel> model; 
+      model = get_model(config, ps_ips, ps_ports);
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
 #endif

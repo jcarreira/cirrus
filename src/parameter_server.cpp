@@ -3,6 +3,7 @@
 #include <Tasks.h>
 #include <config.h>
 
+#include <S3.h>
 #include <stdlib.h>
 #include <cstdint>
 #include <string>
@@ -197,6 +198,9 @@ int main(int argc, char** argv) {
     << " features_per_sample: " << config.get_num_features()
     << " batch_size: " << config.get_minibatch_size()
     << std::endl;
+
+  // Initialize S3
+  cirrus::s3_initialize_aws();
 
   // call the right task for this process
   std::cout << "Running task" << std::endl;

@@ -15,9 +15,6 @@ namespace cirrus {
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
   auto before_push_us = get_time_us();
 
-  if (is_sharded)
-    sparse_model_get->mpsi->send_gradient(*lrg);
-  else
     sparse_model_get->psi->send_lr_gradient(*lrg);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
@@ -71,11 +68,6 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3 " << ps_ips.size() << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
-
-  if (is_sharded)
-    sparse_model_get = std::make_unique<SparseModelGet>(ps_ips, ps_ports);
-  else
-    sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
 
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;

@@ -23,20 +23,25 @@ class PSSparseServerInterface {
   friend class MultiplePSSparseServerInterface;
 
  public:
+  PSSparseServerInterface() {};
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
 
   void connect();
 
-  void send_lr_gradient(const LRSparseGradient&);
-  void send_mf_gradient(const MFSparseGradient&);
+  virtual void send_lr_gradient(const LRSparseGradient&);
+  virtual void send_mf_gradient(const MFSparseGradient&);
 
-  int send_wrapper(uint32_t num, std::size_t size);
-  int send_all_wrapper(char* data, uint32_t size);
+  virtual SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
+  virtual void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
+  virtual SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
-  SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
-  void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
-  SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
+  virtual std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
+
+  void set_status(uint32_t id, uint32_t status);
+  uint32_t get_status(uint32_t id);
+
+ private:
   void get_lr_sparse_model_inplace_sharded(SparseLRModel& lr_model,
                                            const Configuration& config,
                                            char* msg_begin,
@@ -46,13 +51,11 @@ class PSSparseServerInterface {
   void get_full_model_inplace(std::unique_ptr<cirrus::SparseLRModel>& model,
                               int server_id,
                               int num_ps);
-
-  std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
-
-  void set_status(uint32_t id, uint32_t status);
-  uint32_t get_status(uint32_t id);
-
- private:
+  
+  int send_wrapper(uint32_t num, std::size_t size);
+  int send_all_wrapper(char* data, uint32_t size);
+  
+  
   std::string ip;
   int port;
   int sock = -1;

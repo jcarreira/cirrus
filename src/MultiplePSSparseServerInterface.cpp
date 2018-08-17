@@ -30,7 +30,7 @@ MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
   }
 }
 
-void MultiplePSSparseServerInterface::send_gradient(
+void MultiplePSSparseServerInterface::send_lr_gradient(
     const LRSparseGradient& gradient) {
   int num_ps = psints.size();
   uint32_t operation = SEND_LR_GRADIENT;
@@ -63,15 +63,20 @@ void MultiplePSSparseServerInterface::send_gradient(
   }
 }
 
+void MultiplePSSparseServerInterface::send_mf_gradient(
+    const MFSparseGradient&) {
+  throw std::runtime_error("MultiplePSSparseServerInterface::send_mf_gradient is not implemented!");
+}
+
 SparseLRModel MultiplePSSparseServerInterface::get_lr_sparse_model(
     const SparseDataset& ds,
     const Configuration& config) {
   SparseLRModel model(0);
-  get_lr_sparse_model(ds, model, config);
+  get_lr_sparse_model_inplace(ds, model, config);
   return std::move(model);
 }
 
-void MultiplePSSparseServerInterface::get_lr_sparse_model(
+void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
     const SparseDataset& ds,
     SparseLRModel& model,
     const Configuration& config) {
@@ -134,9 +139,22 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model(
   delete[] num_weights_lst;
 }
 
-std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model() {
+SparseMFModel MultiplePSSparseServerInterface::get_sparse_mf_model(
+    const SparseDataset& ds, 
+    uint32_t a,
+    uint32_t b) {
+  
+  throw std::runtime_error("MultiplePSSparseServerInterface::get_sparse_mf_model_inplace not implemented!");
+
+}
+
+std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(bool use_col_filtering) {
+
+  if (use_col_filtering) {
+    throw std::runtime_error("MultiplePSSparseServerInterface::get_full_model does not support using collaborative filtering!");
+  }
+
   std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);
-  // placeholder for now NOT CORRECT
   for (int i = 0; i < psints.size(); i++) {
     psints[i]->get_full_model_inplace(model, i, psints.size());
   }
