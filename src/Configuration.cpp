@@ -62,7 +62,9 @@ void Configuration::print() const {
     std::cout << "model_bits: " << model_bits << std::endl;
     std::cout << "netflix_workers: " << netflix_workers << std::endl;
     std::cout << "train_set: ";
-    for (std::vector<std::pair<int, int>>::const_iterator i = train_set_range.begin(); i != train_set_range.end(); ++i) {
+    for (std::vector<std::pair<int, int>>::const_iterator i =
+             train_set_range.begin();
+         i != train_set_range.end(); ++i) {
       std::cout << (*i).first << "-" << (*i).second << ",";
     }
     std::cout << std::endl;
@@ -205,9 +207,8 @@ void Configuration::parse_line(const std::string& line) {
         }
         std::string left = range.substr(0, index);
         std::string right = range.substr(index + 1);
-        std::pair<int, int> train_range = std::make_pair(
-            string_to<int>(left),
-            string_to<int>(right));
+        std::pair<int, int> train_range =
+            std::make_pair(string_to<int>(left), string_to<int>(right));
         v.push_back(train_range);
       }
       train_set_range = v;
@@ -237,12 +238,6 @@ void Configuration::parse_line(const std::string& line) {
     } else {
       throw std::runtime_error("Unrecognized option: " + line);
     }
-
-    //if (iss.fail() &&
-        //s.find_first_not_of("\t\n\v\f\r") !=
-            //std::string::npos) {  // Don't error on whitespace lines
-      //throw std::runtime_error("Error parsing configuration file");
-    //}
 }
 
 std::string Configuration::get_load_input_path() const {

@@ -83,7 +83,8 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
   // Create iterator that goes from 0 to num_s3_batches
   std::random_device rd;
   std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> uni(0, config.get_train_range().size() - 1);
+  std::uniform_int_distribution<int> uni(0,
+                                         config.get_train_range().size() - 1);
   int selection = uni(rng);
   std::pair<int, int> train_range = config.get_train_range()[selection];
 

@@ -137,9 +137,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::vector<SparseDataset> minibatches_vec;
   if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
     std::cout << "[ERROR_TASK] getting minibatches from "
-      << config.get_train_range()[0].first << " to "
-      << config.get_train_range()[0].second
-      << std::endl;
+              << config.get_train_range()[0].first << " to "
+              << config.get_train_range()[0].second << std::endl;
   } else {
     std::cout << "[ERROR_TASK] getting minibatches from "
       << config.get_test_range().first << " to "

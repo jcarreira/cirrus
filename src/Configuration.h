@@ -180,7 +180,8 @@ class Configuration {
     std::string s3_dataset_key;  //< key name in the s3 bucket
     std::string s3_bucket_name;  //< bucket used for training dataset
 
-    std::vector<std::pair<int, int>> train_set_range; // range of S3 ids for training
+    std::vector<std::pair<int, int>>
+        train_set_range; // range of S3 ids for training
     std::pair<int, int> test_set_range;  // range of S3 ids for testing
 
     bool use_bias = false; // whether to use bias value for every sample
