@@ -9,7 +9,7 @@ import messenger
 from CostModel import CostModel
 
 lambda_client = boto3.client('lambda', 'us-west-2')
-lambda_name = "testfunc1"
+lambda_name = "testfuncryan_"
 
 
 # Code shared by all Cirrus experiments
@@ -40,12 +40,15 @@ class BaseTask(object):
             grad_threshold,
             timeout,
             threshold_loss,
-            progress_callback
+            progress_callback,
+            cross_validation=False,
+            st = 0
             ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
         self.lambda_size = lambda_size
         self.n_ps = n_ps
+        self.set = st
         self.worker_size = worker_size
         self.dataset=dataset
         self.learning_rate = learning_rate
@@ -75,6 +78,7 @@ class BaseTask(object):
         self.id = 0
         self.kill_signal = threading.Event()
         self.num_lambdas = 0
+        self.cross_validation=cross_validation
         self.cost_model = CostModel(
                     'm5.large',
                     self.n_ps,
@@ -124,7 +128,7 @@ class BaseTask(object):
         else:
             return self.time_ups_lst
 
-    def relaunch_lambdas(self):
+    def relaunch_lambdas(self, st=0):
         if self.is_dead():
             return
 
@@ -141,10 +145,16 @@ class BaseTask(object):
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
                         % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+            print(payload)
             for i in range(shortage):
                 try:
+                    if not self.cross_validation:
+                        lc = lambda_name
+                    else:
+                        lc = lambda_name + str(st)
+                    print(lc + '\n')
                     response = lambda_client.invoke(
-                        FunctionName=lambda_name,
+                        FunctionName=lc,
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)

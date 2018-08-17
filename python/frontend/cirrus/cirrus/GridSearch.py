@@ -39,7 +39,7 @@ class GridSearch:
                 hyper_params=hyper_params,
                 machines=machines)
 
-        adjust_num_threads();
+        self.adjust_num_threads();
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -200,7 +200,7 @@ class GridSearch:
     def set_threads(self, n):
         self.num_jobs = n
 
-        adjust_num_threads();
+        self.adjust_num_threads();
 
 
     # Start threads to maintain all experiments

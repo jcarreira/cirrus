@@ -2,10 +2,10 @@ from context import cirrus
 
 urls = [
         "ec2-18-237-213-139.us-west-2.compute.amazonaws.com", 
-        "ec2-34-211-54-228.us-west-2.compute.amazonaws.com"]
+        "ec2-18-237-31-107.us-west-2.compute.amazonaws.com"]
 ips = [
        "172.31.14.190",
-       "172.31.9.94"]
+       "172.31.6.212"]
 data_bucket = 'cirrus-criteo-kaggle-19b-random'
 model = 'model_v1'
 
@@ -29,7 +29,7 @@ basic_params = {
     'model_bits': 19,
     'use_grad_threshold': False,
     'grad_threshold': 0.001,
-    'train_set': (0,824),
+    'train_set': [(0,824)],
     'test_set': (835,840)
 }
 
@@ -45,14 +45,14 @@ if __name__ == "__main__":
         
     machines = zip(urls, ips)
 
-    learning_rates = [1/(i * 10) for i in range(1, 20)]
+    learning_rates = [0.5/(i * 10) for i in range(1, 20)]
 
     gs = cirrus.GridSearch(task=cirrus.LogisticRegression,
                            param_base=basic_params,
                            hyper_vars=["learning_rate", "worker_size"],
                            hyper_params=[learning_rates, [128, 246, 512]],
                            machines=machines)
-    gs.set_threads(200)
+    gs.set_threads(10)
     gs.run(UI=True)
 
 

@@ -69,7 +69,8 @@ def LogisticRegression(
             use_grad_threshold=False,
             grad_threshold=0.001,
             timeout=60,
-            threshold_loss=0
+            threshold_loss=0,
+            cross_validation=False
             ):
     return LogisticRegressionTask(
             n_workers=n_workers,
@@ -95,7 +96,8 @@ def LogisticRegression(
             grad_threshold=grad_threshold,
             timeout=timeout,
             threshold_loss=threshold_loss,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            cross_validation=cross_validation
            )
 
 
