@@ -147,6 +147,7 @@ class LogisticSparseTaskS3 : public MLTask {
          is_sharded = true;
          mpsi = std::make_unique<MultiplePSSparseServerInterface>(ps_ips,
                                                                   ps_ports);
+
         }
 
         SparseLRModel get_new_model(const SparseDataset& ds,
@@ -170,9 +171,8 @@ class LogisticSparseTaskS3 : public MLTask {
         std::unique_ptr<PSSparseServerInterface> psi;
     };
 
-    bool get_dataset_minibatch(
-        std::unique_ptr<SparseDataset>& dataset,
-        S3SparseIterator& s3_iter);
+    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                               S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
 
     std::mutex redis_lock;
@@ -470,13 +470,12 @@ class MFNetflixTask : public MLTask {
     };
 
   private:
-    bool get_dataset_minibatch(
-        std::unique_ptr<SparseDataset>& dataset,
-        S3SparseIterator& s3_iter);
-    void push_gradient(MFSparseGradient&);
+   bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                              S3SparseIterator& s3_iter);
+   void push_gradient(MFSparseGradient&);
 
-    std::unique_ptr<MFModelGet> mf_model_get;
-    std::unique_ptr<PSSparseServerInterface> psint;
+   std::unique_ptr<MFModelGet> mf_model_get;
+   std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 }
