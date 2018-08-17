@@ -117,13 +117,12 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
 
     uint64_t index_fw = index;
     // if float or double also accept dots
-    if
-      constexpr(std::is_same<T, double>::value ||
-                std::is_same<T, float>::value) {
-        while (isdigit(data[index_fw]) || data[index_fw] == '.') {
-          index_fw++;
-        }
+    if constexpr(std::is_same<T, double>::value ||
+        std::is_same<T, float>::value) {
+      while (isdigit(data[index_fw]) || data[index_fw] == '.') {
+        index_fw++;
       }
+    }
     else {
       while (isdigit(data[index_fw])) {
         index_fw++;
@@ -136,23 +135,18 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
 
     T result;
     int sscanf_ret = 0;
-    if
-      constexpr(std::is_same<T, int>::value) {
+    if constexpr(std::is_same<T, int>::value) {
         sscanf_ret = sscanf(&data[index], "%d", &result);
       }
-    else if
-      constexpr(std::is_same<T, double>::value) {
+    else if constexpr(std::is_same<T, double>::value) {
         sscanf_ret = sscanf(&data[index], "%lf", &result);
       }
-    else if
-      constexpr(std::is_same<T, float>::value) {
+    else if constexpr(std::is_same<T, float>::value) {
         sscanf_ret = sscanf(&data[index], "%f", &result);
       }
-    else if
-      constexpr(std::is_same<T, uint64_t>::value) {
+    else if constexpr(std::is_same<T, uint64_t>::value) {
         sscanf_ret = sscanf(&data[index], "%lu", &result);
-      }
-    else {
+      } else {
       throw std::runtime_error("Data type not supported");
     }
 
