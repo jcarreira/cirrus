@@ -435,6 +435,7 @@ LDAUpdates::LDAUpdates(LDAUpdates&& other) {
   change_nt_ptr = other.change_nt_ptr;
   slice = std::move(other.slice);
   version = other.version;
+  sparse_records.fill(-1);
 }
 
 // LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt)
@@ -445,6 +446,7 @@ LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt) 
   change_nvt_ptr.reset(new std::vector<int>(nvt));
   change_nt_ptr.reset(new std::vector<int>(nt));
   slice.clear();
+  sparse_records.fill(-1);
 }
 
 LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
@@ -453,6 +455,7 @@ LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
     : slice(s) {
   change_nvt_ptr.reset(new std::vector<int>(nvt));
   change_nt_ptr.reset(new std::vector<int>(nt));
+  sparse_records.fill(-1);
 }
 
 
@@ -463,12 +466,14 @@ LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
     : slice(s), update_bucket(to_update) {
   change_nvt_ptr.reset(new std::vector<int>(nvt));
   change_nt_ptr.reset(new std::vector<int>(nt));
+  sparse_records.fill(-1);
 }
 
 LDAUpdates::LDAUpdates(int to_update) : update_bucket(to_update) {
   slice.clear();
   change_nvt_ptr->clear();
   change_nt_ptr->clear();
+  sparse_records.fill(-1);
 }
 
 LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
@@ -476,6 +481,7 @@ LDAUpdates::LDAUpdates(int nvt_dim, int nt_dim, int slice_size) {
   change_nt_ptr->resize(nt_dim);
   slice.resize(slice_size);
   version = 0;
+  sparse_records.fill(-1);
 }
 
 LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
@@ -483,6 +489,7 @@ LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
   change_nt_ptr = other.change_nt_ptr;
   slice = std::move(other.slice);
   version = other.version;
+  sparse_records.fill(-1);
   return *this;
 }
 
@@ -526,6 +533,8 @@ void LDAUpdates::loadSerialized(const char* mem) {
     ++idx;
   }
 
+  sparse_records.fill(-1);
+
 }
 
 void LDAUpdates::loadSparseSerialized(const char* mem) {
@@ -535,19 +544,27 @@ void LDAUpdates::loadSparseSerialized(const char* mem) {
   int V = load_value<int>(mem);
   int K = load_value<int>(mem);
 
-  change_nvt_ptr.reset(new std::vector<int>(V * K, 0));
+  // change_nvt_ptr.reset(new std::vector<int>(V * K, 0));
+  sparse_change_nvt_ptr.reset(new std::vector<std::vector<std::pair<int, int>>>());
+  sparse_change_nvt_ptr->reserve(V);
 
   // change_nvt_ptr->clear();
   // change_nvt_ptr->resize(V * K, 0);
 
   for (int i = 0; i < V; ++i) {
     int len = load_value<int>(mem);
+
+    std::vector<std::pair<int, int>> sparse_change_nt_vi;
+    sparse_change_nt_vi.reserve(len);
+
     for (int j = 0; j < len; ++j) {
       int top = load_value<int>(mem);
       int count = load_value<int>(mem);
       // change_nvt[i * K + top] = count;
-      change_nvt_ptr->operator[](i * K + top) = count;
+      // change_nvt_ptr->operator[](i * K + top) = count;
+      sparse_change_nt_vi.push_back(std::make_pair(top, count));
     }
+    sparse_change_nvt_ptr->push_back(sparse_change_nt_vi);
   }
 
   change_nt_ptr.reset(new std::vector<int>());
@@ -690,16 +707,19 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
 
   int K = change_nt_ptr->size();
   for (int i = 0; i < gradient.slice.size(); ++i) {
-    for (int j = 0; j < K; ++j) {
-      // change_nvt[slice_map[gradient.slice[i]] * K + j] +=
-      //     gradient.change_nvt[i * K + j];
-      // change_nvt[slice_map.at(gradient.slice[i]) * K + j] +=
-      //     gradient.change_nvt[i * K + j];
-
-      change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + j) +=
-          gradient.change_nvt_ptr->operator[](i * K + j);
-
+    for (auto& a: gradient.sparse_change_nvt_ptr->operator[](i)) {
+      change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + a.first) += a.second;
     }
+    // for (int j = 0; j < gradient.sparse_change_nvt_ptr->operator[](i); ++j) {
+    //   // change_nvt[slice_map[gradient.slice[i]] * K + j] +=
+    //   //     gradient.change_nvt[i * K + j];
+    //   // change_nvt[slice_map.at(gradient.slice[i]) * K + j] +=
+    //   //     gradient.change_nvt[i * K + j];
+    //
+    //   change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + j) +=
+    //       gradient.change_nvt_ptr->operator[](i * K + j);
+    //
+    // }
   }
 
   for (int i = 0; i < change_nt_ptr->size(); ++i) {
@@ -768,74 +788,77 @@ void LDAUpdates::get_partial_sparse_nvt_ptr(
 
 char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
 
-  // slice_map.clear();
-  // int idx = 0;
-  // for (int i : slice) {
-  //   slice_map.insert(std::make_pair(i, idx));
-  //   ++idx;
-  // }
-
-  // std::vector<int> partial_nvt;
-  std::vector<std::vector<std::pair<int, int>>> sparse_partial_nvt;
-  // std::vector<int> slice_s;
-  int N = 0, word_idx;
-
+  int N = 0, S = 0, word_idx;
   int K = change_nt_ptr->size();
-
   int len = load_value<int>(s);
+
+  int sparse_type = 1, dense_type = 2;
+
+  // the worst case where everything is stored with dense structure
+  int temp_size = sizeof(uint32_t) * (1 + 2 * len + len * K + K);
+
+  char* mem = new char[temp_size];
+  char* mem_begin = mem;
+  store_value<uint32_t>(mem, len);
+
   for (int i = 0; i < len; ++i) {
 
     word_idx = load_value<int>(s);
-    // slice_s.push_back(word_idx);
 
     std::vector<std::pair<int, int>> sparse_nt_vi;
     sparse_nt_vi.reserve(K);
 
-    for (int j = 0; j < K; ++j) {
-      // if (change_nvt[slice_map.at(word_idx) + j] > 0) {
-        // sparse_nt_vi.push_back(std::make_pair(j, change_nvt[slice_map.at(word_idx) * K + j]));
-      if (change_nvt_ptr->operator[](slice_map.at(word_idx) + j) > 0) {
-        sparse_nt_vi.push_back(std::make_pair(j, change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j)));
-        N += 1;
+    int n = 0;
+
+    // auto s_time = get_time_ms();
+    if (sparse_records[word_idx] == -1) {
+      for (int j = 0; j < K; ++j) {
+        if (change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j) > 0) {
+          sparse_nt_vi.push_back(std::make_pair(j, change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j)));
+          n += 1;
+        }
       }
     }
+    // time_temp += (get_time_ms() - s_time) / 1000.0;
 
-    sparse_partial_nvt.push_back(sparse_nt_vi);
-    // partial_nvt.insert(partial_nvt.end(),
-    //                    change_nvt_ptr->begin() + slice_map[word_idx] * K,
-    //                    change_nvt_ptr->begin() + (slice_map[word_idx] + 1) * K);
-  }
+    // if 2 * n < K, then adopting sparse structure would help
+    // reduce the size of partial model
+    //
+    // if sparse_records[word_idx] != -1, n would always be 0
+    // so that sparse data structure would be used
+    if (2 * n < K) {
+      // 1 -> sparse structure
+      store_value<uint32_t>(mem, sparse_type);
+      store_value<uint32_t>(mem, n);
+      for (auto& a: sparse_nt_vi) {
+        store_value<uint32_t>(mem, a.first);
+        store_value<uint32_t>(mem, a.second);
+      }
+      N += n; // # of <top, count> pairs stored with sparse structure
+      S += 1; // # of words that are stored with sparse structure
 
-  // for (int j = 0; j < K; ++j) {
-  //   std::cout << change_nvt[slice_map.at(word_idx) + j] << " ";
-  // }
-  // std::cout << std::endl;
-  //
-  // std::cout << N << " " << len * K << std::endl;
+      sparse_records[word_idx] = 1;
 
-  // to_send_size = sizeof(uint32_t) * (1 + partial_nvt.size() + change_nt_ptr->size());
-  to_send_size = sizeof(uint32_t) * (1 + len + N * 2 + K);
-
-  char* mem = new char[to_send_size];
-  char* mem_begin = mem;
-
-  store_value<uint32_t>(mem, len);
-  for (int i = 0; i < len; ++i) {
-    store_value<uint32_t>(mem, sparse_partial_nvt[i].size());
-    for (auto& a : sparse_partial_nvt[i]) {
-      store_value<uint32_t>(mem, a.first);
-      store_value<uint32_t>(mem, a.second);
+    } else {
+      // std::cout << change_nvt_ptr->size() << " " << slice_map.at(word_idx) * K << " cc\n";
+      // 2 -> dense structure
+      store_value<uint32_t>(mem, dense_type);
+      // for (int j = 0; j < K; ++j) {
+      //   store_value<uint32_t>(mem, change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j));
+      // }
+      uint32_t* data = reinterpret_cast<uint32_t*>(mem);
+      std::copy(change_nvt_ptr->begin() + slice_map.at(word_idx) * K,
+                change_nvt_ptr->begin() + (slice_map.at(word_idx) + 1) * K,
+                data);
+      mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(int) * K));
     }
   }
 
-  // store_value<uint32_t>(mem, partial_nvt.size());
-  // uint32_t* data = reinterpret_cast<uint32_t*>(mem);
-  // std::copy(partial_nvt.begin(), partial_nvt.end(), data);
-  // mem = reinterpret_cast<char*>(
-  //     (reinterpret_cast<char*>(mem) + sizeof(uint32_t) * partial_nvt.size()));
 
   uint32_t* data = reinterpret_cast<uint32_t*>(mem);
   std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
+
+  to_send_size = sizeof(uint32_t) * (1 + len + S + N * 2 + (len - S) * K + K);
 
   return mem_begin;
 

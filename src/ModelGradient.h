@@ -250,7 +250,8 @@ class LDAUpdates {
 
   void print() const;
 
-  std::array<int, 1000000> slice_map;
+  std::array<int, 1000000> slice_map, sparse_records;
+  double time_temp = 0.0;
 
   // void check_values() const;
  protected:
@@ -263,6 +264,7 @@ class LDAUpdates {
    * @variable slice_: the local vocabulary space
    */
   std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
+  std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>> sparse_change_nvt_ptr;
   // std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<int> slice;
   uint64_t version = 0;

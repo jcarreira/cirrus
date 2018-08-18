@@ -330,6 +330,8 @@ class PSSparseServerTask : public MLTask {
                              std::vector<char>& thread_buffer);
   void kill_server();
 
+  void update_ll_word_thread(double ll);
+
   /**
     * Attributes
     */
@@ -373,12 +375,14 @@ class PSSparseServerTask : public MLTask {
   std::unique_ptr<MFModel> mf_model;        //< last computed model
   std::unique_ptr<LDAUpdates> lda_global_vars;
 
-  std::vector<double> ll_nvt, ll_ndt, ll_nt;
+  // std::vector<double> ll_nvt, ll_ndt, ll_nt;
+  std::vector<double> ll_ndt;
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
   int init_ll_flag = 0;
   double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send = 0.0, time_temp = 0.0;
   std::mutex ll_lock;
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections

@@ -170,13 +170,12 @@ bool PSSparseServerTask::process_send_lda_update(
 
   model_lock.lock();
   int update_bucket = lda_global_vars->update(gradient, vocabs_to_update);
-  update_nvt_nt(vocabs_to_update);
+  // update_nvt_nt(vocabs_to_update);
   model_lock.unlock();
 
   if (update_bucket != 0) {
     update_ndt(update_bucket);
   }
-  // model_lock.unlock();
 
   gradientUpdatesCount++;
   return true;
@@ -324,6 +323,8 @@ bool PSSparseServerTask::process_get_lda_model(
   }
   // time_process_get += (get_time_ms() - start_time_benchmark) / 1000.0;
   time_send += (get_time_ms() - start_time_benchmark) / 1000.0;
+
+  delete data_to_send;
   return true;
 }
 
@@ -622,7 +623,7 @@ void PSSparseServerTask::start_server() {
     // init_ll_thread->join();
     // compute_ll_thread->join();
     init_loglikelihood();
-    compute_loglikelihood();
+    // compute_loglikelihood();
 
     std::cout << "Finished getting initial statistics.\n";
 
@@ -877,24 +878,23 @@ void PSSparseServerTask::run(const Configuration& config) {
         << " #conns: " << num_connections
         << std::endl;
       gradientUpdatesCount = 0;
-      if ((int) since_start_sec % 5 == 0) {
+
+      if ((int) since_start_sec % 10 == 0) {
 
         // auto compute_ll_thread = std::make_unique<std::thread>(
         //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
         // compute_ll_thread->join();
 
         // model_lock.lock();
-        ll_lock.lock();
-
+        // ll_lock.lock();
         compute_loglikelihood();
-
         // model_lock.unlock();
-        ll_lock.unlock();
+        // ll_lock.unlock();
 
-        std::cout << "Time to find partial model: " << time_find_partial << std::endl;
-        std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
-        std::cout << "Time to send: " << time_send << std::endl;
-        std::cout << "XXX: " << time_temp << std::endl;
+        // std::cout << "Time to find partial model: " << time_find_partial << std::endl;
+        // std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
+        // std::cout << "Time to send: " << time_send << std::endl;
+        // std::cout << "XXX: " << time_temp << std::endl;
       }
     }
     sleep(1);
@@ -940,17 +940,24 @@ void PSSparseServerTask::checkpoint_model_file(
 double PSSparseServerTask::compute_loglikelihood() {
 
   double ll = ll_base;
-  for(int i=0; i<ll_nvt.size(); ++i){
-    ll += ll_nvt[i];
-  }
+  // for(int i=0; i<ll_nvt.size(); ++i){
+  //   ll += ll_nvt[i];
+  // }
+  ll_lock.lock();
   for(int i=0; i<ll_ndt.size(); ++i){
     ll += ll_ndt[i];
   }
-  for(int i=0; i<ll_nt.size(); ++i){
-    ll += ll_nt[i];
-  }
+  ll_lock.unlock();
+  // for(int i=0; i<ll_nt.size(); ++i){
+  //   ll += ll_nt[i];
+  // }
 
-  std::cout << "loglikelihood: " << ll << std::endl;
+  compute_ll_threads.push_back(std::make_unique<std::thread>(
+        std::bind(&PSSparseServerTask::update_ll_word_thread, this,
+                  std::placeholders::_1), ll)
+  );
+
+  // std::cout << "loglikelihood: " << ll << std::endl;
   return ll;
 }
 
@@ -1029,21 +1036,27 @@ void PSSparseServerTask::init_loglikelihood(){
 
   ll_base += K * lda_lgamma(eta * V);
 
-  ll_nvt.clear();
-  ll_nt.clear();
-  ll_nvt.resize(V);
-  ll_nt.resize(K);
-  for (int i = 0; i < K; ++i) {
-    // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-    ll_nt[i] -= lda_lgamma(eta * V + nt_ptr->operator[](i));
-    for (int v = 0; v < V; ++v) {
-      // if (nvt[v * K + i] > 0) {
-      if (nvt_ptr->operator[](v * K + i) > 0) {
-        // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-        ll_nvt[v] += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
-      }
-    }
-  }
+  // ll_nvt.clear();
+  // ll_nt.clear();
+  // ll_nvt.resize(V);
+  // ll_nt.resize(K);
+  // auto start_time_benchmark = get_time_ms();
+  //
+  // ll_word = 0.0;
+  //
+  // for (int i = 0; i < K; ++i) {
+  //   // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+  //   ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
+  //   for (int v = 0; v < V; ++v) {
+  //     // if (nvt[v * K + i] > 0) {
+  //     if (nvt_ptr->operator[](v * K + i) > 0) {
+  //       // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
+  //     }
+  //   }
+  // }
+  // time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
+
   s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
@@ -1083,6 +1096,8 @@ void PSSparseServerTask::init_loglikelihood(){
 
   ll_ndt.clear();
   ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
+
+  compute_loglikelihood();
 
 }
 
@@ -1130,87 +1145,130 @@ void PSSparseServerTask::update_ndt(int bucket_id){
 
 }
 
-void PSSparseServerTask::update_nvt_nt(const std::vector<int>& vocabs_to_update){
+void PSSparseServerTask::update_ll_word_thread(double ll) {
 
+  std::shared_ptr<std::vector<int>> nvt_ptr, nt_ptr;
+
+  model_lock.lock();
+  lda_global_vars->get_nvt_pointer(nvt_ptr);
+  lda_global_vars->get_nt_pointer(nt_ptr);
+  model_lock.unlock();
   double alpha = 0.1, eta = .01;
 
-  int K = lda_global_vars->get_nt_size();
+  K = nt_ptr->size();
+  V = nvt_ptr->size() / K;
+  lgamma_eta = lda_lgamma(eta);
+  lgamma_alpha = lda_lgamma(alpha);
 
-  // std::vector<std::vector<int>> nvt_sparse;
-  // std::vector<int> nt, slice;
-  //
-  // nvt_sparse.reserve(vocabs_to_update.size());
-  // nt.reserve(lda_global_vars->get_nt_size());
-  // slice.reserve(lda_global_vars->get_slice_size());
+  double ll_word = 0.0;
 
-  std::shared_ptr<std::vector<std::vector<int>>> nvt_ptr;
-  std::shared_ptr<std::vector<int>> nt_ptr;
-  std::vector<int> slice;
-
-  nvt_ptr.reset(new std::vector<std::vector<int>>);
-  nvt_ptr->reserve(vocabs_to_update.size());
-
-  nt_ptr.reset(new std::vector<int>());
-  nt_ptr->reserve(lda_global_vars->get_nt_size());
-
-  // XXX:
-
-  auto start_time_benchmark = get_time_ms();
-
-  // lda_global_vars->get_nvt(nvt);
-  // lda_global_vars->get_partial_nvt(nvt, vocabs_to_update);
-  // lda_global_vars->get_partial_sparse_nvt(nvt_sparse, vocabs_to_update);
-  lda_global_vars->get_partial_sparse_nvt_ptr(nvt_ptr, vocabs_to_update);
-
-  time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
-
-  // lda_global_vars->get_nt(nt);
-  lda_global_vars->get_nt_pointer(nt_ptr);
-  lda_global_vars->get_slice(slice);
-
-
-  std::array<int, 1000000> slice_map;
-
-  int idx = 0;
-  for (int i : slice) {
-    slice_map.at(i) = idx;
-    ++idx;
-  }
-
-  ll_lock.lock();
-
-  ll_nt.clear();
-  ll_nt.resize(K);
-  for (int i = 0; i < vocabs_to_update.size(); ++i) {
-    int gindex = slice_map[vocabs_to_update[i]];
-    ll_nvt[gindex] = 0.0;
-  }
-
-  // for (int i = 0; i < K; ++i) {
-  //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-  //   for (int j = 0; j < vocabs_to_update.size(); ++j) {
-  //     int v = vocabs_to_update[j];
-  //     int gindex = slice_map[v];
-  //     if (nvt[j * K + i] > 0) {
-  //       ll_nvt[gindex] += lda_lgamma(eta + nvt[j * K + i]) - lgamma_eta;
-  //       // ll_nvt[gindex] += lda_lgamma(eta + nvt[gindex * K + i]) - lgamma_eta;
-  //     }
-  //   }
-  // }
   for (int i = 0; i < K; ++i) {
-    ll_nt[i] -= lda_lgamma(eta * V + nt_ptr->operator[](i));
-  }
-
-  for (int i = 0; i < vocabs_to_update.size(); ++i) {
-    int v = vocabs_to_update[i];
-    int gindex = slice_map[v];
-    for (auto& nvt_i: nvt_ptr->operator[](i)) {
-      ll_nvt[gindex] += lda_lgamma(eta + nvt_i) - lgamma_eta;
+      // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+      ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
+      for (int v = 0; v < V; ++v) {
+        // if (nvt[v * K + i] > 0) {
+        if (nvt_ptr->operator[](v * K + i) > 0) {
+          // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
+          ll_word += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
+        }
+      }
     }
-  }
 
-  ll_lock.unlock();
-
+    std::cout << "----------------------------------------------------------\n";
+    std::cout << "**log-likelihood: " << ll + ll_word << std::endl;
+    std::cout << "----------------------------------------------------------\n";
+    std::cout << "Time to find partial model: " << time_find_partial << std::endl;
+    std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
+    std::cout << "Time to send: " << time_send << std::endl;
+    std::cout << "XXX: " << lda_global_vars->time_temp << std::endl;
+    std::cout << "----------------------------------------------------------\n";
 }
+
+// void PSSparseServerTask::update_nvt_nt(const std::vector<int>& vocabs_to_update){
+//
+//   double alpha = 0.1, eta = .01;
+//
+//   int K = lda_global_vars->get_nt_size();
+//
+//   // std::vector<std::vector<int>> nvt_sparse;
+//   // std::vector<int> nt, slice;
+//   //
+//   // nvt_sparse.reserve(vocabs_to_update.size());
+//   // nt.reserve(lda_global_vars->get_nt_size());
+//   // slice.reserve(lda_global_vars->get_slice_size());
+//
+//   std::shared_ptr<std::vector<std::vector<int>>> nvt_ptr;
+//   std::shared_ptr<std::vector<int>> nt_ptr;
+//   std::vector<int> slice;
+//
+//   nvt_ptr.reset(new std::vector<std::vector<int>>);
+//   nvt_ptr->reserve(vocabs_to_update.size());
+//
+//   nt_ptr.reset(new std::vector<int>());
+//   nt_ptr->reserve(lda_global_vars->get_nt_size());
+//
+//   // XXX:
+//
+//
+//   // lda_global_vars->get_nvt(nvt);
+//   // lda_global_vars->get_partial_nvt(nvt, vocabs_to_update);
+//   // lda_global_vars->get_partial_sparse_nvt(nvt_sparse, vocabs_to_update);
+//   lda_global_vars->get_partial_sparse_nvt_ptr(nvt_ptr, vocabs_to_update);
+//
+//
+//   // lda_global_vars->get_nt(nt);
+//   lda_global_vars->get_nt_pointer(nt_ptr);
+//   lda_global_vars->get_slice(slice);
+//   //
+//   //
+//   std::array<int, 1000000> slice_map;
+//
+//   int idx = 0;
+//   for (int i : slice) {
+//     slice_map.at(i) = idx;
+//     ++idx;
+//   }
+//   //
+//   ll_lock.lock();
+//
+//   ll_nt.clear();
+//   ll_nt.resize(K);
+//   for (int i = 0; i < vocabs_to_update.size(); ++i) {
+//     int gindex = slice_map[vocabs_to_update[i]];
+//     ll_nvt[gindex] = 0.0;
+//   }
+//
+//   // for (int i = 0; i < K; ++i) {
+//   //   ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
+//   //   for (int j = 0; j < vocabs_to_update.size(); ++j) {
+//   //     int v = vocabs_to_update[j];
+//   //     int gindex = slice_map[v];
+//   //     if (nvt[j * K + i] > 0) {
+//   //       ll_nvt[gindex] += lda_lgamma(eta + nvt[j * K + i]) - lgamma_eta;
+//   //       // ll_nvt[gindex] += lda_lgamma(eta + nvt[gindex * K + i]) - lgamma_eta;
+//   //     }
+//   //   }
+//   // }
+//   for (int i = 0; i < K; ++i) {
+//     ll_nt[i] -= lda_lgamma(eta * V + nt_ptr->operator[](i));
+//   }
+//
+//   // auto start_time_benchmark = get_time_ms();
+//   for (int i = 0; i < vocabs_to_update.size(); ++i) {
+//     int v = vocabs_to_update[i];
+//     int gindex = slice_map[v];
+//
+//     for (auto& nvt_i: nvt_ptr->operator[](i)) {
+//
+//       ll_nvt[gindex] += lda_lgamma(eta + nvt_i) - lgamma_eta;
+//       // time_temp += 1;
+//     }
+//
+//   }
+//   // time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
+//
+//   ll_lock.unlock();
+//
+// }
 
 } // namespace cirrus

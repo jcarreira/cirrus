@@ -32,18 +32,42 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   nvt.clear();
   nvt.reserve(V_);
   for (int i = 0; i < V_; ++i) {
-    std::vector<int> nt_vi(K_, 0);
+    std::vector<int> nt_vi;
+
     // nt_vi.reserve(K_);
-    int len = load_value<int>(buffer);
-    for (int j = 0; j < len; ++j) {
-      int top = load_value<int>(buffer);
-      int count = load_value<int>(buffer);
-      nt_vi[top] = count;
-    }
+    // int len = load_value<int>(buffer);
+    // for (int j = 0; j < len; ++j) {
+    //   int top = load_value<int>(buffer);
+    //   int count = load_value<int>(buffer);
+    //   nt_vi[top] = count;
+    // }
     // for (int j = 0; j < K_; ++j) {
     //   int temp = load_value<int>(buffer);
     //   nt_vi.push_back(temp);
     // }
+
+    int store_type = load_value<int>(buffer); // 1 -> sparse, 2 -> dense
+    if (store_type == 1) {
+      // sparse
+      nt_vi.resize(K_, 0);
+
+      int len = load_value<int>(buffer);
+      for (int j = 0; j < len; ++j) {
+        int top = load_value<int>(buffer);
+        int count = load_value<int>(buffer);
+        nt_vi[top] = count;
+      }
+    } else if (store_type == 2) {
+      // dense
+      nt_vi.reserve(K_);
+
+      for (int j = 0; j < K_; ++j) {
+        int temp = load_value<int>(buffer);
+        nt_vi.push_back(temp);
+      }
+    } else {
+      throw std::runtime_error("Invalid store type");
+    }
     nvt.push_back(nt_vi);
   }
 
@@ -137,6 +161,10 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
       continue;
     lindex = slice_map.at(gindex);
     temp++;
+
+    // if (nvt[lindex][top] <= 0) {
+    //   continue;
+    // }
 
     nvt[lindex][top] -= 1;
     ndt[doc][top] -= 1;

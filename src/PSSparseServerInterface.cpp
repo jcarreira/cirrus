@@ -330,7 +330,7 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
 #ifdef DEBUG
   std::cout << "Sending LDA updates with size: " << size << std::endl;
 #endif
-  // std::cout << "current lda_update: " << size << " " << gradient.getSerializedSize() <<  " ***\n";
+  std::cout << "current lda_update: " << size << " " << gradient.getSerializedSize() <<  " ***\n";
   ret = send(sock, &size, sizeof(uint32_t), 0);
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
@@ -384,7 +384,7 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
 
-  // std::cout << "current: " << to_receive_size << " pre: " << info.get_receive_size() << std::endl;;
+  std::cout << "current: " << to_receive_size << " pre: " << info.get_receive_size() << std::endl;;
 
   // 5. receive partial_nvt from server
   // uint32_t to_receive_size = info.get_receive_size();
