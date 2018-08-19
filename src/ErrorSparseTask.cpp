@@ -141,9 +141,8 @@ void ErrorSparseTask::run(const Configuration& config) {
               << config.get_train_range()[0].second << std::endl;
   } else {
     std::cout << "[ERROR_TASK] getting minibatches from "
-      << config.get_test_range().first << " to "
-      << config.get_test_range().second
-      << std::endl;
+              << config.get_test_range().first << " to "
+              << config.get_test_range().second << std::endl;
   }
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();
