@@ -108,13 +108,14 @@ void ErrorSparseTask::error_response() {
 }
 
 void ErrorSparseTask::run(const Configuration& config) {
+  s3_initialize_aws();
   std::cout << "Creating error response thread" << std::endl;
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
   std::cout << "Compute error task connecting to store" << std::endl;
 
   std::cout << "Creating sequential S3Iterator" << std::endl;
-  s3_initialize_aws();
+
   uint32_t left, right;
   if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
     left = config.get_test_range().first;
@@ -125,32 +126,28 @@ void ErrorSparseTask::run(const Configuration& config) {
   } else {
     exit(-1);
   }
-  std::vector<std::pair<int, int>> test_range;
+  std::vector<std::pair<int, int>> test_range_vector;
   std::pair<int, int> test_range_pair = std::make_pair(left, right);
-  test_range.push_back(test_range_pair);
+  test_range_vector.push_back(test_range_pair);
   S3SparseIterator s3_iter(
-      test_range, config, config.get_s3_size(), config.get_minibatch_size(),
+      test_range_vector, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION, 0, false,
       config.get_model_type() == Configuration::LOGISTICREGRESSION);
 
   // get data first
   // what we are going to use as a test set
-  std::vector<SparseDataset> minibatches_vec;
-  if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
-    std::cout << "[ERROR_TASK] getting minibatches from "
-              << config.get_train_range()[0].first << " to "
-              << config.get_train_range()[0].second << std::endl;
-  } else {
-    std::cout << "[ERROR_TASK] getting minibatches from "
-              << config.get_test_range().first << " to "
-              << config.get_test_range().second << std::endl;
-  }
+  std::vector<std::shared_ptr<SparseDataset>> minibatches_vec;
+  std::cout << "[ERROR_TASK] getting minibatches from "
+    << left << " to "
+    << right
+    << std::endl;
+
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
     std::shared_ptr<SparseDataset> ds = s3_iter.getNext();
-    minibatches_vec.push_back(*ds);
+    minibatches_vec.push_back(ds);
   }
 
   std::cout << "[ERROR_TASK] Got "
@@ -191,11 +188,11 @@ void ErrorSparseTask::run(const Configuration& config) {
 
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-            model->calc_loss(ds, start_index);
+            model->calc_loss(*ds, start_index);
         total_loss += ret.first;
         total_accuracy += ret.second;
-        total_num_samples += ds.num_samples();
-        total_num_features += ds.num_features();
+        total_num_samples += ds->num_samples();
+        total_num_features += ds->num_features();
         start_index += config.get_minibatch_size();
         if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
           curr_error = (total_loss / total_num_features);
