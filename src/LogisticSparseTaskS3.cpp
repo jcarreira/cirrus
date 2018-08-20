@@ -81,13 +81,12 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   wait_for_start(worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
-  std::vector<std::pair<int, int>> train_ranges = config.get_train_range();
-  std::vector<S3SparseIterator*> iters;
-  for (auto const& train_range : train_ranges) {
-    iters.push_back(new S3SparseIterator(
-        train_range.first, train_range.second, config, config.get_s3_size(),
-        config.get_minibatch_size(), true, worker));
-  }
+  auto train_ranges = config.get_train_range();
+  S3SparseIterator s3_iter(
+      train_ranges,
+      config, config.get_s3_size(), config.get_minibatch_size(),
+      true, worker);
+
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
@@ -96,17 +95,13 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  std::random_device rd;
-  std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> udist(0, iters.size() - 1);
   while (1) {
     // get data, labels and model
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
     std::shared_ptr<SparseDataset> dataset;
-    int index = udist(rng);
-    if (!get_dataset_minibatch(dataset, *iters[index])) {
+    if (!get_dataset_minibatch(dataset, s3_iter)) {
       continue;
     }
 #ifdef DEBUG

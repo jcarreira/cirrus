@@ -20,8 +20,7 @@ namespace cirrus {
 
 class S3SparseIterator : public S3Iterator {
  public:
-  S3SparseIterator(uint64_t left_id,
-                   uint64_t right_id,
+  S3SparseIterator(std::vector<std::pair<int, int>> ranges,
                    const Configuration& c,
                    uint64_t s3_rows,
                    uint64_t minibatch_rows,
@@ -36,10 +35,9 @@ class S3SparseIterator : public S3Iterator {
   void threadFunction(const Configuration&);
   void pushSamples(std::ostringstream* oss);
   void printProgress(const std::string& s3_obj);
-  uint64_t getObjId(uint64_t left, uint64_t right);
+  uint64_t getObjId(std::vector<std::pair<int, int>> ranges);
 
-  uint64_t left_id;
-  uint64_t right_id;
+  std::vector<std::pair<int, int>> ranges;
 
   std::shared_ptr<S3Client> s3_client;
 
@@ -73,6 +71,7 @@ class S3SparseIterator : public S3Iterator {
   std::default_random_engine re;
   bool random_access = true;
   uint64_t current = 0;
+  uint64_t current_range = 0;
 };
 
 }  // namespace cirrus

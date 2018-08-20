@@ -125,9 +125,11 @@ void ErrorSparseTask::run(const Configuration& config) {
   } else {
     exit(-1);
   }
-
+  std::vector<std::pair<int, int>> test_range;
+  std::pair<int, int> test_range_pair = std::make_pair(left, right);
+  test_range.push_back(test_range_pair);
   S3SparseIterator s3_iter(
-      left, right, config, config.get_s3_size(), config.get_minibatch_size(),
+      test_range, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION, 0, false,
       config.get_model_type() == Configuration::LOGISTICREGRESSION);
