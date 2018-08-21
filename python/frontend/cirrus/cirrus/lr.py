@@ -40,6 +40,7 @@ class LogisticRegressionTask(BaseTask):
                  "test_set: %d-%d" % self.test_set
         return config
 
+#converts a list of training ranges into a string for the config file
 def create_train_string(train_set):
   result = str(train_set[0][0]) + "-" + str(train_set[0][1])
   if len(train_set) > 1:

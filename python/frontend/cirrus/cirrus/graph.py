@@ -131,7 +131,11 @@ def get_traces(num, metric="LOSS"):
                 line = dict(color = bundle.get_info(i, 'color')),
                 customdata =str(i) * lll
             )
-            trace_lst.append(trace)
+            if metric == "LOSS":
+                if bundle.cross_validation and i % 10 == 0:
+                    trace_lst.append(trace)
+            else:
+                trace_lst.append(trace)
     else:
         # Get top N
         q = []
@@ -150,7 +154,11 @@ def get_traces(num, metric="LOSS"):
                 customdata= str(i) * lll
             )
             if (len(ys) > 0):
-                q.append((ys[-1], trace))
+                if metric == "LOSS":
+                    if bundle.cross_validation and i % 10 == 0:
+                        q.append((ys[-1], trace))
+                else:
+                    q.append((ys[-1], trace))
         q.sort(reverse=(num > 0))
         trace_lst = [item[1] for item in q[:abs(num)]]
     return trace_lst

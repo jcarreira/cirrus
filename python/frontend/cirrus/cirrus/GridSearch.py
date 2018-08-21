@@ -13,8 +13,10 @@ class GridSearch:
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1):
-
+    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1, cross_validation=False):
+        if cross_validation:
+            hyper_vars.append("test_set")
+            hyper_params.append([i for i in range(10)])
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
         self.infos = []       # Stores metadata associated with each experiment
@@ -24,6 +26,7 @@ class GridSearch:
         self.kill_signal = threading.Event()
         self.loss_lst = []
         self.start_time = time.time()
+        self.cross_validation = cross_validation
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -47,16 +50,25 @@ class GridSearch:
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
-    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], machines=[]):
+    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_sets=0):
         possibilities = list(itertools.product(*hyper_params))
         base_port = 1337
         index = 0
         num_machines = len(machines)
+        sets_per = num_sets // 10
+        remaining = num_sets % 10
+        set_index = 0
+        sets = [(i * sets_per, ((i + 1)  * sets_per) - 1) for i in range(9)]
+        sets.append((sets_per * 9, (sets_per * 10) - 1 + remaining))
         for p in possibilities:
             configuration = zip(hyper_vars, p)
             modified_config = param_base.copy()
             for var_name, var_value in configuration:
-                modified_config[var_name] = var_value
+                if var_name == "test_set":
+                    modified_config[var_name] = sets[var_value]
+                    modified_config['train_set'] = sets[:i] + sets[i + 1:]
+                else:
+                    modified_config[var_name] = var_value
             modified_config['ps_ip_port'] = base_port
             modified_config['ps_ip_public'] = machines[index][0]
             modified_config['ps_ip_private'] = machines[index][1]
@@ -95,7 +107,10 @@ class GridSearch:
     # Gets x-axis values of specified metric from experiment i 
     def get_xs_for(self, i, metric="LOSS"):
         if metric == "LOSS":
-            lst = self.loss_lst[i]
+            if self.cross_validation:
+                lst = self.loss_lst[i // 10]
+            else:
+                lst = self.loss_lst[i]
         elif metric == "UPS":
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
@@ -114,7 +129,10 @@ class GridSearch:
     # TODO: Fix duplicate methods
     def get_ys_for(self, i, metric="LOSS"):
         if metric == "LOSS":
-            lst = self.loss_lst[i]
+            if self.cross_validation:
+                lst = self.loss_lst[i // 10]
+            else:
+                lst = self.loss_lst[i]
         elif metric == "UPS":
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
@@ -133,11 +151,26 @@ class GridSearch:
 
             time.sleep(5)  # HACK: Sleep for 5 seconds to wait for PS to start
             while True:
-                cirrus_obj = cirrus_objs[index]
-
-                cirrus_obj.relaunch_lambdas()
-                loss = cirrus_obj.get_time_loss()
-                self.loss_lst[index] = loss
+                if self.cross_validation:
+                    objs = cirrus_objs[(index // 10) * 10 : (index // 10) * 11]
+                else:
+                    objs = cirrus_objs[index]
+                total_time_loss = {}
+                for obj in objs:
+                    obj.relaunch_lambdas()
+                    obj_time_loss = obj.get_time_loss()
+                    for time_loss in obj_time_loss:
+                        rounded_time = int(round(time_loss[0]))
+                        if rounded_time in total_time_loss:
+                            total_time_loss[rounded_time].append(time_loss[1])
+                        else:
+                            total_time_loss[rounded_time] = [time_loss[1]]
+                avg_time_loss = [(time, sum(total_time_loss[time]) / len(total_time_loss[time])) 
+                            for time in total_time_loss]
+                if self.cross_validation:
+                    self.loss_lst[index // 10] = avg_time_loss
+                else:
+                    self.loss_lst[index] = avg_time_loss
 
                 print("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
 
