@@ -140,7 +140,7 @@ void ErrorSparseTask::run(const Configuration& config) {
 
   // get data first
   // what we are going to use as a test set
-  std::vector<SparseDataset> minibatches_vec;
+  std::vector<std::shared_ptr<SparseDataset>> minibatches_vec;
   std::cout << "[ERROR_TASK] getting minibatches from "
     << config.get_train_range().first << " to "
     << config.get_train_range().second
@@ -149,12 +149,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
-    const void* minibatch_data = s3_iter.get_next_fast();
-    SparseDataset ds(
-        reinterpret_cast<const char*>(minibatch_data),
-        config.get_minibatch_size(),
-        config.get_model_type() == Configuration::LOGISTICREGRESSION ||
-            config.get_model_type() == Configuration::SOFTMAX);
+    std::shared_ptr<SparseDataset> ds = s3_iter.getNext();
     minibatches_vec.push_back(ds);
   }
 
@@ -197,15 +192,15 @@ void ErrorSparseTask::run(const Configuration& config) {
       for (auto& ds : minibatches_vec) {
         std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
         if (config.get_model_type() == Configuration::SOFTMAX) {
-          Dataset intermediate = to_dataset(ds, config);
+          Dataset intermediate = to_dataset(*ds, config);
           ret = model->calc_loss(intermediate);
         } else {
-          ret = model->calc_loss(ds, start_index);
+          ret = model->calc_loss(*ds, start_index);
         }
         total_loss += ret.first;
         total_accuracy += ret.second;
-        total_num_samples += ds.num_samples();
-        total_num_features += ds.num_features();
+        total_num_samples += ds->num_samples();
+        total_num_features += ds->num_features();
         start_index += config.get_minibatch_size();
         if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
             config.get_model_type() == Configuration::SOFTMAX) {
