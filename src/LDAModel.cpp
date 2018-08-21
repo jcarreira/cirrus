@@ -26,14 +26,18 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   // int V_by_K = load_value<int>(buffer);
   V_ = load_value<int>(buffer);
 
+  // K_ = load_value<int16_t>(info);
   K_ = load_value<int>(info);
+
+  // std::cout << V_ << " " << K_ << std::endl;
   // V_ = V_by_K / K_;
 
   nvt.clear();
   nvt.reserve(V_);
   for (int i = 0; i < V_; ++i) {
     std::vector<int> nt_vi;
-
+    std::vector<int> nz_nt_vi;
+    nz_nt_vi.reserve(K_);
     // nt_vi.reserve(K_);
     // int len = load_value<int>(buffer);
     // for (int j = 0; j < len; ++j) {
@@ -46,37 +50,111 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
     //   nt_vi.push_back(temp);
     // }
 
-    int store_type = load_value<int>(buffer); // 1 -> sparse, 2 -> dense
+    uint8_t store_type = load_value<uint8_t>(buffer); // 1 -> sparse, 2 -> dense
+    // std::cout << store_type << " ***\n";
     if (store_type == 1) {
       // sparse
       nt_vi.resize(K_, 0);
 
-      int len = load_value<int>(buffer);
+      uint16_t len = load_value<uint16_t>(buffer);
       for (int j = 0; j < len; ++j) {
-        int top = load_value<int>(buffer);
-        int count = load_value<int>(buffer);
+        uint16_t top = load_value<uint16_t>(buffer);
+        uint16_t count = load_value<uint16_t>(buffer);
         nt_vi[top] = count;
+        nz_nt_vi.push_back(top);
       }
     } else if (store_type == 2) {
       // dense
       nt_vi.reserve(K_);
 
       for (int j = 0; j < K_; ++j) {
-        int temp = load_value<int>(buffer);
+        uint16_t temp = load_value<uint16_t>(buffer);
         nt_vi.push_back(temp);
+        if (temp != 0) {
+          nz_nt_vi.push_back(j);
+        }
       }
     } else {
       throw std::runtime_error("Invalid store type");
     }
     nvt.push_back(nt_vi);
+    nz_nvt_indices.push_back(nz_nt_vi);
   }
 
   nt.clear();
   nt.reserve(K_);
+  nz_nt_indices.reserve(K_);
   for (int i = 0; i < K_; ++i) {
     int temp = load_value<int>(buffer);
     nt.push_back(temp);
+    if (temp != 0) {
+      nz_nt_indices.push_back(i);
+    }
   }
+
+  // t.clear();
+  // d.clear();
+  // w.clear();
+  // int64_t N = load_value<int64_t>(info);
+  // t.reserve(N);
+  // d.reserve(N);
+  // w.reserve(N);
+  // for (uint64_t i = 0; i < N; ++i) {
+  //   int16_t top = load_value<int16_t>(info);
+  //   int16_t doc = load_value<int16_t>(info);
+  //   int32_t word = load_value<int32_t>(info);
+  //   t.push_back(top);
+  //   d.push_back(doc);
+  //   w.push_back(word);
+  // }
+  //
+  // slice.clear();
+  // int16_t S = load_value<int16_t>(info);
+  // slice.reserve(S);
+  // for (int i = 0; i < S; ++i) {
+  //   int s = load_value<int>(info);
+  //   slice.push_back(s);
+  // }
+  //
+  // ndt.clear();
+  // int16_t D = load_value<int16_t>(info);
+  // ndt.reserve(D);
+  //
+  // std::vector<int> nt_di, nz_nt_di;
+  //
+  // for (int i = 0; i < D; ++i) {
+  //   // nt_di.reserve(K_);
+  //   // nz_nt_di.reserve(K_);
+  //
+  //   int8_t store_type = load_value<int8_t>(info);
+  //   nt_di.clear();
+  //   nz_nt_di.clear();
+  //
+  //   if (store_type == 1) {
+  //     int16_t len = load_value<int16_t>(info);
+  //     nt_di.resize(K_, 0);
+  //     nz_nt_di.reserve(len);
+  //     for (int j = 0; j < len; ++j) {
+  //       int16_t top = load_value<int16_t>(info);
+  //       int16_t count = load_value<int16_t>(info);
+  //       nt_di[top] = count;
+  //       nz_nt_di.push_back(top);
+  //     }
+  //   } else if (store_type == 2) {
+  //     nt_di.reserve(K_);
+  //     nz_nt_di.reserve(K_);
+  //     for (int j = 0; j < K_; ++j) {
+  //       int16_t temp = load_value<int16_t>(info);
+  //       nt_di.push_back(temp);
+  //       if (temp != 0) {
+  //         nz_nt_di.push_back(j);
+  //       }
+  //     }
+  //   }
+  //
+  //   ndt.push_back(nt_di);
+  //   nz_ndt_indices.push_back(nz_nt_di);
+  // }
 
   t.clear();
   d.clear();
@@ -106,14 +184,35 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   int D = load_value<int>(info);
   ndt.reserve(D);
   for (int i = 0; i < D; ++i) {
-    std::vector<int> nt_di;
+    std::vector<int> nt_di, nz_nt_di;
     nt_di.reserve(K_);
+    nz_nt_di.reserve(K_);
     for (int j = 0; j < K_; ++j) {
       int temp = load_value<int>(info);
       nt_di.push_back(temp);
+      if (temp != 0) {
+        nz_nt_di.push_back(j);
+      }
     }
     ndt.push_back(nt_di);
+    nz_ndt_indices.push_back(nz_nt_di);
   }
+}
+
+LDAModel& LDAModel::operator=(LDAModel& model) {
+  K_ = model.K_;
+  V_ = model.V_;
+  update_bucket = model.update_bucket;
+  t = std::move(model.t);
+  d = std::move(model.d);
+  w = std::move(model.w);
+  ndt = std::move(model.ndt);
+  nvt = std::move(model.nvt);
+  nt = std::move(model.nt);
+  nz_ndt_indices = std::move(model.nz_ndt_indices);
+  nz_nvt_indices = std::move(model.nz_nvt_indices);
+  nz_nt_indices = std::move(model.nz_nt_indices);
+  slice = std::move(model.slice);
 }
 
 std::unique_ptr<LDAUpdates> LDAModel::sample_model(int& total_sampled_tokens) {
@@ -153,6 +252,26 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
 
   int temp = 0;
 
+  double smoothing_threshold = 0.0, doc_threshold = 0.0;
+  std::vector<double> smoothing_vec, doc_vec;
+
+  // Computing [smoothing_threshold]
+  // Only iterating over non-zero entries
+  smoothing_vec.resize(K_, (alpha * eta) / (eta * V_));
+  for (auto& i: nz_nt_indices) {
+    double value = (alpha * eta) / (eta * V_ + nt[i]);
+    smoothing_threshold += value;
+    smoothing_vec[i] = value;
+  }
+  smoothing_threshold += (alpha * eta) / (eta * V_) * (K_ - nz_nt_indices.size());
+
+  // std::cout << "Smoothing threshold: " << smoothing_threshold << std::endl;
+
+  int pre_doc = -1;
+
+  // coefficients vector to help computing word_threshold
+  std::vector<int> coeff_di;
+
   for (int i = 0; i < t.size(); i++) {
     top = t[i], doc = d[i], gindex = w[i];
     // if (slice_map.find(gindex) == slice_map.end())
@@ -161,6 +280,28 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
       continue;
     lindex = slice_map.at(gindex);
     temp++;
+
+    if (doc != pre_doc) {
+
+      pre_doc = doc;
+
+      // Compute doc_threshold for every new document
+      doc_threshold = 0.0;
+      doc_vec.resize(K_, 0);
+      for (auto& nz_top: nz_ndt_indices[doc]) {
+        double value = ndt[doc][nz_top] * alpha / (eta * V_ + nt[nz_top]);
+        doc_threshold += value;
+        doc_vec[nz_top] = value;
+      }
+
+      // Compute coefficients vector
+      coeff_di.resize(K_, 0);
+      for (int j = 0; j < K_; ++j) {
+        coeff_di[j] = (alpha + ndt[doc][j]) / (eta * V_ + nt[j]);
+        // std::cout << coeff_di[i] << std::endl;
+      }
+
+    }
 
     // if (nvt[lindex][top] <= 0) {
     //   continue;
@@ -174,19 +315,95 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     // std::vector<int> which_topic(K_);
     // which_topic[top] = 1;
 
-    for (int j = 0; j < K_; ++j) {
+    // // Naive Sampler
+    // for (int j = 0; j < K_; ++j) {
+    //
+    //   r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta + nt[j]);
+    //
+    //   if (r > 0)
+    //     rate_cum += r;
+    //
+    //   rate[j] = rate_cum;
+    // }
+    //
+    // linear = rand() * rate_cum / RAND_MAX;
+    // new_top = (std::lower_bound(rate, rate + K_, linear)) - rate;
 
-      // Naive Sampler
-      r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta + nt[j]);
-
-      if (r > 0)
-        rate_cum += r;
-
-      rate[j] = rate_cum;
+    double word_threshold = 0.0;
+    for (auto& nz_top: nz_nvt_indices[lindex]) {
+      // std::cout << coeff_di[nz_top] << " " << nvt[lindex][nz_top] << std::endl;
+      word_threshold += coeff_di[nz_top] * nvt[lindex][nz_top];
     }
 
-    linear = rand() * rate_cum / RAND_MAX;
-    new_top = (std::lower_bound(rate, rate + K_, linear)) - rate;
+    double rdn = rand() * (smoothing_threshold + doc_threshold + word_threshold) / RAND_MAX;
+
+    // std::cout << doc_threshold << " " << word_threshold << std::endl;
+
+    // 'smoothing only' bucket
+    if (rdn < smoothing_threshold) {
+
+      // std::cout << "1\n";
+
+        for (int j = 0; j < K_; ++j) {
+          r = smoothing_vec[j] + doc_vec[j] + coeff_di[j] * nvt[lindex][j];
+          if (r > rdn) {
+            new_top = j;
+            break;
+          }
+          rate[j] = r;
+        }
+
+        // Keep adding until we reach a value greater than rdn
+        bool finish = true;
+        while(finish) {
+          for (int j = 0; j < K_; ++j) {
+            rate[j] += smoothing_vec[j];
+            if (rate[j] > rdn) {
+              new_top = j;
+              finish = false;
+              break;
+            }
+          }
+        }
+    } else if (rdn < smoothing_threshold + doc_threshold) {
+
+      // std::cout << "2\n";
+
+      std::vector<double> probs;
+      probs.reserve(nz_ndt_indices[doc].size());
+      rate_cum = 0.0;
+
+      // O(K_d)
+      for (auto& nz_top: nz_ndt_indices[doc]) {
+        r = smoothing_vec[nz_top] + doc_vec[nz_top] + coeff_di[nz_top] * nvt[lindex][nz_top];
+        if (r > 0) {
+          rate_cum += r;
+        }
+        probs.push_back(rate_cum);
+      }
+      linear = rand() * rate_cum / RAND_MAX;
+      int l_idx = std::lower_bound(probs.begin(), probs.begin() + nz_ndt_indices[doc].size(), linear) - probs.begin();
+      new_top = nz_ndt_indices[doc][l_idx];
+
+    } else {
+
+      // std::cout << "3\n";
+
+      std::vector<double> probs;
+      probs.reserve(nz_nvt_indices[lindex].size());
+      rate_cum = 0.0;
+
+      for (auto& nz_top: nz_nvt_indices[lindex]) {
+        r = smoothing_vec[nz_top] + doc_vec[nz_top] + coeff_di[nz_top] * nvt[lindex][nz_top];
+        if (r > 0) {
+          rate_cum += r;
+        }
+        probs.push_back(rate_cum);
+      }
+      linear = rand() * rate_cum / RAND_MAX;
+      int l_idx = std::lower_bound(probs.begin(), probs.begin() + nz_nvt_indices[lindex].size(), linear) - probs.begin();
+      new_top = nz_nvt_indices[lindex][l_idx];
+    }
 
     t[i] = new_top;
     nvt[lindex][new_top] += 1;
@@ -198,7 +415,21 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     change_nt[top] -= 1;
     change_nt[new_top] += 1;
 
+    // updating doc_threshold, doc_vec & coeff_di
+    double to_subtract = doc_vec[top] + doc_vec[new_top];
+    doc_vec[top] = ndt[doc][top] * alpha / (eta * V_ + nt[top]);
+    doc_vec[new_top] = ndt[doc][new_top] * alpha / (eta * V_ + nt[new_top]);
+
+    doc_threshold += doc_vec[top] + doc_vec[new_top] - to_subtract;
+
+    coeff_di[top] = (alpha + ndt[doc][top]) / (eta * V_ + nt[top]);
+    coeff_di[new_top] = (alpha + ndt[doc][new_top]) / (eta * V_ + nt[new_top]);
+
+    // std::cout << "*\n";
+
   }
+
+  // std::cout << "---\n";
 
   total_sampled_tokens += temp;
 

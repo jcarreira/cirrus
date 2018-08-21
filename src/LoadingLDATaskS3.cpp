@@ -14,6 +14,8 @@ namespace cirrus {
 #define READ_INPUT_THREADS (10)
 
 std::array<int, 1000000> lookup_map;
+std::array<int, 1000000> lindex_map;
+
 int idx = 0;
 
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
@@ -32,17 +34,20 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   std::vector<std::vector<int>> ndt;
   std::set<int> local_vocab;
 
+  lindex_map.fill(-1);
+
   for (const auto& doc : docs) {
     std::vector<int> ndt_row(K);
 
     for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
-      if (local_vocab.find(gindex) == local_vocab.end()) {
+      if (lindex_map[gindex] == -1) {
         local_vocab.insert(local_vocab.begin(), gindex);
+        lindex_map[gindex] = 1;
       }
-      if (global_vocab.find(gindex) == global_vocab.end()){
+      if (lookup_map[gindex] == -1){
         global_vocab.insert(global_vocab.end(), gindex);
-        lookup_map.at(gindex) = idx;
+        lookup_map[gindex] = idx;
         idx++;
       }
       for (int i = 0; i < count; ++i) {
@@ -93,6 +98,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   nt.resize(K);
 
   std::set<int> global_vocab;
+  uint64_t to_send_size;
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
@@ -104,14 +110,17 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     LDAStatistics to_save =
         count_dataset(partial_docs, nvt, nt, K, global_vocab);
 
+    char* msg = to_save.serialize(to_send_size);
+
     std::cout << "Putting object(LDAStatistics) in S3 with size: "
-              << to_save.get_serialize_size() << std::endl;
+              << to_send_size << std::endl;
     std::string obj_id =
         std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
         "-LDA";
     s3_client->s3_put_object(
         obj_id, config.get_s3_bucket(),
-        std::string(to_save.serialize(), to_save.get_serialize_size()));
+        std::string(msg, to_send_size));
+    // delete[] msg;
   }
   // check_loading(config, s3_client);
 

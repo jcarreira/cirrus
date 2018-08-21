@@ -401,7 +401,8 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
 
   time_receive += (get_time_ms() - start_time_benchmark) / 1000.0;
 
-  char* msg_begin = info.serialize();
+  uint64_t to_send_size;
+  char* msg_begin = info.serialize(to_send_size);
 
   model.reset(new LDAModel(buffer, msg_begin, update_bucket));
 

@@ -37,7 +37,9 @@ class LDAModel {
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
   void get_t(std::vector<int>& t_) { t_ = t; }
 
-private:
+  LDAModel& operator=(LDAModel& model);
+
+protected:
 
   std::unique_ptr<LDAUpdates> sample_thread(std::vector<int>& t,
                                             std::vector<int>& d,
@@ -68,6 +70,9 @@ private:
     */
   std::vector<std::vector<int>> ndt, nvt;
   std::vector<int> nt;
+
+  std::vector<std::vector<int>> nz_ndt_indices, nz_nvt_indices;
+  std::vector<int> nz_nt_indices;
   /**
     * vocabulary slice containing word indices
     * that are being considered currently

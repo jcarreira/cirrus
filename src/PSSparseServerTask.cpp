@@ -281,7 +281,6 @@ bool PSSparseServerTask::process_get_lda_model(
   // to send back to the client
   uint32_t incoming_size = req.incoming_size;
   if (incoming_size > thread_buffer.size()) {
-    std::cout << "bb " << incoming_size << " " << thread_buffer.size() << std::endl;
     throw std::runtime_error("Not enough buffer");
   }
 #ifdef DEBUG
@@ -323,6 +322,10 @@ bool PSSparseServerTask::process_get_lda_model(
   }
   // time_process_get += (get_time_ms() - start_time_benchmark) / 1000.0;
   time_send += (get_time_ms() - start_time_benchmark) / 1000.0;
+  double time_send_tt = (get_time_ms() - start_time_benchmark) / 1000.0;
+
+
+  // std::cout << "---- " << time_send_tt << " " << to_send_size << " " << std::strlen(data_to_send) << " ******\n";
 
   delete data_to_send;
   return true;
@@ -598,7 +601,7 @@ void PSSparseServerTask::start_server() {
                              NUM_FACTORS));
   mf_model->randomize();
   if (task_config.get_model_type() == cirrus::Configuration::LDA) {
-    std::cout << "Getting initial LDA statistics from S3\n";
+    std::cout << "Getting initial LDAUpdate from S3\n";
     // Get the global stats from S3
     s3_initialize_aws();
     std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
@@ -612,7 +615,10 @@ void PSSparseServerTask::start_server() {
     s3_shutdown_aws();
 
     lda_global_vars.reset(new LDAUpdates());
+
     lda_global_vars->loadSerialized(s3_data);
+
+    // delete[] s3_obj;
 
     // auto init_ll_thread = std::make_unique<std::thread>(
     //       std::bind(&PSSparseServerTask::init_loglikelihood, this));
@@ -944,6 +950,7 @@ double PSSparseServerTask::compute_loglikelihood() {
   //   ll += ll_nvt[i];
   // }
   ll_lock.lock();
+  std::cout << "cc\n";
   for(int i=0; i<ll_ndt.size(); ++i){
     ll += ll_ndt[i];
   }
@@ -1079,6 +1086,8 @@ void PSSparseServerTask::init_loglikelihood(){
   std::vector<std::vector<int>> ndt;
   ndt_partial.get_ndt(ndt);
 
+  std::cout << ndt.size() << std::endl;
+
   for (int j = 0; j < ndt.size(); ++j) {
     int ndj = 0;
     for (int k = 0; k < K; ++k) {
@@ -1097,6 +1106,7 @@ void PSSparseServerTask::init_loglikelihood(){
   ll_ndt.clear();
   ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
 
+  std::cout << "cc\n";
   compute_loglikelihood();
 
 }

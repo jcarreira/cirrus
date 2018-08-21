@@ -35,7 +35,7 @@ class LDAStatistics {
   /**
     * Cast all the local variables into memory
     */
-  char* serialize();
+  char* serialize(uint64_t& to_send_size);
   /**
     * Only cast vocabulary slice into memory
     */
@@ -77,10 +77,11 @@ class LDAStatistics {
   void get_ndt(std::vector<std::vector<int> >& ndt) { ndt = ndt_; }
   void get_slice(std::vector<int>& slice) { slice = slice_; }
   void reset_current() { current = 0; }
+  void incre_current() { current += slice_size; }
 
   int current = 0;
 
- private:
+ // private:
    /**
      *
      * @variable K_: # of potential topics

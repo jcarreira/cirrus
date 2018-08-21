@@ -4,7 +4,7 @@
 #include <Utils.h>
 #include <cassert>
 #include "Constants.h"
-
+#include <cstring>
 namespace cirrus {
 
 /**
@@ -788,6 +788,8 @@ void LDAUpdates::get_partial_sparse_nvt_ptr(
 
 char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
 
+  auto ttt = get_time_ms();
+
   int N = 0, S = 0, word_idx;
   int K = change_nt_ptr->size();
   int len = load_value<int>(s);
@@ -828,11 +830,11 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
     // so that sparse data structure would be used
     if (2 * n < K) {
       // 1 -> sparse structure
-      store_value<uint32_t>(mem, sparse_type);
-      store_value<uint32_t>(mem, n);
+      store_value<uint8_t>(mem, sparse_type);
+      store_value<uint16_t>(mem, n);
       for (auto& a: sparse_nt_vi) {
-        store_value<uint32_t>(mem, a.first);
-        store_value<uint32_t>(mem, a.second);
+        store_value<uint16_t>(mem, a.first);
+        store_value<uint16_t>(mem, a.second);
       }
       N += n; // # of <top, count> pairs stored with sparse structure
       S += 1; // # of words that are stored with sparse structure
@@ -842,15 +844,15 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
     } else {
       // std::cout << change_nvt_ptr->size() << " " << slice_map.at(word_idx) * K << " cc\n";
       // 2 -> dense structure
-      store_value<uint32_t>(mem, dense_type);
+      store_value<uint8_t>(mem, dense_type);
       // for (int j = 0; j < K; ++j) {
       //   store_value<uint32_t>(mem, change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j));
       // }
-      uint32_t* data = reinterpret_cast<uint32_t*>(mem);
+      uint16_t* data = reinterpret_cast<uint16_t*>(mem);
       std::copy(change_nvt_ptr->begin() + slice_map.at(word_idx) * K,
                 change_nvt_ptr->begin() + (slice_map.at(word_idx) + 1) * K,
                 data);
-      mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(int) * K));
+      mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(uint16_t) * K));
     }
   }
 
@@ -858,8 +860,12 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
   uint32_t* data = reinterpret_cast<uint32_t*>(mem);
   std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
 
-  to_send_size = sizeof(uint32_t) * (1 + len + S + N * 2 + (len - S) * K + K);
+  // to_send_size = sizeof(uint32_t) * (1 + len + S + N * 2 + (len - S) * K + K);
+  to_send_size = sizeof(uint32_t) * (1 + K) + sizeof(uint8_t) * (len) + sizeof(uint16_t) * (S + 2 * N + (len - S) * K);
 
+  double time_taken = (get_time_ms() - ttt) / 1000.0;
+  // std::cout << time_taken << " ****\n";
+  // std::cout << std::strlen(mem_begin) << " (((())))\n";
   return mem_begin;
 
 }

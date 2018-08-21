@@ -475,13 +475,17 @@ class LDATaskS3 : public MLTask {
   void upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
                                int& upload_lock,
                                int bucket_id);
+  void pre_fetch_model_fn(std::unique_ptr<LDAModel>& model,
+                          std::unique_ptr<LDAStatistics>& local_vars,
+                          int update_bucket,
+                          bool& done);
   void push_gradient(LDAUpdates*);
 
   // std::shared_ptr<LDAStatistics> pre_fetch_vars;
-  std::vector<std::unique_ptr<std::thread>> help_upload_threads;
-  std::mutex redis_lock, upload_lock;
+  std::vector<std::unique_ptr<std::thread>> help_upload_threads, pre_fetch_model_threads;
+  std::mutex redis_lock, pre_fetch_lock;
   std::vector<int> upload_lock_indicators;
-  // bool pre_fetch_done = false;
+  bool pre_fetch_done = false;
   PSSparseServerInterface* psint;
 };
 
