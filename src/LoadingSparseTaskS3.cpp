@@ -28,10 +28,10 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
 
   // READ the kaggle criteo dataset
   if (config.get_model_type() == Configuration::SOFTMAX) {
-    return to_sparse(input.read_input_csv(config.get_input_path(), ",", 10,
+    return to_sparse(input.read_input_csv(config.get_load_input_path(), ",", 10,
                                           50000, 1000, true));
   } else {
-    return input.read_input_criteo_kaggle_sparse(config.get_input_path(),
+    return input.read_input_criteo_kaggle_sparse(config.get_load_input_path(),
                                                  delimiter, config);
   }
 }
