@@ -18,8 +18,8 @@ class SoftmaxTask(BaseTask):
         else:
             grad_t = 0
 
-        config = "input_path: /mnt/efs/mnist/train_mnist1.csv \n" + \
-                 "input_type: csv\n" + \
+        config = "load_input_path: /mnt/efs/mnist/train_mnist1.csv \n" + \
+                 "load_input_type: csv\n" + \
                  "num_classes: 10 \n" + \
                  "num_features: 784 \n" + \
                  "limit_cols: 1000 \n" + \
@@ -32,6 +32,7 @@ class SoftmaxTask(BaseTask):
                  "learning_rate: %f \n" % self.learning_rate + \
                  "epsilon: %lf \n" % self.epsilon + \
                  "model_bits: %d \n" % self.model_bits + \
+                 "dataset_format: binary \n" + \
                  "s3_bucket: %s \n" % self.dataset + \
                  "use_grad_threshold: %d \n" % grad_t + \
                  "grad_threshold: %lf \n" % self.grad_threshold + \
