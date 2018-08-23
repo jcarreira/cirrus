@@ -118,9 +118,15 @@ def get_mem_usage():
 
 def get_traces(num, metric="LOSS"):
     trace_lst = []
+    if metric == "LOSS":
+      num_exp = self.get_num_experiments()
+    elif metric == "UPS":
+      num_exp = self.get_num_experiments_ups()
+    else:
+      num_exp = self.get_num_experiments_cps()
     if num == 0:
         # Get all
-        for i in range(get_num_experiments()):
+        for i in range(num_exp):
             xs = get_xs_for(i, metric)
             lll = len(xs)
             trace = Scatter(
@@ -131,16 +137,12 @@ def get_traces(num, metric="LOSS"):
                 line = dict(color = bundle.get_info(i, 'color')),
                 customdata =str(i) * lll
             )
-            if metric == "LOSS":
-                if bundle.cross_validation and i % 10 == 0:
-                    trace_lst.append(trace)
-            else:
-                trace_lst.append(trace)
+            trace_lst.append(trace)
     else:
         # Get top N
         q = []
 
-        for i in range(get_num_experiments()):
+        for i in range(num_exp):
 
             xs = get_xs_for(i, metric)
             ys = get_ys_for(i, metric)
@@ -154,11 +156,7 @@ def get_traces(num, metric="LOSS"):
                 customdata= str(i) * lll
             )
             if (len(ys) > 0):
-                if metric == "LOSS":
-                    if bundle.cross_validation and i % 10 == 0:
-                        q.append((ys[-1], trace))
-                else:
-                    q.append((ys[-1], trace))
+                q.append((ys[-1], trace))
         q.sort(reverse=(num > 0))
         trace_lst = [item[1] for item in q[:abs(num)]]
     return trace_lst
