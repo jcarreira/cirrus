@@ -9,6 +9,11 @@
 #include <math.h>
 #include <set>
 #include <map>
+#include <deque>
+
+#include <codecfactory.h>
+
+// #include "temp.h"
 // #include <boost>
 
 #include <Utils.h>
@@ -16,18 +21,51 @@
 #include <LDAModel.h>
 
 // #define MAX_MSG_SIZE (1024 * 1024 * 100)
-
 namespace cirrus {
 
 LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
 
+  uint32_t receive_size = load_value<uint32_t>(buffer);
+  uint32_t original_size = load_value<uint32_t>(buffer);
+
+  // std::cout << "original size: " << original_size << std::endl;
+  // std::cout << "receive_size size: " << receive_size << std::endl;
+
+  FastPForLib::IntegerCODEC &codec = *FastPForLib::CODECFactory::getFromName("simdfastpfor256");
+
+  // TODO
+  std::vector<uint32_t> to_decompress;
+  to_decompress.reserve(receive_size);
+  for (int i = 0; i < receive_size; ++i) {
+    uint32_t temp = load_value<uint32_t>(buffer);
+    to_decompress.push_back(temp);
+  }
+
+  // for(int i=0; i<10; ++i){
+  //   std::cout << to_decompress[i] << " ";
+  // }
+  // std::cout << std::endl;
+
+  std::vector<uint32_t> decompressed(original_size);
+  size_t recoveredsize = decompressed.size();
+  codec.decodeArray(to_decompress.data(), to_decompress.size(), decompressed.data(), recoveredsize);
+  decompressed.resize(original_size);
+
+  // for ()
+
+  std::deque<uint32_t> partial_model(decompressed.begin(), decompressed.end());
+
   update_bucket = to_update;
 
   // int V_by_K = load_value<int>(buffer);
-  V_ = load_value<int>(buffer);
+  // V_ = load_value<int>(buffer);
+  V_ = partial_model.front();
+  partial_model.pop_front();
 
-  // K_ = load_value<int16_t>(info);
-  K_ = load_value<int>(info);
+  // std::cout << "V: " << V_ << std::endl;
+
+  K_ = load_value<int16_t>(info);
+  // K_ = load_value<int>(info);
 
   // std::cout << V_ << " " << K_ << std::endl;
   // V_ = V_by_K / K_;
@@ -50,16 +88,29 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
     //   nt_vi.push_back(temp);
     // }
 
-    uint8_t store_type = load_value<uint8_t>(buffer); // 1 -> sparse, 2 -> dense
+    // uint8_t store_type = load_value<uint8_t>(buffer); // 1 -> sparse, 2 -> dense
+
+    uint32_t store_type = partial_model.front();
+    partial_model.pop_front();
+
     // std::cout << store_type << " ***\n";
     if (store_type == 1) {
       // sparse
       nt_vi.resize(K_, 0);
 
-      uint16_t len = load_value<uint16_t>(buffer);
+      // uint16_t len = load_value<uint16_t>(buffer);
+      uint32_t len = partial_model.front();
+      partial_model.pop_front();
+
       for (int j = 0; j < len; ++j) {
-        uint16_t top = load_value<uint16_t>(buffer);
-        uint16_t count = load_value<uint16_t>(buffer);
+        // uint16_t top = load_value<uint16_t>(buffer);
+        // uint16_t count = load_value<uint16_t>(buffer);
+
+        uint32_t top = partial_model.front();
+        partial_model.pop_front();
+        uint32_t count = partial_model.front();
+        partial_model.pop_front();
+
         nt_vi[top] = count;
         nz_nt_vi.push_back(top);
       }
@@ -68,7 +119,11 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
       nt_vi.reserve(K_);
 
       for (int j = 0; j < K_; ++j) {
-        uint16_t temp = load_value<uint16_t>(buffer);
+        // uint16_t temp = load_value<uint16_t>(buffer);
+
+        uint32_t temp = partial_model.front();
+        partial_model.pop_front();
+
         nt_vi.push_back(temp);
         if (temp != 0) {
           nz_nt_vi.push_back(j);
@@ -85,95 +140,33 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   nt.reserve(K_);
   nz_nt_indices.reserve(K_);
   for (int i = 0; i < K_; ++i) {
-    int temp = load_value<int>(buffer);
+    // int temp = load_value<int>(buffer);
+    uint32_t temp = partial_model.front();
+    partial_model.pop_front();
     nt.push_back(temp);
     if (temp != 0) {
       nz_nt_indices.push_back(i);
     }
   }
 
-  // t.clear();
-  // d.clear();
-  // w.clear();
-  // int64_t N = load_value<int64_t>(info);
-  // t.reserve(N);
-  // d.reserve(N);
-  // w.reserve(N);
-  // for (uint64_t i = 0; i < N; ++i) {
-  //   int16_t top = load_value<int16_t>(info);
-  //   int16_t doc = load_value<int16_t>(info);
-  //   int32_t word = load_value<int32_t>(info);
-  //   t.push_back(top);
-  //   d.push_back(doc);
-  //   w.push_back(word);
-  // }
-  //
-  // slice.clear();
-  // int16_t S = load_value<int16_t>(info);
-  // slice.reserve(S);
-  // for (int i = 0; i < S; ++i) {
-  //   int s = load_value<int>(info);
-  //   slice.push_back(s);
-  // }
-  //
-  // ndt.clear();
-  // int16_t D = load_value<int16_t>(info);
-  // ndt.reserve(D);
-  //
-  // std::vector<int> nt_di, nz_nt_di;
-  //
-  // for (int i = 0; i < D; ++i) {
-  //   // nt_di.reserve(K_);
-  //   // nz_nt_di.reserve(K_);
-  //
-  //   int8_t store_type = load_value<int8_t>(info);
-  //   nt_di.clear();
-  //   nz_nt_di.clear();
-  //
-  //   if (store_type == 1) {
-  //     int16_t len = load_value<int16_t>(info);
-  //     nt_di.resize(K_, 0);
-  //     nz_nt_di.reserve(len);
-  //     for (int j = 0; j < len; ++j) {
-  //       int16_t top = load_value<int16_t>(info);
-  //       int16_t count = load_value<int16_t>(info);
-  //       nt_di[top] = count;
-  //       nz_nt_di.push_back(top);
-  //     }
-  //   } else if (store_type == 2) {
-  //     nt_di.reserve(K_);
-  //     nz_nt_di.reserve(K_);
-  //     for (int j = 0; j < K_; ++j) {
-  //       int16_t temp = load_value<int16_t>(info);
-  //       nt_di.push_back(temp);
-  //       if (temp != 0) {
-  //         nz_nt_di.push_back(j);
-  //       }
-  //     }
-  //   }
-  //
-  //   ndt.push_back(nt_di);
-  //   nz_ndt_indices.push_back(nz_nt_di);
-  // }
-
   t.clear();
   d.clear();
   w.clear();
-  int N = load_value<int>(info);
+  int32_t N = load_value<int32_t>(info);
   t.reserve(N);
   d.reserve(N);
   w.reserve(N);
-  for (int i = 0; i < N; ++i) {
-    int top = load_value<int>(info);
-    int doc = load_value<int>(info);
-    int word = load_value<int>(info);
+  for (int32_t i = 0; i < N; ++i) {
+    int16_t top = load_value<int16_t>(info);
+    int16_t doc = load_value<int16_t>(info);
+    int32_t word = load_value<int32_t>(info);
     t.push_back(top);
     d.push_back(doc);
     w.push_back(word);
   }
 
   slice.clear();
-  int S = load_value<int>(info);
+  int16_t S = load_value<int16_t>(info);
   slice.reserve(S);
   for (int i = 0; i < S; ++i) {
     int s = load_value<int>(info);
@@ -181,19 +174,41 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   }
 
   ndt.clear();
-  int D = load_value<int>(info);
+  int16_t D = load_value<int16_t>(info);
   ndt.reserve(D);
+
+  std::vector<int> nt_di, nz_nt_di;
+
   for (int i = 0; i < D; ++i) {
-    std::vector<int> nt_di, nz_nt_di;
-    nt_di.reserve(K_);
-    nz_nt_di.reserve(K_);
-    for (int j = 0; j < K_; ++j) {
-      int temp = load_value<int>(info);
-      nt_di.push_back(temp);
-      if (temp != 0) {
-        nz_nt_di.push_back(j);
+    // nt_di.reserve(K_);
+    // nz_nt_di.reserve(K_);
+
+    int8_t store_type = load_value<int8_t>(info);
+    nt_di.clear();
+    nz_nt_di.clear();
+
+    if (store_type == 1) {
+      int16_t len = load_value<int16_t>(info);
+      nt_di.resize(K_, 0);
+      nz_nt_di.reserve(len);
+      for (int j = 0; j < len; ++j) {
+        int16_t top = load_value<int16_t>(info);
+        int16_t count = load_value<int16_t>(info);
+        nt_di[top] = count;
+        nz_nt_di.push_back(top);
+      }
+    } else if (store_type == 2) {
+      nt_di.reserve(K_);
+      nz_nt_di.reserve(K_);
+      for (int j = 0; j < K_; ++j) {
+        int16_t temp = load_value<int16_t>(info);
+        nt_di.push_back(temp);
+        if (temp != 0) {
+          nz_nt_di.push_back(j);
+        }
       }
     }
+
     ndt.push_back(nt_di);
     nz_ndt_indices.push_back(nz_nt_di);
   }

@@ -395,6 +395,8 @@ class PSSparseServerTask : public MLTask {
 
   uint32_t num_updates = 0;       // Last measured num updates
   std::atomic<bool> kill_signal;  // Used to coordinate thread kills
+
+  uint64_t start_time;
 };
 
 class MFNetflixTask : public MLTask {

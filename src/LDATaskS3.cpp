@@ -166,6 +166,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
+  std::cout << "aa\n";
+
   uint64_t version = 1;
   std::unique_ptr<LDAModel> model, next_model;
 
@@ -173,6 +175,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   int count = 0;
   auto start_time = get_time_ms();
   std::shared_ptr<LDAStatistics> s3_local_vars; //, pre_fetch_vars;
+
+  std::cout << "bb\n";
 
   // Load the first LDAStatistics from S3
   auto start_time_benchmark = get_time_ms();
@@ -207,6 +211,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   int total_sampled_tokens = 0, total_sampled_doc = 0;
 
   // double averaged_iteration_time = 0.0, index = 1.0;
+
+  std::cout << "cc\n";
 
   while (1) {
 
@@ -286,13 +292,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
           break;
         }
       }
-      // while (true) {
-      //   // std::cout << "222\n";
-      //   if (temp_locks[cur_train_idx - start] == -1){
-      //     temp_locks[cur_train_idx - start] = 1;
-      //     break;
-      //   }
-      // }
 
       obj_id_str =
           std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) +
@@ -313,8 +312,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       continue;
     }
-
-    std::cout << local_vars->K_ << " ------\n";
 
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model"

@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <string.h>
 #include <Utils.h>
@@ -25,27 +24,27 @@ LDAStatistics::LDAStatistics(int K,
 
 LDAStatistics::LDAStatistics(const char* msg) {
 
-  K_ = load_value<int>(msg);
+  K_ = load_value<int16_t>(msg);
 
-  int t_size = load_value<int>(msg);
+  int32_t t_size = load_value<int32_t>(msg);
   t_.clear();
   d_.clear();
   w_.clear();
   t_.reserve(t_size);
   d_.reserve(t_size);
   w_.reserve(t_size);
-  for (int i = 0; i < t_size; ++i) {
-    int t = load_value<int>(msg);
+  for (int32_t i = 0; i < t_size; ++i) {
+    int16_t t = load_value<int16_t>(msg);
     t_.push_back(t);
 
-    int d = load_value<int>(msg);
+    int16_t d = load_value<int16_t>(msg);
     d_.push_back(d);
 
-    int w = load_value<int>(msg);
+    int32_t w = load_value<int32_t>(msg);
     w_.push_back(w);
   }
 
-  int s = load_value<int>(msg);
+  int16_t s = load_value<int16_t>(msg);
   slice_.clear();
   slice_.reserve(s);
 
@@ -54,80 +53,34 @@ LDAStatistics::LDAStatistics(const char* msg) {
     slice_.push_back(slice_i);
   }
 
-  int num_docs = load_value<int>(msg);
+  int16_t num_docs = load_value<int16_t>(msg);
   ndt_.clear();
   ndt_.reserve(num_docs);
-
+  std::vector<int> ndt_row;
 
   for (int i = 0; i < num_docs; ++i) {
-    std::vector<int> ndt_row;
-    ndt_row.reserve(K_);
-    for (int j = 0; j < K_; ++j) {
-      int ndt_ij = load_value<int>(msg);
-      ndt_row.push_back(ndt_ij);
+
+    int8_t store_type = load_value<int8_t>(msg);
+    ndt_row.clear();
+
+    if (store_type == 1) {
+      ndt_row.resize(K_, 0);
+      int16_t len = load_value<int16_t>(msg);
+      for (int j = 0; j < len; ++j) {
+        int16_t top = load_value<int16_t>(msg);
+        int16_t count = load_value<int16_t>(msg);
+        ndt_row[top] = count;
+      }
+    } else if (store_type == 2) {
+      ndt_row.reserve(K_);
+      for (int j = 0; j < K_; ++j) {
+        int16_t temp = load_value<int16_t>(msg);
+        ndt_row.push_back(temp);
+      }
     }
     ndt_.push_back(ndt_row);
   }
-
   current = 0;
-
-  // K_ = load_value<int16_t>(msg);
-  //
-  // int64_t t_size = load_value<uint64_t>(msg);
-  // t_.clear();
-  // d_.clear();
-  // w_.clear();
-  // t_.reserve(t_size);
-  // d_.reserve(t_size);
-  // w_.reserve(t_size);
-  // for (int64_t i = 0; i < t_size; ++i) {
-  //   int16_t t = load_value<int16_t>(msg);
-  //   t_.push_back(t);
-  //
-  //   int16_t d = load_value<int16_t>(msg);
-  //   d_.push_back(d);
-  //
-  //   int w = load_value<int>(msg);
-  //   w_.push_back(w);
-  // }
-  //
-  // int16_t s = load_value<int16_t>(msg);
-  // slice_.clear();
-  // slice_.reserve(s);
-  //
-  // for (int i = 0; i < s; ++i) {
-  //   int slice_i = load_value<int>(msg);
-  //   slice_.push_back(slice_i);
-  // }
-  //
-  // int16_t num_docs = load_value<int16_t>(msg);
-  // ndt_.clear();
-  // ndt_.reserve(num_docs);
-  // std::vector<int> ndt_row;
-  //
-  // for (int i = 0; i < num_docs; ++i) {
-  //
-  //   int8_t store_type = load_value<int8_t>(msg);
-  //   ndt_row.clear();
-  //
-  //   if (store_type == 1) {
-  //     ndt_row.resize(K_, 0);
-  //     int16_t len = load_value<int16_t>(msg);
-  //     for (int j = 0; j < len; ++j) {
-  //       int16_t top = load_value<int16_t>(msg);
-  //       int16_t count = load_value<int16_t>(msg);
-  //       ndt_row[top] = count;
-  //     }
-  //   } else if (store_type == 2) {
-  //     ndt_row.reserve(K_);
-  //     for (int j = 0; j < K_; ++j) {
-  //       int16_t temp = load_value<int16_t>(msg);
-  //       ndt_row.push_back(temp);
-  //     }
-  //   }
-  //   ndt_.push_back(ndt_row);
-  // }
-  // current = 0;
 }
 
 char* LDAStatistics::serialize(uint64_t& to_send_size) {
@@ -135,88 +88,59 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   char* msg = new char[get_serialize_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
-  store_value<int>(msg, K_);
+  store_value<int16_t>(msg, K_);
 
-  store_value<int>(msg, t_.size());
-  for (int i = 0; i < t_.size(); ++i) {
-    store_value<int>(msg, t_[i]);
-    store_value<int>(msg, d_[i]);
-    store_value<int>(msg, w_[i]);
+  store_value<int32_t>(msg, t_.size());
+  for (int32_t i = 0; i < t_.size(); ++i) {
+    store_value<int16_t>(msg, t_[i]);
+    store_value<int16_t>(msg, d_[i]);
+    store_value<int32_t>(msg, w_[i]);
   }
 
-  store_value<int>(msg, slice_.size());
+  store_value<int16_t>(msg, slice_.size());
   for (const auto& v : slice_) {
-    store_value<int>(msg, v);
+    store_value<int32_t>(msg, v);
   }
 
-  store_value<int>(msg, ndt_.size());
+  int nz, N = 0, S = 0, sparse_type = 1, dense_type = 2;
+
+  store_value<int16_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
-    // store_value<int>(msg, nt_di.size());
-    for (const auto& n : nt_di) {
-      store_value<int>(msg, n);
+
+    // sparse_nt_di.clear();
+    std::vector<std::pair<int, int>> sparse_nt_di;
+    sparse_nt_di.reserve(K_);
+    nz = 0;
+
+    for (int j = 0; j < K_; ++j) {
+      if (nt_di[j] > 0) {
+        sparse_nt_di.push_back(std::make_pair(j, nt_di[j]));
+        nz += 1;
+      }
+    }
+
+    if (2 * nz < K_) {
+      store_value<int8_t>(msg, sparse_type); // sparse type
+      store_value<int16_t>(msg, nz);
+      for (auto& a: sparse_nt_di) {
+        store_value<int16_t>(msg, a.first);
+        store_value<int16_t>(msg, a.second);
+      }
+      N += nz;
+      S += 1;
+    } else {
+      store_value<int8_t>(msg, dense_type); // dense type
+      int16_t* data = reinterpret_cast<int16_t*>(msg);
+      std::copy(nt_di.begin(), nt_di.begin() + K_, data);
+      msg = reinterpret_cast<char*>((reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
     }
   }
 
-  to_send_size = get_serialize_size();
+  to_send_size = sizeof(int8_t) * ndt_.size() +
+                 sizeof(int16_t) * (3 + 2 * t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
+                 sizeof(int32_t) * (1 + t_.size() + slice_.size());
 
   return msg_begin;
-
-  // char* msg = new char[get_serialize_size()];
-  // char* msg_begin = msg;  // need to keep this pointer to delete later
-  //
-  // store_value<int16_t>(msg, K_);
-  //
-  // store_value<int64_t>(msg, t_.size());
-  // for (int64_t i = 0; i < t_.size(); ++i) {
-  //   store_value<int16_t>(msg, t_[i]);
-  //   store_value<int16_t>(msg, d_[i]);
-  //   store_value<int32_t>(msg, w_[i]);
-  // }
-  //
-  // store_value<int16_t>(msg, slice_.size());
-  // for (const auto& v : slice_) {
-  //   store_value<int32_t>(msg, v);
-  // }
-  //
-  // int nz, N = 0, S = 0, sparse_type = 1, dense_type = 2;
-  //
-  // store_value<int16_t>(msg, ndt_.size());
-  // for (const auto& nt_di : ndt_) {
-  //
-  //   // sparse_nt_di.clear();
-  //   std::vector<std::pair<int, int>> sparse_nt_di;
-  //   sparse_nt_di.reserve(K_);
-  //   nz = 0;
-  //
-  //   for (int j = 0; j < K_; ++j) {
-  //     if (nt_di[j] > 0) {
-  //       sparse_nt_di.push_back(std::make_pair(j, nt_di[j]));
-  //       nz += 1;
-  //     }
-  //   }
-  //
-  //   if (2 * nz < K_) {
-  //     store_value<int8_t>(msg, sparse_type); // sparse type
-  //     store_value<int16_t>(msg, nz);
-  //     for (auto& a: sparse_nt_di) {
-  //       store_value<int16_t>(msg, a.first);
-  //       store_value<int16_t>(msg, a.second);
-  //     }
-  //     N += nz;
-  //     S += 1;
-  //   } else {
-  //     store_value<int8_t>(msg, dense_type); // dense type
-  //     int16_t* data = reinterpret_cast<int16_t*>(msg);
-  //     std::copy(nt_di.begin(), nt_di.begin() + K_, data);
-  //     msg = reinterpret_cast<char*>((reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
-  //   }
-  // }
-  //
-  // to_send_size = sizeof(int8_t) * ndt_.size() +
-  //                sizeof(int16_t) * (3 + 2 * t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
-  //                sizeof(int32_t) * (t_.size() + slice_.size());
-  //
-  // return msg_begin;
 
 }
 
@@ -225,9 +149,9 @@ char* LDAStatistics::serialize_slice() {
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
   // issue is here
-  store_value<int>(msg, slice_.size());
+  store_value<int16_t>(msg, slice_.size());
   for (const auto& v : slice_) {
-    store_value<int>(msg, v);
+    store_value<int32_t>(msg, v);
   }
   // std::copy(slice_.begin(), slice_.end(), msg);
 
@@ -242,7 +166,7 @@ int LDAStatistics::get_serialize_size() {
 }
 
 int LDAStatistics::get_serialize_slice_size() {
-  return (1 + slice_.size()) * sizeof(int);
+  return sizeof(int16_t) + sizeof(int32_t) * slice_.size();
 }
 
 int LDAStatistics::get_receive_size() {
@@ -253,7 +177,8 @@ int LDAStatistics::get_receive_size() {
 int LDAStatistics::pop_partial_slice(
     std::unique_ptr<LDAStatistics>& partial_stat) {
   std::vector<int> slice;
-  if (int(slice_.size()) - current < slice_size && current != 0) {
+
+  if (current >= slice_.size() && current != 0) {
     return -1;
   }
 
@@ -263,6 +188,8 @@ int LDAStatistics::pop_partial_slice(
   else {
     slice = std::vector<int>(slice_.begin() + current, slice_.end());
   }
+
+  // incre_current();
 
   partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
   return 1;

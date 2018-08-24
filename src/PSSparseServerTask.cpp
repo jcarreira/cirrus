@@ -628,6 +628,7 @@ void PSSparseServerTask::start_server() {
 
     // init_ll_thread->join();
     // compute_ll_thread->join();
+    start_time = get_time_ms();
     init_loglikelihood();
     // compute_loglikelihood();
 
@@ -1163,6 +1164,8 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
   model_lock.unlock();
+
+  double current_time = (get_time_ms() - start_time) / 1000.0;
   double alpha = 0.1, eta = .01;
 
   K = nt_ptr->size();
@@ -1186,11 +1189,14 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
 
     std::cout << "----------------------------------------------------------\n";
     std::cout << "**log-likelihood: " << ll + ll_word << std::endl;
+    std::cout << "time: " << current_time << std::endl;
     std::cout << "----------------------------------------------------------\n";
     std::cout << "Time to find partial model: " << time_find_partial << std::endl;
     std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
     std::cout << "Time to send: " << time_send << std::endl;
     std::cout << "XXX: " << lda_global_vars->time_temp << std::endl;
+    std::cout << "compress speed: " << lda_global_vars->get_compress_rate() << std::endl;
+    std::cout << "compress effect: " << lda_global_vars->get_compress_effect() << std::endl;
     std::cout << "----------------------------------------------------------\n";
 }
 

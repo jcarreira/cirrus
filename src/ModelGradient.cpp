@@ -5,6 +5,8 @@
 #include <cassert>
 #include "Constants.h"
 #include <cstring>
+#include <codecfactory.h>
+// #include "temp.h"
 namespace cirrus {
 
 /**
@@ -792,20 +794,29 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
 
   int N = 0, S = 0, word_idx;
   int K = change_nt_ptr->size();
-  int len = load_value<int>(s);
+  int16_t len = load_value<int16_t>(s);
 
   int sparse_type = 1, dense_type = 2;
 
   // the worst case where everything is stored with dense structure
-  int temp_size = sizeof(uint32_t) * (1 + 2 * len + len * K + K);
+  int temp_counts = (1 + 2 * len + len * K + K);
+  int temp_size = sizeof(uint32_t) * temp_counts;
 
-  char* mem = new char[temp_size];
-  char* mem_begin = mem;
-  store_value<uint32_t>(mem, len);
+  // char* mem = new char[temp_size];
+  // char* mem_begin = mem;
+  // store_value<uint32_t>(mem, len);
+
+  FastPForLib::IntegerCODEC &codec = *FastPForLib::CODECFactory::getFromName("simdfastpfor256");
+  std::vector<uint32_t> to_compress;
+  to_compress.reserve(temp_counts);
+
+  to_compress.push_back(len);
 
   for (int i = 0; i < len; ++i) {
 
     word_idx = load_value<int>(s);
+
+    // std::cout << word_idx << " ";
 
     std::vector<std::pair<int, int>> sparse_nt_vi;
     sparse_nt_vi.reserve(K);
@@ -830,11 +841,18 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
     // so that sparse data structure would be used
     if (2 * n < K) {
       // 1 -> sparse structure
-      store_value<uint8_t>(mem, sparse_type);
-      store_value<uint16_t>(mem, n);
+      // store_value<uint8_t>(mem, sparse_type);
+      // store_value<uint16_t>(mem, n);
+
+      to_compress.push_back(sparse_type);
+      to_compress.push_back(n);
+
       for (auto& a: sparse_nt_vi) {
-        store_value<uint16_t>(mem, a.first);
-        store_value<uint16_t>(mem, a.second);
+        // store_value<uint16_t>(mem, a.first);
+        // store_value<uint16_t>(mem, a.second);
+
+        to_compress.push_back(a.first);
+        to_compress.push_back(a.second);
       }
       N += n; // # of <top, count> pairs stored with sparse structure
       S += 1; // # of words that are stored with sparse structure
@@ -844,28 +862,71 @@ char* LDAUpdates::get_partial_model(const char* s, uint32_t& to_send_size) {
     } else {
       // std::cout << change_nvt_ptr->size() << " " << slice_map.at(word_idx) * K << " cc\n";
       // 2 -> dense structure
-      store_value<uint8_t>(mem, dense_type);
-      // for (int j = 0; j < K; ++j) {
-      //   store_value<uint32_t>(mem, change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j));
-      // }
-      uint16_t* data = reinterpret_cast<uint16_t*>(mem);
-      std::copy(change_nvt_ptr->begin() + slice_map.at(word_idx) * K,
-                change_nvt_ptr->begin() + (slice_map.at(word_idx) + 1) * K,
-                data);
-      mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(uint16_t) * K));
+      // store_value<uint8_t>(mem, dense_type);
+      // uint16_t* data = reinterpret_cast<uint16_t*>(mem);
+      // std::copy(change_nvt_ptr->begin() + slice_map.at(word_idx) * K,
+      //           change_nvt_ptr->begin() + (slice_map.at(word_idx) + 1) * K,
+      //           data);
+      // mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(uint16_t) * K));
+
+      to_compress.push_back(dense_type);
+      for (int j = 0; j < K; ++j) {
+        to_compress.push_back(change_nvt_ptr->operator[](slice_map.at(word_idx) * K + j));
+      }
     }
   }
+  // uint32_t* data = reinterpret_cast<uint32_t*>(mem);
+  // std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
 
+  for (int i = 0; i < K; ++i) {
+    to_compress.push_back(change_nt_ptr->operator[](i));
+  }
 
-  uint32_t* data = reinterpret_cast<uint32_t*>(mem);
-  std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
+  std::vector<uint32_t> compressed(to_compress.size() + 1024);
+  size_t compressedsize = compressed.size();
+
+  auto start_time = get_time_ms();
+
+  codec.encodeArray(to_compress.data(), to_compress.size(), compressed.data(), compressedsize);
+  compressed.resize(compressedsize);
+  compressed.shrink_to_fit();
+
+  total_time_to_compress += (get_time_ms() - start_time) / 1000.;
+  total_to_compress_size += to_compress.size();
+  total_compressed_size += compressed.size();
 
   // to_send_size = sizeof(uint32_t) * (1 + len + S + N * 2 + (len - S) * K + K);
-  to_send_size = sizeof(uint32_t) * (1 + K) + sizeof(uint8_t) * (len) + sizeof(uint16_t) * (S + 2 * N + (len - S) * K);
+  // to_send_size = sizeof(uint32_t) * (1 + K) + sizeof(uint8_t) * (len) + sizeof(uint16_t) * (S + 2 * N + (len - S) * K
+  to_send_size = sizeof(uint32_t) * (compressed.size() + 2);
+
+  char* mem = new char[to_send_size];
+  char* mem_begin = mem;
+  store_value<uint32_t>(mem, compressed.size());
+  store_value<uint32_t>(mem, to_compress.size());
+  for (int i = 0; i < compressed.size(); ++i) {
+    store_value<uint32_t>(mem, compressed[i]);
+  }
+  // uint32_t* data = reinterpret_cast<uint32_t*>(mem);
+  // std::copy(compressed.begin(), compressed.end(), data);
 
   double time_taken = (get_time_ms() - ttt) / 1000.0;
   // std::cout << time_taken << " ****\n";
   // std::cout << std::strlen(mem_begin) << " (((())))\n";
+
+  // std::cout << "orig: ";
+  // for(int i=0; i<10; ++i) {
+  //   std::cout << to_compress[i] << " ";
+  // }
+  // std::cout << std::endl;
+  //
+  // std::cout << "compressed: ";
+  // for(int i=0; i<10; ++i) {
+  //   std::cout << compressed[i] << " ";
+  // }
+  // std::cout << std::endl;
+  // std::cout << "original size: " << to_compress.size() << std::endl;
+  // std::cout << "receive_size size: " << compressed.size() << std::endl;
+
   return mem_begin;
 
 }

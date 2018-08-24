@@ -10,6 +10,7 @@
 #include <config.h>
 #include <memory>
 #include <map>
+// #include <codecfactory.h>
 
 namespace cirrus {
 
@@ -250,6 +251,9 @@ class LDAUpdates {
 
   void print() const;
 
+  double get_compress_rate() { return total_to_compress_size / total_time_to_compress; }
+  double get_compress_effect() { return total_to_compress_size / total_compressed_size; }
+
   std::array<int, 1000000> slice_map, sparse_records;
   double time_temp = 0.0;
 
@@ -269,6 +273,8 @@ class LDAUpdates {
   std::vector<int> slice;
   uint64_t version = 0;
   int update_bucket = 0;
+
+  double total_to_compress_size = 0., total_compressed_size = 0., total_time_to_compress = 0.;
 };
 
 } // namespace cirrus
