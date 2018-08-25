@@ -47,12 +47,12 @@ if __name__ == "__main__":
 
     learning_rates = [0.5/(i * 10) for i in range(1, 20)]
 
-    gs = cirrus.GridSearch(task=cirrus.LogisticRegression,
+    gs = cirrus.CrossValidation(task=cirrus.LogisticRegression,
                            param_base=basic_params,
                            hyper_vars=["learning_rate", "worker_size"],
                            hyper_params=[learning_rates, [128, 246, 512]],
                            machines=machines
-                           cross_validation=True)
+                           num_sets=841)
     gs.set_threads(10)
     gs.run(UI=True)
 

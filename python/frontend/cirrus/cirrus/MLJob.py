@@ -7,7 +7,7 @@ class MLJob(ABC):
     self.other_job = other_job
     
   @abstractmethod
-  def get_xs_for(self, i, metric = "LOSS") :
+  def get_xs_for(self, i, metric = "LOSS"):
     pass
 
   @abstractmethod
@@ -16,6 +16,18 @@ class MLJob(ABC):
 
   @abstractmethod
   def run(self, UI=False):
+    pass
+
+  @abstractmethod
+  def get_number_experiments(self):
+    pass
+
+  @abstractmethod
+  def get_number_experiments_ups(self):
+    pass
+
+  @abstractmethod
+  def get_number_experiments_cps(self):
     pass
   
   def kill_all(self):
