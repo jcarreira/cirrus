@@ -250,24 +250,24 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
           index, value + weights_[index] * 2 * config.get_epsilon()));
     }
 #ifdef DEBUG
-  auto after_3 = get_time_us();
+    auto after_3 = get_time_us();
 #endif
 
-  std::unique_ptr<LRSparseGradient> ret =
-      std::make_unique<LRSparseGradient>(std::move(res));
+    std::unique_ptr<LRSparseGradient> ret =
+        std::make_unique<LRSparseGradient>(std::move(res));
 #ifdef DEBUG
-  auto after_4 = get_time_us();
+    auto after_4 = get_time_us();
 #endif
   // std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
 
 #ifdef DEBUG
-  ret->check_values();
-  std::cout << " Elapsed1: " << (after_1 - start)
-            << " Elapsed2: " << (after_2 - after_1)
-            << " Elapsed3: " << (after_3 - after_2)
-            << " Elapsed4: " << (after_4 - after_3) << std::endl;
+    ret->check_values();
+    std::cout << " Elapsed1: " << (after_1 - start)
+              << " Elapsed2: " << (after_2 - after_1)
+              << " Elapsed3: " << (after_3 - after_2)
+              << " Elapsed4: " << (after_4 - after_3) << std::endl;
 #endif
-  return ret;
+    return ret;
 }
 
 std::pair<double, double> SparseLRModel::calc_loss(SparseDataset& dataset,
