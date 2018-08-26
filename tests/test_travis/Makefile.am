@@ -49,8 +49,8 @@ LIBS= -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
       -lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
       -lall -lkeyutils -lresolv -lgflags
 
-LDFLAGS  =-static-libgcc  -static \
-	  -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+LDFLAGS  = -static-libgcc  -static \
+					 -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 
 LDADD    = $(LINCLUDES) $(LIBS)
 
