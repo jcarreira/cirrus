@@ -244,8 +244,8 @@ std::unique_ptr<SoftmaxModel> PSSparseServerInterface::get_sm_full_model(
 
   // build a sparse model and return
   std::unique_ptr<SoftmaxModel> model = std::make_unique<SoftmaxModel>(
-      (FEATURE_TYPE*) (buffer.get()), config.get_num_classes(),
-      config.get_num_features());  // XXX fix this
+      (FEATURE_TYPE*) (buffer.get()), std::move(config.get_num_classes()),
+      std::move(config.get_num_features()));  // XXX fix this
   return model;
 }
 

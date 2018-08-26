@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign
 CXX=g++
 CXXFLAGS=-Wall -ansi -O3 -std=c++17 -ggdb
 
-bin_PROGRAMS = test_lr test_ps worker error
+bin_PROGRAMS = test_lr test_ps worker error mnist_test/worker_sm mnist_test/test_sm mnist_test/error_sm
 
 TOP_DIR=../../../..
 THIRD_PARTY_DIR=../../third_party
@@ -33,7 +33,8 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
-		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp
+		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
+				$(CIRRUS_SRC_DIR)/SoftmaxModel.cpp
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \
@@ -65,6 +66,12 @@ test_ps_SOURCES = ps_test.cpp $(CIRRUS_SRC_FILES)
 worker_SOURCES = worker.cpp $(CIRRUS_SRC_FILES)
 
 error_SOURCES = error.cpp $(CIRRUS_SRC_FILES)
+
+mnist_test_error_sm_SOURCES = mnist_test/sm_error.cpp $(CIRRUS_SRC_FILES)
+
+mnist_test_test_sm_SOURCES = mnist_test/sm_test.cpp $(CIRRUS_SRC_FILES)
+
+mnist_test_worker_sm_SOURCES = mnist_test/sm_worker.cpp $(CIRRUS_SRC_FILES)
 
 clean:
 	rm -rf a.out test_iterator
