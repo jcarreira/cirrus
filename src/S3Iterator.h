@@ -1,22 +1,14 @@
 #ifndef _S3_ITERATOR_H_
 #define _S3_ITERATOR_H_
 
-#include "S3.h"
-#include "S3Client.h"
-#include <Synchronization.h>
-#include "Configuration.h"
-#include "config.h"
-
-#include <CircularBuffer.h>
-#include <thread>
-#include <list>
-#include <mutex>
-#include "Serializers.h"
+#include <Configuration.h>
+#include <SparseDataset.h>
 
 namespace cirrus {
 
 class S3Iterator {
  public:
+<<<<<<< HEAD
   S3Iterator(uint64_t left_id,
              uint64_t right_id,
              const Configuration& c,
@@ -53,14 +45,24 @@ class S3Iterator {
   uint64_t s3_rows;
   uint64_t s3_cols;
   uint64_t minibatch_rows;
+=======
+  S3Iterator(const Configuration& c, bool has_labels);
+  virtual ~S3Iterator() = default;
+>>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 
-  std::string s3_bucket_name;
+  virtual std::shared_ptr<SparseDataset> getNext() = 0;
 
+<<<<<<< HEAD
   int to_delete = -1;
   sem_t get_s3_data_semaphore;
   int str_version = 0;
   std::map<int, std::string> list_strings;  // strings from s3
   CircularBuffer<std::pair<const FEATURE_TYPE*, int>> minibatches_list;
+=======
+ protected:
+  Configuration config;
+  bool has_labels;
+>>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 };
 
 }  // namespace cirrus

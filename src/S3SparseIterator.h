@@ -1,23 +1,24 @@
 #ifndef _S3_SPARSEITERATOR_H_
 #define _S3_SPARSEITERATOR_H_
 
-#include "S3.h"
-#include "S3Client.h"
-#include "Configuration.h"
-#include "config.h"
+#include <CircularBuffer.h>
+#include <Configuration.h>
+#include <S3Client.h>
+#include <S3Iterator.h>
+#include <Serializers.h>
+#include <SparseDataset.h>
+#include <Synchronization.h>
+#include <config.h>
 
-#include <thread>
+#include <semaphore.h>
 #include <list>
 #include <mutex>
 #include <queue>
-#include <semaphore.h>
-#include "Synchronization.h"
-#include "Serializers.h"
-#include <CircularBuffer.h>
+#include <thread>
 
 namespace cirrus {
 
-class S3SparseIterator {
+class S3SparseIterator : public S3Iterator {
  public:
   S3SparseIterator(uint64_t left_id,
                    uint64_t right_id,
@@ -26,21 +27,27 @@ class S3SparseIterator {
                    uint64_t minibatch_rows,
                    bool use_label = true,
                    int worker_id = 0,
+<<<<<<< HEAD
                    bool random_access = true);
 
   const void* get_next_fast();
 
   void thread_function(const Configuration&);
+=======
+                   bool random_access = true,
+                   bool has_labels = true);
+
+  std::shared_ptr<SparseDataset> getNext() override;
+>>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 
  private:
-  void push_samples(std::ostringstream* oss);
-  void print_progress(const std::string& s3_obj);
-  uint64_t get_obj_id(uint64_t left, uint64_t right);
+  void threadFunction(const Configuration&);
+  void pushSamples(std::ostringstream* oss);
+  void printProgress(const std::string& s3_obj);
+  uint64_t getObjId(uint64_t left, uint64_t right);
 
   uint64_t left_id;
   uint64_t right_id;
-
-  Configuration conf;
 
   std::shared_ptr<S3Client> s3_client;
 
@@ -75,6 +82,11 @@ class S3SparseIterator {
   bool random_access = true;
   uint64_t current = 0;
 };
+<<<<<<< HEAD
 }
+=======
+
+}  // namespace cirrus
+>>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 
 #endif  // _S3_SPARSEITERATOR_H_

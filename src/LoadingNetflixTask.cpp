@@ -1,22 +1,23 @@
 #include <Tasks.h>
 
+#include "Serializers.h"
 #include "InputReader.h"
 #include "S3.h"
-#include "Serializers.h"
 #include "Utils.h"
 #include "config.h"
 
 namespace cirrus {
 
-SparseDataset LoadingNetflixTask::read_dataset(const Configuration& config,
-                                               int& number_movies,
-                                               int& number_users) {
+SparseDataset LoadingNetflixTask::read_dataset(
+    const Configuration& config,
+    int& number_movies, int& number_users) {
   InputReader input;
   SparseDataset dataset = input.read_netflix_ratings(
-      config.get_input_path(), &number_movies, &number_users);
+      config.get_load_input_path(), &number_movies, &number_users);
   std::cout << "Processed netflix dataset."
-            << " #movies: " << number_movies << " #users: " << number_users
-            << std::endl;
+    << " #movies: " << number_movies
+    << " #users: " << number_users
+    << std::endl;
   dataset.check();
   dataset.print_info();
   return dataset;
@@ -37,8 +38,7 @@ void LoadingNetflixTask::check_loading(const Configuration& config,
   dataset.check_labels();
 
   const auto& s = dataset.get_row(0);
-  std::cout << "[LOADER] "
-            << "Print sample 0 with size: " << s.size() << std::endl;
+  std::cout << "[LOADER] " << "Print sample 0 with size: " << s.size() << std::endl;
   for (const auto& feature : s) {
     int index = feature.first;
     FEATURE_TYPE value = feature.second;
@@ -52,8 +52,7 @@ void LoadingNetflixTask::check_loading(const Configuration& config,
  * It signals when work is done by changing a bit in the object store
  */
 void LoadingNetflixTask::run(const Configuration& config) {
-  std::cout << "[LOADER-SPARSE] "
-            << "Reading Netflix input..." << std::endl;
+  std::cout << "[LOADER-SPARSE] " << "Reading Netflix input..." << std::endl;
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
   s3_initialize_aws();
@@ -65,9 +64,10 @@ void LoadingNetflixTask::run(const Configuration& config) {
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "
-            << "Adding " << dataset.num_samples()
-            << " #s3 objs: " << num_s3_objs << std::endl;
-
+    << "Adding " << dataset.num_samples()
+    << " #s3 objs: " << num_s3_objs
+    << std::endl;
+  
   // For each S3 object (group of s3_obj_num_samples samples)
   for (unsigned int i = 0; i < num_s3_objs; ++i) {
     std::cout << "[LOADER-SPARSE] Building s3 batch #" << (i + 1) << std::endl;
@@ -79,9 +79,11 @@ void LoadingNetflixTask::run(const Configuration& config) {
     // this function already returns a nicely packed object
     // we don't store labels
     std::shared_ptr<char> s3_obj =
-        dataset.build_serialized_s3_obj(first_sample, last_sample, &len, false);
+      dataset.build_serialized_s3_obj(first_sample, last_sample, &len, false);
 
-    std::cout << "Putting object in S3 with size: " << len << std::endl;
+    std::cout
+      << "Putting object in S3 with size: " << len
+      << std::endl;
     s3_client->s3_put_object(SAMPLE_BASE + i, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));
   }
@@ -89,4 +91,5 @@ void LoadingNetflixTask::run(const Configuration& config) {
   std::cout << "LOADER-SPARSE terminated successfully" << std::endl;
 }
 
-}  // namespace cirrus
+} // namespace cirrus
+
