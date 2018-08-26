@@ -41,3 +41,6 @@ third_party/keyutils-1.5.10.tar.bz2
 third_party/keyutils/
 third_party/krb5-1.15.2.tar.gz
 third_party/curl/
+python/frontend/build/*
+python/frontend/dist/*
+python/frontend/cirrus.egg-info/*
