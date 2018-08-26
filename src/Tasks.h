@@ -284,17 +284,18 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-  bool process_get_mf_sparse_model(const Request& req,
-                                   std::vector<char>&,
-                                   int tn);
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
+  bool process_send_mf_gradient(const unsigned char*);
+  bool process_send_lr_gradient(const unsigned char*);
+  bool process_get_mf_sparse_model(int k_items,
+                                   const unsigned char*,
+                                   int sock);
+  bool process_get_lr_sparse_model(int num_entries,
+                                   const unsigned char*,
+                                   int sock);
+  bool process_get_mf_full_model(std::vector<char>& thread_buffer,
+                                 int sock);
+  bool process_get_lr_full_model(std::vector<char>& thread_buffer,
+                                 int sock);
 
   void kill_server();
 
