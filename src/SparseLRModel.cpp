@@ -258,7 +258,7 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad(
 #ifdef DEBUG
     auto after_4 = get_time_us();
 #endif
-  // std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
+    // std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
 
 #ifdef DEBUG
     ret->check_values();

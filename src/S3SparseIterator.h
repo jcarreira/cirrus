@@ -27,18 +27,10 @@ class S3SparseIterator : public S3Iterator {
                    uint64_t minibatch_rows,
                    bool use_label = true,
                    int worker_id = 0,
-<<<<<<< HEAD
-                   bool random_access = true);
-
-  const void* get_next_fast();
-
-  void thread_function(const Configuration&);
-=======
                    bool random_access = true,
                    bool has_labels = true);
 
   std::shared_ptr<SparseDataset> getNext() override;
->>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 
  private:
   void threadFunction(const Configuration&);
@@ -82,11 +74,7 @@ class S3SparseIterator : public S3Iterator {
   bool random_access = true;
   uint64_t current = 0;
 };
-<<<<<<< HEAD
-}
-=======
 
 }  // namespace cirrus
->>>>>>> f4bfbf7d08da8eef87e5b44a7de0761f5a2dab2a
 
 #endif  // _S3_SPARSEITERATOR_H_
