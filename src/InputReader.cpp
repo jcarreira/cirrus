@@ -300,7 +300,7 @@ Dataset InputReader::read_input_csv(const std::string& input_file,
 
   const int batch_size = 100;  // we push things into shared queue in batches
   std::vector<std::string> input;
-  input.reserve(batch_size);
+  input.resize(batch_size);
   uint64_t lines_count = 0;
   uint64_t thread_index = 0;  // we push input to threads in round robin
   while (1) {
