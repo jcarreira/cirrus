@@ -48,7 +48,7 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1337);
+      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1341);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
