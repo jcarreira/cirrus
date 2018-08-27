@@ -109,9 +109,18 @@ class InputReader {
       const std::string& delimiter,
       const Configuration&);
   
+  /** Reads the criteo kaggle dataset and generates a sparse dataset
+    * @param input_file Path to the input dataset
+    * @param delimiter Delimiter character between fields
+    * @param Configuration Configuration object
+    */
   SparseDataset read_input_criteo_kaggle_sparse(const std::string& input_file,
       const std::string& delimiter,
       const Configuration&);
+
+  SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
+    const std::string& delimiter,
+    const Configuration& config);
 
   private:
   /**

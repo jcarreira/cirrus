@@ -615,8 +615,8 @@ void InputReader::read_input_criteo_sparse_thread(std::ifstream& fin, std::mutex
 }
 
 /** Handle both numerical and categorical variables
-    * For categorical variables we use the hashing trick
-    */
+  * For categorical variables we use the hashing trick
+  */
 SparseDataset InputReader::read_input_criteo_sparse(const std::string& input_file,
     const std::string& delimiter,
     const Configuration& config) {
@@ -1066,6 +1066,184 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
   }
 
   return ds;
+}
+
+/** Here we read the criteo kaggle dataset and return a sparse dataset
+  * We mimick the preprocessing TF does. Differences:
+  * 1. We do one hot encoding of each feature
+  * 2. We ignore features that don't appear more than X times (?)
+  * 3. We don't do crosses (but we could think about doing that)
+  * 4. We bucketize feature values using (from tf code):
+  * boundaries = [1.5**j - 0.51 for j in range(40)]
+  * NOTE: this changes require loading all data into memory
+  * so this might require a bit of memory
+  */
+SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
+    const std::string& delimiter,
+    const Configuration& config) {
+  std::cout << "Reading input file: " << input_file << std::endl;
+  std::cout << "Limit_line: " << config.get_limit_samples() << std::endl;
+
+  // we enforce knowing how many lines we read beforehand
+  if (config.get_limit_samples() != 45840618) {
+    throw std::runtime_error("Wrong number of lines");
+  }
+
+  std::ifstream fin(input_file, std::ifstream::in);
+  if (!fin) {
+    throw std::runtime_error("Error opening input file");
+  }
+
+  std::mutex fin_lock;
+  std::atomic<unsigned int> lines_count(0); // count lines processed
+  std::vector<std::vector<std::pair<int, uint32_t>>> samples;  // final result
+  std::vector<uint32_t> labels;                                // final result
+  
+  uint64_t num_lines = config.get_limit_samples();
+  // we read both integer and categorical features into here
+  // categorical features are translated from the hex text to save space
+  // 1 for label
+  uint32_t* feature_values  = new float[1 + num_lines * (13 + 26)];
+
+  
+  /* We first read the whole dataset to memory
+   * to do the hot encondings etc..
+   */
+
+  // create multiple threads to process input file
+  std::vector<std::shared_ptr<std::thread>> threads;
+  uint64_t nthreads = 8;
+  for (uint64_t i = 0; i < nthreads; ++i) {
+    threads.push_back(
+        std::make_shared<std::thread>(
+          std::bind(&InputReader::read_criteo_tf_thread, this,
+            std::placeholders::_1, std::placeholders::_2,
+            std::placeholders::_3, std::placeholders::_4,
+            std::placeholders::_5, std::placeholders::_6,
+            std::placeholders::_7, std::placeholders::_8),
+          std::ref(fin), std::ref(fin_lock),
+          std::ref(delimiter), std::ref(samples),
+          std::ref(labels), config.get_limit_samples(), std::ref(lines_count),
+          std::bind(&InputReader::parse_criteo_tf_line, this, 
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3,
+            std::placeholders::_4,
+            config)
+          ));
+  }
+
+  for (auto& t : threads) {
+    t->join();
+  }
+
+  exit(-1); // WIP
+
+  // process each line
+  std::cout << "Read a total of " << labels.size() << " samples" << std::endl;
+
+  SparseDataset ret(std::move(samples), std::move(labels));
+  if (config.get_normalize()) {
+    // pass hash size
+    ret.normalize( (1 << config.get_model_bits()) );
+  }
+  return ret;
+}
+
+void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
+    const std::string& delimiter,
+    std::vector<std::vector<std::pair<int, uint32_t>>>& samples_res,
+    std::vector<uint32_t>& labels_res,
+    uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
+    std::function<void(const std::string&, const std::string&,
+      std::vector<std::pair<int, FEATURE_TYPE>>&, FEATURE_TYPE&)> fun) {
+  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> samples;  // final result
+  std::vector<FEATURE_TYPE> labels;                                // final result
+  std::string line;
+  uint64_t lines_count_thread = 0;
+  while (1) {
+    fin_lock.lock();
+    getline(fin, line);
+    fin_lock.unlock();
+
+    // break if we reach end of file
+    if (fin.eof())
+      break;
+
+    // enforce max number of lines read
+    if (lines_count && lines_count >= limit_lines)
+      break;
+
+    uint32_t label;
+    std::vector<std::pair<int, uint32_t>> features;
+    fun(line, delimiter, features, label);
+
+    samples.push_back(features);
+    labels.push_back(label);
+
+    if (lines_count % 100000 == 0) {
+      std::cout << "Read: " << lines_count << "/" << lines_count_thread << " lines." << std::endl;
+    }
+    ++lines_count;
+    lines_count_thread++;
+  }
+
+  fin_lock.lock(); // XXX fix this
+  for (const auto& l : labels) {
+    labels_res.push_back(l);
+  }
+  for (const auto& s : samples) {
+    samples_res.push_back(s);
+  }
+  fin_lock.unlock();
+}
+
+/**
+  * We don't do the hashing trick here
+  */
+void InputReader::parse_criteo_tf_line(
+    const std::string& line, const std::string& delimiter,
+    std::vector<std::pair<int, uint32_t>>& output_features,
+    uint32_t& label, const Configuration& config) {
+  char str[MAX_STR_SIZE];
+
+  if (line.size() > MAX_STR_SIZE) {
+    throw std::runtime_error(
+        "Criteo input line is too big: " + std::to_string(line.size()) + " " +
+        std::to_string(MAX_STR_SIZE));
+  }
+
+  strncpy(str, line.c_str(), MAX_STR_SIZE - 1);
+  char* s = str;
+
+  std::map<uint64_t, int> features;
+
+  uint64_t col = 0;
+  while (char* l = strsep(&s, delimiter.c_str())) {
+    if (col == 0 ) { // it's Id
+    } else if (col == 1) { // it's label
+      label = string_to<uint32_t>(l);
+      assert(label == 0 || label == 1);
+    } else {
+      uint32_t hex_value = hex_string_to<uint32_t>(l);
+      // quick fix
+      features[col] = hex_value;
+    }
+    col++;
+  }
+  
+  if (config.get_use_bias()) { // add bias constant
+    //uint64_t hash = hash_f("bias") % hash_size;
+    features[col] = 1;
+  }
+
+  /**
+    */
+  for (const auto& feat : features) {
+    if (feat.second != 0.0) {
+      output_features.push_back(std::make_pair(feat.first, feat.second));
+    }
+  }
 }
 
 } // namespace cirrus
