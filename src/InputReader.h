@@ -118,9 +118,21 @@ class InputReader {
       const std::string& delimiter,
       const Configuration&);
 
-  SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
+  SparseDataset read_criteo_sparse_tf(const std::string& input_file,
     const std::string& delimiter,
     const Configuration& config);
+  void read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
+    const std::string& delimiter,
+    std::vector<std::vector<std::pair<int, uint32_t>>>& samples_res,
+    std::vector<uint32_t>& labels_res,
+    uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
+    std::function<void(const std::string&, const std::string&,
+      std::vector<std::pair<int, uint32_t>>&, uint32_t&)> fun);
+  void parse_criteo_tf_line(
+      const std::string& line, const std::string& delimiter,
+      std::vector<std::pair<int, uint32_t>>& output_features,
+      uint32_t& label, const Configuration& config);
+
 
   private:
   /**

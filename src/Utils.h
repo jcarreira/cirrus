@@ -64,6 +64,19 @@ std::string to_string(const C& s) {
 }
 
 /**
+  * Convert hexadecimal string
+  */
+template<class C>
+C hex_string_to(const char* s) {
+  std::stringstream ss;
+  ss << std::hex << s;
+
+  C c;
+  ss >> c;
+  return c;
+}
+
+/**
   * Return the size of a file
   */
 std::ifstream::pos_type filesize(const std::string& filename);

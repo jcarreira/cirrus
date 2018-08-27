@@ -1103,7 +1103,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   // we read both integer and categorical features into here
   // categorical features are translated from the hex text to save space
   // 1 for label
-  uint32_t* feature_values  = new float[1 + num_lines * (13 + 26)];
+  uint32_t* feature_values  = new uint32_t[1 + num_lines * (13 + 26)];
 
   
   /* We first read the whole dataset to memory
@@ -1139,6 +1139,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
 
   exit(-1); // WIP
 
+#if 0
   // process each line
   std::cout << "Read a total of " << labels.size() << " samples" << std::endl;
 
@@ -1148,6 +1149,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     ret.normalize( (1 << config.get_model_bits()) );
   }
   return ret;
+#endif
 }
 
 void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
@@ -1156,9 +1158,9 @@ void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock
     std::vector<uint32_t>& labels_res,
     uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
     std::function<void(const std::string&, const std::string&,
-      std::vector<std::pair<int, FEATURE_TYPE>>&, FEATURE_TYPE&)> fun) {
-  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> samples;  // final result
-  std::vector<FEATURE_TYPE> labels;                                // final result
+      std::vector<std::pair<int, uint32_t>>&, uint32_t&)> fun) {
+  std::vector<std::vector<std::pair<int, uint32_t>>> samples;  // final result
+  std::vector<uint32_t> labels;                                // final result
   std::string line;
   uint64_t lines_count_thread = 0;
   while (1) {
