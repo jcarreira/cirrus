@@ -25,6 +25,8 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
     throw std::runtime_error("unknown input type");
   }
 
+  return input.read_criteo_sparse_tf(config.get_load_input_path(),
+                                               delimiter, config);
   // READ the kaggle criteo dataset
   return input.read_input_criteo_kaggle_sparse(config.get_load_input_path(),
                                                delimiter, config);
@@ -85,6 +87,8 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
 
   SparseDataset dataset = read_dataset(config);
   dataset.check();
+
+  exit(0);
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "
