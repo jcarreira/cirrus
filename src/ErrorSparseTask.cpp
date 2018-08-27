@@ -171,7 +171,7 @@ void ErrorSparseTask::run(const Configuration& config, bool testing) {
     usleep(ERROR_INTERVAL_USEC);
     if (iterations >= 100 && testing) {
       exit(EXIT_FAILURE);
-    } 
+    }
     if (total_accuracy >= 0.7 && testing) {
       exit(EXIT_SUCCESS);
     }
