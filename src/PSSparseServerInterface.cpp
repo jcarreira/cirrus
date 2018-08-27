@@ -81,6 +81,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
     }
   }
 
+  assert (num_bytes < MAX_MSG_SIZE);
+
   // std::cout << "Sending indices: " << num_entries << std::endl;
 
   auto index_vec = builder.CreateVector(msg_start, num_bytes);
