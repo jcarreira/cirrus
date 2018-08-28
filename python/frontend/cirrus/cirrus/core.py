@@ -9,7 +9,7 @@ import messenger
 from CostModel import CostModel
 
 lambda_client = boto3.client('lambda', 'us-west-2')
-lambda_name = "testfuncryan_"
+lambda_name = "testfuncryan1"
 
 
 # Code shared by all Cirrus experiments
@@ -143,15 +143,12 @@ class BaseTask(object):
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
-            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d, "config_path": \"%s\"}' \
+                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port, "criteo_kaggle_" + str(st) + ".cfg")
             print(payload)
             for i in range(shortage):
                 try:
-                    if not self.cross_validation:
-                        lc = lambda_name
-                    else:
-                        lc = lambda_name + str(st)
+                    lc = lambda_name
                     print(lc + '\n')
                     response = lambda_client.invoke(
                         FunctionName=lc,

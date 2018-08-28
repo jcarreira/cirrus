@@ -1,10 +1,12 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 
-class MLJob(ABC):
-  def __init__(self, other_job = None):
+class MLJob(object):
+  def __init__(self, task = None):
+    __metaclass__ = ABCMeta
+      
     self.loss_lst = []
     self.cirrus_objs = []
-    self.other_job = other_job
+    self.task = task
     
   @abstractmethod
   def get_xs_for(self, i, metric = "LOSS"):

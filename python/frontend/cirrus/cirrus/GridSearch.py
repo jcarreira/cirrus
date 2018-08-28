@@ -6,6 +6,7 @@ import time
 
 import graph
 from utils import *
+from MLJob import MLJob
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
 
@@ -13,7 +14,7 @@ class GridSearch(MLJob):
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1):
+    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1, base_port=1337):
 
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
@@ -24,6 +25,7 @@ class GridSearch(MLJob):
         self.kill_signal = threading.Event()
         self.loss_lst = []
         self.start_time = time.time()
+        self.base_port = base_port
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -49,7 +51,7 @@ class GridSearch(MLJob):
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
     def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], machines=[]):
         possibilities = list(itertools.product(*hyper_params))
-        base_port = 1337
+        base_port = self.base_port
         index = 0
         num_machines = len(machines)
         for p in possibilities:
@@ -135,7 +137,7 @@ class GridSearch(MLJob):
             while True:
                 cirrus_obj = cirrus_objs[index]
 
-                cirrus_obj.relaunch_lambdas()
+                cirrus_obj.relaunch_lambdas(st=index)
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
 
