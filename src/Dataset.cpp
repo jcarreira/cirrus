@@ -89,7 +89,7 @@ void Dataset::check(const Configuration& config) const {
         throw std::runtime_error("Dataset::check_values wrong label value: " +
                                  std::to_string(l[i]));
       }
-    } 
+    }
     if (std::isnan(l[i]) || std::isinf(l[i])) {
       throw std::runtime_error(
           "Dataset::check_values nan/inf error in labels");
