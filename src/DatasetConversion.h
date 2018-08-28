@@ -1,5 +1,5 @@
-#ifndef _DC_H
-#define _DC_H
+#ifndef _DATASETCONVERSION_H
+#define _DATASETCONVERSION_H
 
 #include <Dataset.h>
 #include <SparseDataset.h>
