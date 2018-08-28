@@ -3,11 +3,11 @@
   * where each sample is a vector of type FEATURE_TYPE
   */
 
-#include <Dataset.h>
-#include <algorithm>
-#include <Utils.h>
 #include <Checksum.h>
+#include <Dataset.h>
+#include <Utils.h>
 #include <math.h>
+#include <algorithm>
 
 #include <cassert>
 
