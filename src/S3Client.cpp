@@ -30,7 +30,7 @@ void S3Client::s3_put_object(const std::string& key_name,
 #ifdef DEBUG
   std::cout << "putObjectRequest building" << std::endl;
 #endif
-  putObjectRequest.WithBucket(bucket_name.c_str()).WithKey(key_name.c_str());
+  putObjectRequest.WithBucket(bucket_name.c_str()).WithKey(key_name.c_str()).WithACL(Aws::S3::Model::ObjectCannedACL::public_read);
 
   auto ss = Aws::MakeShared<Aws::StringStream>("TAG");
 #ifdef DEBUG
