@@ -6,7 +6,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 
-#define DEBUG
+//#define DEBUG
 
 namespace cirrus {
 
@@ -343,8 +343,8 @@ void MFModel::sgd_update(double learning_rate,
           std::cout << "learning_rate: " << learning_rate << std::endl;
           throw std::runtime_error("nan in item weight");
         }
-      }
 #endif
+      }
     }
   }
 }
@@ -420,7 +420,7 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset,
   if (std::isnan(error)) {
     throw std::runtime_error("error isnan");
   }
-  return std::make_pair(error, 0);
+  return std::make_pair(error, count);
 }
 
 uint64_t MFModel::getSerializedGradientSize() const {

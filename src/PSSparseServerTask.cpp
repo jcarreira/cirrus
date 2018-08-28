@@ -158,7 +158,6 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   builder.Finish(ps_msg);
 
   send_flatbuffer(sock, &builder);
-
   return true;
 }
 
@@ -502,6 +501,10 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
+
+  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
+                             NUM_FACTORS));
+  mf_model->randomize();
 
   sem_init(&sem_new_req, 0, 0);
 
