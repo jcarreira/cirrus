@@ -172,7 +172,7 @@ void ErrorSparseTask::run(const Configuration& config, bool testing) {
     if (iterations >= 100 && testing) {
       exit(EXIT_FAILURE);
     }
-    if (total_accuracy >= 0.7 && testing) {
+    if ((total_accuracy / minibatches_vec.size()) >= 0.7 && testing) {
       exit(EXIT_SUCCESS);
     }
     try {
