@@ -86,10 +86,10 @@ void Dataset::check(const Configuration& config) const {
           "Dataset::check_values wrong label value: " + std::to_string(l[i]));
     } else if (config.get_model_type() == Configuration::SOFTMAX) {
       if (l[i] >= config.get_num_classes() or l[i] < 0 or floor(l[i]) != l[i]) {
-        throw std::runtime_error(
-            "Dataset::check_values wrong label value: " + std::to_string(l[i]));
+        throw std::runtime_error("Dataset::check_values wrong label value: " +
+                                 std::to_string(l[i]));
       }
-    }  
+    } 
     if (std::isnan(l[i]) || std::isinf(l[i])) {
       throw std::runtime_error(
           "Dataset::check_values nan/inf error in labels");
