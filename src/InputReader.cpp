@@ -1069,6 +1069,12 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
   return ds;
 }
 
+void print_sparse_sample(std::vector<std::pair<int, int64_t>> sample) {
+  for (const auto& v : sample) {
+    std::cout << v.first << ":" << v.second << " ";
+  }
+}
+
 /** Here we read the criteo kaggle dataset and return a sparse dataset
   * We mimick the preprocessing TF does. Differences:
   * 1. We do one hot encoding of each feature
@@ -1112,7 +1118,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
 
   // create multiple threads to process input file
   std::vector<std::shared_ptr<std::thread>> threads;
-  uint64_t nthreads = 8;
+  uint64_t nthreads = 1;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(
         std::make_shared<std::thread>(
@@ -1138,16 +1144,19 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   }
 
   for (int i = 0; i < 100; ++i) {
-    print_sample(samples[i]);
+    print_sparse_sample(samples[i]);
+    std::cout << std::endl;
   }
 
   preprocess(samples);
   
-  for (int i = 0; i < 100; ++i) {
-    print_sample(samples[i]);
+  for (int i = 0; i < samples.size(); ++i) {
+    print_sparse_sample(samples[i]);
+    std::cout << std::endl;
   }
-
-  exit(-1);
+    SparseDataset ret(std::move(samples), std::move(labels));
+    // we don't normalize here
+    return ret;
 }
 
 void InputReader::preprocess(
@@ -1184,6 +1193,8 @@ void InputReader::preprocess(
     127833.5294885894, 191750.54923288408, 287626.0788493261, 431439.3732739892,
     647159.3149109838, 970739.2273664756, 1456109.0960497134, 2184163.8990745707,
     3276246.103611856, 4914369.410417783, 7371554.370626675};
+  std::cout << "buckets size: " << buckets.size() << std::endl;
+  
   uint32_t base_index = 0;
   for (int i = 0; i < 13; ++i) {
     for (auto& sample : samples) {
@@ -1193,9 +1204,15 @@ void InputReader::preprocess(
 
       int64_t bucket_id = find_bucket(value, buckets);
       index = base_index + bucket_id;
+      std::cout
+        << "col: " << i
+        << " index: " << index
+        << " bucket_id: " << bucket_id
+        << " value: " << value
+        << "\n";
       value = 1;
     }
-    base_index += buckets.size();
+    base_index += buckets.size() + 1;
   }
 
   std::cout << "base_index after integer features: " << base_index << std::endl;
@@ -1255,9 +1272,16 @@ void InputReader::preprocess(
   }
 }
       
-int InputReader::find_bucket(int64_t value, std::vector<float>& buckets) const {
+int InputReader::find_bucket(int64_t value, const std::vector<float>& buckets) const {
+  //std::cout
+  //  << "value: " << value
+  //  << " bucket values: "
+  //  << buckets[0] << " " << buckets[1] << " " << buckets[2] << " " << buckets[3]
+  //  << " buckets size: " << buckets.size()
+  //  << "\n";
+
   int i = 0;
-  while (i < buckets.size() && value < buckets[i]) {
+  while (i < buckets.size() && float(value) >= buckets[i]) {
     ++i;
   }
   return i;

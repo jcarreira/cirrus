@@ -225,7 +225,7 @@ class InputReader {
   void preprocess(
     std::vector<std::vector<std::pair<int, int64_t>>>& samples);
 
-  int find_bucket(int64_t value, std::vector<float>& buckets) const;
+  int find_bucket(int64_t value, const std::vector<float>& buckets) const;
 };
 
 } // namespace cirrus
