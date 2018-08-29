@@ -1105,11 +1105,6 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   std::vector<uint32_t> labels;                               // final result
   
   uint64_t num_lines = config.get_limit_samples();
-  // we read both integer and categorical features into here
-  // categorical features are translated from the hex text to save space
-  // 1 for label
-  int64_t* feature_values  = new int64_t[1 + num_lines * (13 + 26)];
-
   
   /* We first read the whole dataset to memory
    * to do the hot encondings etc..
@@ -1142,48 +1137,130 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     t->join();
   }
 
+  for (int i = 0; i < 100; ++i) {
+    print_sample(samples[i]);
+  }
+
+  preprocess(samples);
+  
+  for (int i = 0; i < 100; ++i) {
+    print_sample(samples[i]);
+  }
+
+  exit(-1);
+}
+
+void InputReader::preprocess(
+    std::vector<std::vector<std::pair<int, int64_t>>>& samples) {
+
   std::vector<std::map<int64_t, uint32_t>> col_freq_count;
   col_freq_count.resize(40); // +1 for bias
+
   // we compute frequencies of values for each column
   for (const auto& sample : samples) {
     for (const auto& feat : sample) {
       int64_t col = feat.first;
       assert(col >= 0);
       int64_t val = feat.second;
-      //std::cout << col << "-" << val << "\n";
-      if (col == 38 && val == 4293894289ULL) {
-        std::cout
-          << "col: " << col
-          << " val: " << val
-          << std::endl;
-      }
       col_freq_count.at(col)[val]++;
     }
   }
- 
-  // we first go sample by sample and bucketize the integer features
-  for (const auto& sample : samples) {
-  }
-  bucketize_features(samples);
 
-  // we ignore categorical features that appear less than 15 times
+  /**
+   * We expand each feature left to right
+   */
+
+  // we first go sample by sample and bucketize the integer features
+  // in the process we expand each integer feature
+  // because each integer feature falls into a single bucket the index
+  // for that feature
+  std::vector<float> buckets = {
+    0.49, 0.99, 1.74, 2.865, 4.5525, 7.08375, 10.880625, 16.5759375,
+    25.11890625, 37.933359375, 57.1550390625, 85.98755859375, 129.236337890625,
+    194.1095068359375, 291.41926025390626, 437.3838903808594, 656.3308355712891,
+    984.7512533569336, 1477.3818800354004, 2216.3278200531004, 3324.7467300796507,
+    4987.375095119476, 7481.317642679214, 11222.231464018821, 16833.602196028234,
+    25250.65829404235, 37876.24244106352, 56814.61866159528, 85222.18299239293,
+    127833.5294885894, 191750.54923288408, 287626.0788493261, 431439.3732739892,
+    647159.3149109838, 970739.2273664756, 1456109.0960497134, 2184163.8990745707,
+    3276246.103611856, 4914369.410417783, 7371554.370626675};
+  uint32_t base_index = 0;
+  for (int i = 0; i < 13; ++i) {
+    for (auto& sample : samples) {
+      auto& index = sample[i].first;
+      int64_t& value = sample[i].second;
+      assert(index == i);
+
+      int64_t bucket_id = find_bucket(value, buckets);
+      index = base_index + bucket_id;
+      value = 1;
+    }
+    base_index += buckets.size();
+  }
+
+  std::cout << "base_index after integer features: " << base_index << std::endl;
+
+  /**
+   * Now for each categorical feature we do:
+   * 1. ignore if feature doesn't appear at least 15 times
+   * 2. integerize
+   */
+  // first ignore rare features
   for (uint32_t i = 13; i < col_freq_count.size(); ++i) {
-    for (const auto& key : col_freq_count[i]) {
-      if (key.second < 15) {
+    for (std::map<int64_t, uint32_t>::iterator it =
+        col_freq_count[i].begin();
+        it != col_freq_count[i].end(); ) {
+      if (it->second < 15) {
         std::cout
-          << "Deleting entry key: " << key.first
-          << " value: " << key.second
+          << "Deleting entry key: " << it->first
+          << " value: " << it->second
           << " col: " << i
           << "\n";
-        if (key.first < 0) {
+        if (it->first < 0) {
           throw std::runtime_error("Invalid key value");
         }
-        col_freq_count[i].erase(col_freq_count[i].find(key.first));
+        it = col_freq_count[i].erase(it);
+      } else {
+        ++it;
       }
     }
     std::cout << i << ": " << col_freq_count[i].size() << std::endl;
   }
-  exit(-1);
+
+  // then give each value on each column a unique id
+  for (uint32_t i = 13; i < col_freq_count.size(); ++i) {
+    int feature_id = 0;
+    std::map<int64_t, int> col_feature_to_id;
+    for (auto& sample : samples) {
+      auto& feat_key = sample[i].first;
+      auto& feat_value = sample[i].second;
+
+      auto it = col_feature_to_id.find(feat_value);
+      if (it == col_feature_to_id.end()) {
+        // give new id to unseen feature
+        col_feature_to_id[feat_value] = feature_id;
+        // update index to this feature in the sample
+        // don't forget to add base_id
+        feat_key = base_index + feature_id;
+        // increment feature_id for next feature
+        feature_id++;
+      } else {
+        feat_key = col_feature_to_id[feat_value];
+      }
+      feat_value = 1;
+    }
+    base_index += feature_id; // advance base_id as many times as there were unique_values
+    std::cout << "base_index after cat col: " << i
+      << " features: " << base_index << std::endl;
+  }
+}
+      
+int InputReader::find_bucket(int64_t value, std::vector<float>& buckets) const {
+  int i = 0;
+  while (i < buckets.size() && value < buckets[i]) {
+    ++i;
+  }
+  return i;
 }
 
 #if 0

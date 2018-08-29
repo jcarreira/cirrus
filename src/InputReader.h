@@ -221,6 +221,11 @@ class InputReader {
     const std::string& line, const std::string& delimiter,
     std::vector<std::pair<int, FEATURE_TYPE>>& features,
     FEATURE_TYPE& label);
+
+  void preprocess(
+    std::vector<std::vector<std::pair<int, int64_t>>>& samples);
+
+  int find_bucket(int64_t value, std::vector<float>& buckets) const;
 };
 
 } // namespace cirrus
