@@ -1,4 +1,5 @@
 #include <Tasks.h>
+#include <signal.h>
 #include "Configuration.h"
 #include "InputReader.h"
 #include "PSSparseServerInterface.h"
@@ -13,6 +14,7 @@
 using namespace cirrus;
 
 Configuration config = Configuration("configs/jester.cfg");
+FEATURE_TYPE avg_loss = 0;
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
                                        const std::string& ps_ip,
@@ -27,9 +29,19 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   return psi->get_full_model(true);
 }
 
+void signal_callback_handler(int signum) {
+  if (avg_loss < 0.6) {
+    exit(EXIT_SUCCESS);
+  } else {
+    exit(EXIT_FAILURE);
+  }
+}
+
 int main() {
   // get data first
   // what we are going to use as a test set
+  // catch sigpipe
+  signal(SIGPIPE, signal_callback_handler);
   InputReader input;
   int nusers, nitems;
   SparseDataset test_data = input.read_jester_ratings(
@@ -41,7 +53,6 @@ int main() {
 
   // std::cout << "[ERROR_TASK] Computing accuracies"
   //           << std::endl;
-  FEATURE_TYPE avg_loss = 0;
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
@@ -72,6 +83,9 @@ int main() {
                 << avg_loss << " time(us): " << get_time_us()
                 << " time from start (sec): "
                 << (get_time_us() - start_time) / 1000000.0 << std::endl;
+      if (avg_loss < 0.6) {
+        break;
+      }
     } catch (...) {
       // Suppress for now.
       // throw std::runtime_error("Error");
