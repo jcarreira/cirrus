@@ -18,6 +18,7 @@
 #include <map>
 #include <iomanip>
 #include <functional>
+#include <sstream>
  
 #define DEBUG
 
@@ -1071,12 +1072,16 @@ SparseDataset InputReader::read_netflix_ratings(const std::string& input_file,
 /** Here we read the criteo kaggle dataset and return a sparse dataset
   * We mimick the preprocessing TF does. Differences:
   * 1. We do one hot encoding of each feature
-  * 2. We ignore features that don't appear more than X times (?)
-  * 3. We don't do crosses (but we could think about doing that)
-  * 4. We bucketize feature values using (from tf code):
+  * 2. We ignore CATEGORICAL features that don't appear more than 15 times (DONE)
+  * 3. We don't do crosses for now
+  * 4. We bucketize INTEGER feature values using (from tf code):
   * boundaries = [1.5**j - 0.51 for j in range(40)]
-  * NOTE: this changes require loading all data into memory
-  * so this might require a bit of memory
+  */
+
+/**
+  * How to expand features. For every sample we do
+  * integer features are expanded in a one hot encoding fashion
+  * categorical features the same
   */
 SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     const std::string& delimiter,
@@ -1085,9 +1090,9 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   std::cout << "Limit_line: " << config.get_limit_samples() << std::endl;
 
   // we enforce knowing how many lines we read beforehand
-  if (config.get_limit_samples() != 45840618) {
-    throw std::runtime_error("Wrong number of lines");
-  }
+  //if (config.get_limit_samples() != 45840618) {
+  //  throw std::runtime_error("Wrong number of lines");
+  //}
 
   std::ifstream fin(input_file, std::ifstream::in);
   if (!fin) {
@@ -1096,14 +1101,14 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
 
   std::mutex fin_lock;
   std::atomic<unsigned int> lines_count(0); // count lines processed
-  std::vector<std::vector<std::pair<int, uint32_t>>> samples;  // final result
-  std::vector<uint32_t> labels;                                // final result
+  std::vector<std::vector<std::pair<int, int64_t>>> samples;  // final result
+  std::vector<uint32_t> labels;                               // final result
   
   uint64_t num_lines = config.get_limit_samples();
   // we read both integer and categorical features into here
   // categorical features are translated from the hex text to save space
   // 1 for label
-  uint32_t* feature_values  = new uint32_t[1 + num_lines * (13 + 26)];
+  int64_t* feature_values  = new int64_t[1 + num_lines * (13 + 26)];
 
   
   /* We first read the whole dataset to memory
@@ -1137,29 +1142,88 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     t->join();
   }
 
-  exit(-1); // WIP
+  std::vector<std::map<int64_t, uint32_t>> col_freq_count;
+  col_freq_count.resize(40); // +1 for bias
+  // we compute frequencies of values for each column
+  for (const auto& sample : samples) {
+    for (const auto& feat : sample) {
+      int64_t col = feat.first;
+      assert(col >= 0);
+      int64_t val = feat.second;
+      //std::cout << col << "-" << val << "\n";
+      if (col == 38 && val == 4293894289ULL) {
+        std::cout
+          << "col: " << col
+          << " val: " << val
+          << std::endl;
+      }
+      col_freq_count.at(col)[val]++;
+    }
+  }
+ 
+  // we first go sample by sample and bucketize the integer features
+  for (const auto& sample : samples) {
+  }
+  bucketize_features(samples);
+
+  // we ignore categorical features that appear less than 15 times
+  for (uint32_t i = 13; i < col_freq_count.size(); ++i) {
+    for (const auto& key : col_freq_count[i]) {
+      if (key.second < 15) {
+        std::cout
+          << "Deleting entry key: " << key.first
+          << " value: " << key.second
+          << " col: " << i
+          << "\n";
+        if (key.first < 0) {
+          throw std::runtime_error("Invalid key value");
+        }
+        col_freq_count[i].erase(col_freq_count[i].find(key.first));
+      }
+    }
+    std::cout << i << ": " << col_freq_count[i].size() << std::endl;
+  }
+  exit(-1);
+}
 
 #if 0
-  // process each line
-  std::cout << "Read a total of " << labels.size() << " samples" << std::endl;
+void InputReader::bucketize_features(
+    const std::vector<std::vector<std::pair<int, int64_t>>> &samples) {
 
-  SparseDataset ret(std::move(samples), std::move(labels));
-  if (config.get_normalize()) {
-    // pass hash size
-    ret.normalize( (1 << config.get_model_bits()) );
-  }
-  return ret;
-#endif
+  std::vector<float> buckets = {
+    0.49, 0.99, 1.74, 2.865, 4.5525, 7.08375, 10.880625, 16.5759375,
+    25.11890625, 37.933359375, 57.1550390625, 85.98755859375, 129.236337890625,
+    194.1095068359375, 291.41926025390626, 437.3838903808594, 656.3308355712891,
+    984.7512533569336, 1477.3818800354004, 2216.3278200531004, 3324.7467300796507,
+    4987.375095119476, 7481.317642679214, 11222.231464018821, 16833.602196028234,
+    25250.65829404235, 37876.24244106352, 56814.61866159528, 85222.18299239293,
+    127833.5294885894, 191750.54923288408, 287626.0788493261, 431439.3732739892,
+    647159.3149109838, 970739.2273664756, 1456109.0960497134, 2184163.8990745707,
+    3276246.103611856, 4914369.410417783, 7371554.370626675};
+
+  // bucketize integer features
+  for (const auto& sample : samples) {
+    for (int i = 0; i < 13; ++i) {
+      int ind = 0;
+
+      // while we have not checked all the buckets
+      // and the current value does not fall into the current ind bucket
+      // we try next bucket
+      while (ind < buckets.size() && sample[i] > buckets[ind]) {
+        ind++;
+      }
+    }
 }
+#endif
 
 void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
     const std::string& delimiter,
-    std::vector<std::vector<std::pair<int, uint32_t>>>& samples_res,
+    std::vector<std::vector<std::pair<int, int64_t>>>& samples_res,
     std::vector<uint32_t>& labels_res,
     uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
     std::function<void(const std::string&, const std::string&,
-      std::vector<std::pair<int, uint32_t>>&, uint32_t&)> fun) {
-  std::vector<std::vector<std::pair<int, uint32_t>>> samples;  // final result
+      std::vector<std::pair<int, int64_t>>&, uint32_t&)> fun) {
+  std::vector<std::vector<std::pair<int, int64_t>>> samples;  // final result
   std::vector<uint32_t> labels;                                // final result
   std::string line;
   uint64_t lines_count_thread = 0;
@@ -1177,8 +1241,13 @@ void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock
       break;
 
     uint32_t label;
-    std::vector<std::pair<int, uint32_t>> features;
+    std::vector<std::pair<int, int64_t>> features;
     fun(line, delimiter, features, label);
+
+    std::ostringstream oss;
+    for (const auto& feat : features) {
+      oss << feat.first << ":" << feat.second << " ";
+    }
 
     samples.push_back(features);
     labels.push_back(label);
@@ -1205,7 +1274,7 @@ void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock
   */
 void InputReader::parse_criteo_tf_line(
     const std::string& line, const std::string& delimiter,
-    std::vector<std::pair<int, uint32_t>>& output_features,
+    std::vector<std::pair<int, int64_t>>& output_features,
     uint32_t& label, const Configuration& config) {
   char str[MAX_STR_SIZE];
 
@@ -1218,33 +1287,30 @@ void InputReader::parse_criteo_tf_line(
   strncpy(str, line.c_str(), MAX_STR_SIZE - 1);
   char* s = str;
 
-  std::map<uint64_t, int> features;
-
   uint64_t col = 0;
   while (char* l = strsep(&s, delimiter.c_str())) {
-    if (col == 0 ) { // it's Id
+    if (col == 0) { // it's Id
     } else if (col == 1) { // it's label
       label = string_to<uint32_t>(l);
       assert(label == 0 || label == 1);
     } else {
-      uint32_t hex_value = hex_string_to<uint32_t>(l);
-      // quick fix
-      features[col] = hex_value;
+      if (l[0] == 0) { // if feature value is missing
+        output_features.push_back(std::make_pair(col - 2, -1));
+      } else if (col <= 14) {
+        output_features.push_back(std::make_pair(col - 2, string_to<int64_t>(l)));
+      } else {
+        //if (col == 40 && strncmp(l, "ff", 2) == 0) {
+        //  std::cout << "col: " << col << " l: " << l << std::endl;
+        //}
+        int64_t hex_value = hex_string_to<int64_t>(l);
+        output_features.push_back(std::make_pair(col - 2, hex_value));
+      }
     }
     col++;
   }
   
   if (config.get_use_bias()) { // add bias constant
-    //uint64_t hash = hash_f("bias") % hash_size;
-    features[col] = 1;
-  }
-
-  /**
-    */
-  for (const auto& feat : features) {
-    if (feat.second != 0.0) {
-      output_features.push_back(std::make_pair(feat.first, feat.second));
-    }
+    output_features.push_back(std::make_pair(col-2, 1));
   }
 }
 

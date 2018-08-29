@@ -123,14 +123,14 @@ class InputReader {
     const Configuration& config);
   void read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
     const std::string& delimiter,
-    std::vector<std::vector<std::pair<int, uint32_t>>>& samples_res,
+    std::vector<std::vector<std::pair<int, int64_t>>>& samples_res,
     std::vector<uint32_t>& labels_res,
     uint64_t limit_lines, std::atomic<unsigned int>& lines_count,
     std::function<void(const std::string&, const std::string&,
-      std::vector<std::pair<int, uint32_t>>&, uint32_t&)> fun);
+      std::vector<std::pair<int, int64_t>>&, uint32_t&)> fun);
   void parse_criteo_tf_line(
       const std::string& line, const std::string& delimiter,
-      std::vector<std::pair<int, uint32_t>>& output_features,
+      std::vector<std::pair<int, int64_t>>& output_features,
       uint32_t& label, const Configuration& config);
 
 
