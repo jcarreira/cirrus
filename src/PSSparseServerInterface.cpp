@@ -224,6 +224,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   bool seen[17770] = {false};
+  // Start with size of user_base and minibatch_size.
   int num_bytes = sizeof(uint32_t) * 2;
 
   for (const auto& sample : ds.data_) {
@@ -240,7 +241,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       num_bytes += sizeof(uint32_t);
     }
   }
-
+  // std::cout << "item_ids_count" << item_ids_count << std::endl;
+  // std::cout << "id_vec num_bytes" << num_bytes << std::endl;
   auto id_vec = builder.CreateVector(
       reinterpret_cast<unsigned char*>(msg_begin), num_bytes);
 

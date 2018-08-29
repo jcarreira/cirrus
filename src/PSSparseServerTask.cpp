@@ -127,7 +127,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
   unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
-
+  // std::cout << "k_items: " << k_items << std::endl;
   // TODO: Should I use thread_buffer[thread_number] instead of msg?
   SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
   sparse_mf_model.serializeFromDense(*mf_model, base_user_id, minibatch_size,
@@ -365,7 +365,7 @@ void PSSparseServerTask::gradient_f() {
             req.sock);
       } else if (sparse_req->model_type() ==
                  message::WorkerMessage::ModelType_MATRIX_FACTORIZATION) {
-        process_get_mf_sparse_model(sparse_req->index_info()->size() - 2,
+        process_get_mf_sparse_model(sparse_req->index_info()->size() / 4 - 2,
                                     sparse_req->index_info()->data(), req.sock);
       } else {
         throw std::runtime_error("Unimplemented request for sparse model");
