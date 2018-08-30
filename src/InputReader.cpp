@@ -1118,7 +1118,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
 
   // create multiple threads to process input file
   std::vector<std::shared_ptr<std::thread>> threads;
-  uint64_t nthreads = 1;
+  uint64_t nthreads = 8;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(
         std::make_shared<std::thread>(
@@ -1154,7 +1154,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     print_sparse_sample(samples[i]);
     std::cout << std::endl;
   }
-  
+
   /**
     * FIX THIS
     */
