@@ -546,7 +546,7 @@ void InputReader::parse_criteo_sparse_line(
 
   std::map<uint64_t, int> features;
 
-  uint64_t hash_size = (1ULL << config.get_model_bits());
+  uint64_t hash_size = config.get_model_size();
 
   uint64_t col = 0;
   while (char* l = strsep(&s, delimiter.c_str())) {
@@ -665,7 +665,7 @@ SparseDataset InputReader::read_input_criteo_sparse(const std::string& input_fil
   SparseDataset ret(std::move(samples), std::move(labels));
   if (config.get_normalize()) {
     // pass hash size
-    ret.normalize( (1 << config.get_model_bits()) );
+    ret.normalize(config.get_model_size());
   }
   return ret;
 }
@@ -846,7 +846,7 @@ void InputReader::parse_criteo_kaggle_sparse_line(
 
   std::map<uint64_t, int> features;
 
-  uint64_t hash_size = (1ULL << config.get_model_bits());
+  uint64_t hash_size = config.get_model_size();
 
   uint64_t col = 0;
   while (char* l = strsep(&s, delimiter.c_str())) {
@@ -930,7 +930,7 @@ SparseDataset InputReader::read_input_criteo_kaggle_sparse(
   SparseDataset ret(std::move(samples), std::move(labels));
   if (config.get_normalize()) {
     // pass hash size
-    ret.normalize( (1 << config.get_model_bits()) );
+    ret.normalize(config.get_model_size());
   }
   return ret;
 }
@@ -1155,6 +1155,9 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     std::cout << std::endl;
   }
   
+  /**
+    * FIX THIS
+    */
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> samples_float;
   for (int i = samples.size() - 1; i >= 0; --i) {
     std::vector<std::pair<int, FEATURE_TYPE>> new_vec;

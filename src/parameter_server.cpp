@@ -29,7 +29,7 @@ void run_tasks(int rank, int nworkers,
   int samples_per_batch = config.get_minibatch_size();
 
   if (rank == PS_SPARSE_SERVER_TASK_RANK) {
-    cirrus::PSSparseServerTask st((1 << config.get_model_bits()) + 1,
+    cirrus::PSSparseServerTask st(config.get_model_size() + 1,
         batch_size, samples_per_batch, features_per_sample,
         nworkers, rank, ps_ip, ps_port);
     st.run(config);
@@ -56,14 +56,14 @@ void run_tasks(int rank, int nworkers,
     * SPARSE tasks
     */
   } else if (rank == ERROR_SPARSE_TASK_RANK) {
-    cirrus::ErrorSparseTask et((1 << config.get_model_bits()),
+    cirrus::ErrorSparseTask et(config.get_model_size(),
         batch_size, samples_per_batch, features_per_sample,
         nworkers, rank, ps_ip, ps_port);
     et.run(config);
     cirrus::sleep_forever();
   } else if (rank == LOADING_SPARSE_TASK_RANK) {
     if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION) {
-      cirrus::LoadingSparseTaskS3 lt((1 << config.get_model_bits()),
+      cirrus::LoadingSparseTaskS3 lt(config.get_model_size(),
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config);

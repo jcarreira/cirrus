@@ -120,7 +120,7 @@ class Configuration {
     bool get_grad_threshold_use() const;
     double get_grad_threshold() const;
 
-    uint64_t get_model_bits() const;
+    uint64_t get_model_size() const;
 
     /**
       * Model checkpointing
@@ -193,7 +193,7 @@ class Configuration {
 
     std::string opt_method = "adagrad";
 
-    uint64_t model_bits = 20;
+    uint64_t model_size = 0;
 
     uint64_t netflix_workers = 0;
 

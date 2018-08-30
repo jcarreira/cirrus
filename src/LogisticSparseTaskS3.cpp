@@ -89,7 +89,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
-  SparseLRModel model(1 << config.get_model_bits());
+  SparseLRModel model(config.get_model_size());
 
   bool printed_rate = false;
   int count = 0;

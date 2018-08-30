@@ -385,7 +385,7 @@ void SparseLRModel::loadSerializedSparse(const FEATURE_TYPE* weights,
   
   assert(num_weights > 0 && num_weights < 10000000);
 
-  weights_sparse_.reserve((1 << config.get_model_bits()));
+  weights_sparse_.reserve(config.get_model_size());
   for (uint64_t i = 0; i < num_weights; ++i) {
     uint32_t index = load_value<uint32_t>(weight_indices);
     FEATURE_TYPE value = load_value<FEATURE_TYPE>(weights);
@@ -402,7 +402,7 @@ void SparseLRModel::ensure_preallocated_vectors(const Configuration& config) con
   }
   
   if (part3.capacity() == 0) {
-    part3.resize(1 << config.get_model_bits());
+    part3.resize(config.get_model_size());
   }
   
   // value needs to be less than number of samples in minibatch
