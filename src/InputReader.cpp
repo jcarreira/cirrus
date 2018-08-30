@@ -1154,9 +1154,24 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     print_sparse_sample(samples[i]);
     std::cout << std::endl;
   }
-    SparseDataset ret(std::move(samples), std::move(labels));
-    // we don't normalize here
-    return ret;
+  
+  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> samples_float;
+  for (int i = samples.size() - 1; i >= 0; --i) {
+    std::vector<std::pair<int, FEATURE_TYPE>> new_vec;
+    new_vec.reserve(samples[i].size());
+    for (const auto& v : samples[i]) {
+      new_vec.push_back(std::make_pair(v.first, v.second));
+    }
+    samples_float.push_back(new_vec);
+    samples.pop_back();
+  }
+  std::vector<FEATURE_TYPE> labels_float;
+  labels_float.resize(labels.size());
+  std::copy(labels.begin(), labels.end(), labels_float.begin());
+  
+  SparseDataset ret(std::move(samples_float), std::move(labels_float));
+  // we don't normalize here
+  return ret;
 }
 
 void InputReader::preprocess(
@@ -1262,7 +1277,7 @@ void InputReader::preprocess(
         // increment feature_id for next feature
         feature_id++;
       } else {
-        feat_key = col_feature_to_id[feat_value];
+        feat_key = base_index + col_feature_to_id[feat_value];
       }
       feat_value = 1;
     }

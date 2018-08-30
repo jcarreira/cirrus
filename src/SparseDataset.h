@@ -33,7 +33,8 @@ class SparseDataset {
    * @param samples Vector of samples
    * @param labels Vector of labels
    */
-  SparseDataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples, std::vector<FEATURE_TYPE>&& labels);
+  SparseDataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples,
+      std::vector<FEATURE_TYPE>&& labels);
   
 
   /** Load sparse dataset from serialized format
