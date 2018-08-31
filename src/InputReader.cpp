@@ -1118,7 +1118,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
 
   // create multiple threads to process input file
   std::vector<std::shared_ptr<std::thread>> threads;
-  uint64_t nthreads = 8;
+  uint64_t nthreads = 20;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(
         std::make_shared<std::thread>(
@@ -1143,19 +1143,24 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     t->join();
   }
 
-  for (int i = 0; i < 100; ++i) {
+  std::cout << "Printing 10 samples before preprocessing" << std::endl;
+  for (int i = 0; i < 10; ++i) {
     print_sparse_sample(samples[i]);
     std::cout << std::endl;
   }
 
   std::cout << "Preprocessing dataset" << std::endl;
   preprocess(samples);
+  std::cout << "Preprocessed done" << std::endl;
   
-  for (int i = 0; i < samples.size(); ++i) {
+  std::cout << "Printing 10 samples after preprocessing" << std::endl;
+  for (int i = 0; i < 10; ++i) {
     print_sparse_sample(samples[i]);
     std::cout << std::endl;
   }
 
+
+  std::cout << "Transforming to float.." << std::endl;
   /**
     * FIX THIS
     */
@@ -1173,7 +1178,13 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   labels_float.resize(labels.size());
   std::copy(labels.begin(), labels.end(), labels_float.begin());
  
-  // we should shuffle here 
+  std::cout << "Returning.." << std::endl;
+
+  // we shuffle samples here
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(samples_float.begin(), samples_float.end(), g);
+
   SparseDataset ret(std::move(samples_float), std::move(labels_float));
   // we don't normalize here
   return ret;
@@ -1224,12 +1235,12 @@ void InputReader::preprocess(
 
       int64_t bucket_id = find_bucket(value, buckets);
       index = base_index + bucket_id;
-      std::cout
-        << "col: " << i
-        << " index: " << index
-        << " bucket_id: " << bucket_id
-        << " value: " << value
-        << "\n";
+      //std::cout
+      //  << "col: " << i
+      //  << " index: " << index
+      //  << " bucket_id: " << bucket_id
+      //  << " value: " << value
+      //  << "\n";
       value = 1;
     }
     base_index += buckets.size() + 1;
@@ -1248,11 +1259,11 @@ void InputReader::preprocess(
         col_freq_count[i].begin();
         it != col_freq_count[i].end(); ) {
       if (it->second < 15) {
-        std::cout
-          << "Deleting entry key: " << it->first
-          << " value: " << it->second
-          << " col: " << i
-          << "\n";
+        //std::cout
+        //  << "Deleting entry key: " << it->first
+        //  << " value: " << it->second
+        //  << " col: " << i
+        //  << "\n";
         if (it->first < 0) {
           throw std::runtime_error("Invalid key value");
         }
