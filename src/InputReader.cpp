@@ -1148,6 +1148,7 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     std::cout << std::endl;
   }
 
+  std::cout << "Preprocessing dataset" << std::endl;
   preprocess(samples);
   
   for (int i = 0; i < samples.size(); ++i) {
@@ -1171,7 +1172,8 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
   std::vector<FEATURE_TYPE> labels_float;
   labels_float.resize(labels.size());
   std::copy(labels.begin(), labels.end(), labels_float.begin());
-  
+ 
+  // we should shuffle here 
   SparseDataset ret(std::move(samples_float), std::move(labels_float));
   // we don't normalize here
   return ret;
