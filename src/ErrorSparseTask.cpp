@@ -4,8 +4,8 @@
 #include "Serializers.h"
 #include "config.h"
 #include "S3SparseIterator.h"
-#include "Utils.h"
 #include "SparseLRModel.h"
+#include "Utils.h"
 #include "PSSparseServerInterface.h"
 #include "Configuration.h"
 #include "Constants.h"
@@ -112,7 +112,6 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
   std::cout << "Compute error task connecting to store" << std::endl;
-
   std::cout << "Creating sequential S3Iterator" << std::endl;
 
   uint32_t left, right;
@@ -169,6 +168,9 @@ void ErrorSparseTask::run(const Configuration& config) {
         << "\n";
 #endif
       std::unique_ptr<CirrusModel> model = get_model(config, ps_ip, ps_port);
+      SparseLRModel* lrmodel = dynamic_cast<SparseLRModel*>(model.get());
+      assert(lrmodel);
+      std::cout << "lrmodel size: " << lrmodel->size() << std::endl;
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -201,6 +203,9 @@ void ErrorSparseTask::run(const Configuration& config) {
 
       last_time = (get_time_us() - start_time) / 1000000.0;
       if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+        std::cout << "total_loss: " << total_loss << std::endl;
+        std::cout << "total_num_samples: " << total_num_samples << std::endl;
+        std::cout << "total_num_features: " << total_num_features << std::endl;
         last_error = (total_loss / total_num_samples);
         std::cout << "[ERROR_TASK] Loss (Total/Avg): " << total_loss << "/"
                   << last_error

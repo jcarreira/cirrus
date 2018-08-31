@@ -81,27 +81,24 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
 void LoadingSparseTaskS3::run(const Configuration& config) {
   std::cout << "[LOADER-SPARSE] " << "Read criteo input..." << std::endl;
 
-  uint64_t s3_obj_num_samples = config.get_s3_size();
   std::unique_ptr<S3Client> s3_client = std::make_unique<S3Client>();
 
   SparseDataset dataset = read_dataset(config);
   dataset.check();
 
-  exit(0);
-
-  uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
+  uint64_t num_s3_objs = dataset.num_samples() / config.get_s3_size();
   std::cout << "[LOADER-SPARSE] "
     << "Adding " << dataset.num_samples()
     << " #s3 objs: " << num_s3_objs
     << " bucket: " << config.get_s3_bucket()
     << std::endl;
 
-  // For each S3 object (group of s3_obj_num_samples samples)
+  // For each S3 object (group of config.get_s3_size() samples)
   for (unsigned int i = 0; i < num_s3_objs; ++i) {
     std::cout << "[LOADER-SPARSE] Building s3 batch #" << (i + 1) << std::endl;
 
-    uint64_t first_sample = i * s3_obj_num_samples;
-    uint64_t last_sample = (i + 1) * s3_obj_num_samples;
+    uint64_t first_sample = i * config.get_s3_size();
+    uint64_t last_sample = (i + 1) * config.get_s3_size();
 
     uint64_t len;
     // this function already returns a nicely packed object
@@ -109,7 +106,6 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
       dataset.build_serialized_s3_obj(first_sample, last_sample, &len);
 
     std::cout << "Putting object in S3 with size: " << len << std::endl;
-    // we hash names to help with scaling in S3
     std::string obj_id = std::to_string(SAMPLE_BASE + i);
     s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                              std::string(s3_obj.get(), len));

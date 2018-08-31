@@ -7,7 +7,7 @@
 #include <map>
 #include <unordered_map>
 
-//#define DEBUG
+#define DEBUG
 
 namespace cirrus {
 
@@ -183,7 +183,6 @@ double SparseLRModel::dot_product(
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
       std::cout << "res: " << res << std::endl;
-      std::cout << "i: " << i << std::endl;
       std::cout << "index: " << index << " value: " << value << std::endl;
       std::cout << "weights_[index]: " << weights_[index] << std::endl;
       exit(-1);
@@ -291,6 +290,9 @@ std::pair<double, double> SparseLRModel::calc_loss(SparseDataset& dataset, uint3
     double r1 = 0;
     for (const auto& feat : sample) {
       int index = feat.first;
+#ifdef DEBUG
+      assert(index < weights_.size());
+#endif
       FEATURE_TYPE value = feat.second;
       r1 += weights_[index] * value;
     }
@@ -312,27 +314,27 @@ std::pair<double, double> SparseLRModel::calc_loss(SparseDataset& dataset, uint3
       (1 - class_i) * log_aux(1 - s1);
 
     if (value > 0) {
-      //std::cout << "ds row: " << std::endl << ds.row(i) << std::endl;
-      //std::cout << "weights: " << std::endl << weights_eig << std::endl;
-      //std::cout << "Class: " << class_i << " " << v1 << " " << v2
-      //  << std::endl;
       throw std::runtime_error("Error: logistic loss is > 0");
     }
+    std::cout 
+        << "s1: " << s1
+        << " entropy loss: " << value
+        << " class_i: " << class_i
+        << " predicted_class: " << predicted_class
+        << std::endl;
 
-  //std::cout << "value: " << value << std::endl;
     total_loss -= value;
 #endif
   }
-
-  //std::cout << "wrong_count: " << wrong_count << std::endl;
 
   if (total_loss < 0) {
     throw std::runtime_error("total_loss < 0");
   }
 
   FEATURE_TYPE accuracy = (1.0 - (1.0 * wrong_count / dataset.num_samples()));
-  if (std::isnan(total_loss) || std::isinf(total_loss))
+  if (std::isnan(total_loss) || std::isinf(total_loss)) {
     throw std::runtime_error("calc_log_loss generated nan/inf");
+  }
 
   return std::make_pair(total_loss, accuracy);
 }
@@ -423,13 +425,7 @@ std::unique_ptr<ModelGradient> SparseLRModel::minibatch_grad_sparse(
     for (const auto& feat : dataset.get_row(i)) {
       int index = feat.first;
       FEATURE_TYPE value = feat.second;
-#ifdef DEBUG
-      if (weights_sparse_.find(index) == weights_sparse_.end()) {
-        std::cout << "Needed weight with index: " << index << std::endl;
-        throw std::runtime_error("Weight not found");
-      }
-#endif
-      part1_i += value * weights_sparse_[index]; // 25% of the execution time is spent here
+      part1_i += value * weights_sparse_[index];
     }
     part2[i] = dataset.labels_[i] - s_1(part1_i);
   }

@@ -1283,6 +1283,15 @@ void InputReader::preprocess(
       auto& feat_key = sample[i].first;
       auto& feat_value = sample[i].second;
 
+      // if this value is not int col_freq_count it means it was
+      // previously deleted because it didn't appear frequently enough
+      if (col_freq_count[i].find(feat_value) == col_freq_count[i].end()) {
+          //std::cout << "i : " << i << " value: " << feat_value << " discarded" << "\n";
+          continue;
+      } else {
+          //std::cout << "i : " << i << " value: " << feat_value << " kept" << "\n";
+      }
+
       auto it = col_feature_to_id.find(feat_value);
       if (it == col_feature_to_id.end()) {
         // give new id to unseen feature
