@@ -195,11 +195,8 @@ def logistic_regression(train, test, l_rate, n_epoch):
     return(predictions)
 
 
-# Test the logistic regression algorithm on the diabetes dataset
 seed(1)
 # load and prepare data
-#filename = 'day_1_1K.csv'
-#filename = 'filtered_data_shuffled.csv'
 filename = 'criteo_data/day_1_400K_shuffled'
 
 print("Loading dataset")
