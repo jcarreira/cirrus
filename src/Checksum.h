@@ -10,7 +10,7 @@
   * Compute crc32 checksum of data in buf and with size length
   * @return crc32 checksum
   */
-uint32_t crc32(const void* buf, size_t size);
+uint32_t crc32(const void *buf, size_t size);
 
 /**
   * Compute crc32 checksum for array of FEATURE_TYPE with length size

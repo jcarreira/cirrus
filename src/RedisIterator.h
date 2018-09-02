@@ -9,13 +9,11 @@
 
 class RedisIterator {
  public:
-  RedisIterator(uint64_t left_id,
-                uint64_t right_id,
-                const std::string& IP,
-                int port);
+    RedisIterator(
+        uint64_t left_id, uint64_t right_id, const std::string& IP, int port);
 
-  char* get_next();
-  void thread_function();
+    char* get_next();
+    void thread_function();
 
  private:
   uint64_t left_id;   // index of first value in range

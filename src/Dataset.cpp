@@ -3,53 +3,55 @@
   * where each sample is a vector of type FEATURE_TYPE
   */
 
-#include <Checksum.h>
 #include <Dataset.h>
-#include <Utils.h>
 #include <algorithm>
+#include <Utils.h>
+#include <Checksum.h>
 
 #include <cassert>
 
 namespace cirrus {
 
-Dataset::Dataset() {}
+Dataset::Dataset() {
+}
 
 Dataset::Dataset(const std::vector<std::vector<FEATURE_TYPE>>& samples,
-                 const std::vector<FEATURE_TYPE>& labels)
-    : samples_(samples) {
-  FEATURE_TYPE* l = new FEATURE_TYPE[labels.size()];
-  std::copy(labels.data(), labels.data() + labels.size(), l);
-  labels_.reset(l, array_deleter<FEATURE_TYPE>);
+        const std::vector<FEATURE_TYPE>& labels) :
+    samples_(samples) {
+    FEATURE_TYPE* l = new FEATURE_TYPE[labels.size()];
+    std::copy(labels.data(), labels.data() + labels.size(), l);
+    labels_.reset(l, array_deleter<FEATURE_TYPE>);
 }
 
 // XXX FIX
 Dataset::Dataset(const FEATURE_TYPE* minibatch,
                  uint64_t n_samples,
-                 uint64_t n_features)
-    : samples_(minibatch, n_samples, n_features, true) {
-  FEATURE_TYPE* l = new FEATURE_TYPE[n_samples];
-  for (uint64_t j = 0; j < n_samples; ++j) {
-    const FEATURE_TYPE* data = minibatch + j * (n_features + 1);
-    l[j] = *data;
-  }
-  labels_.reset(l, array_deleter<FEATURE_TYPE>);
+                 uint64_t n_features) :
+    samples_(minibatch, n_samples, n_features, true) {
+    
+    FEATURE_TYPE* l = new FEATURE_TYPE[n_samples];
+    for (uint64_t j = 0; j < n_samples;++j) {
+      const FEATURE_TYPE* data = minibatch + j * (n_features + 1);
+      l[j] = *data;
+    }
+    labels_.reset(l, array_deleter<FEATURE_TYPE>);
 }
 
 Dataset::Dataset(const FEATURE_TYPE* samples,
                  const FEATURE_TYPE* labels,
                  uint64_t n_samples,
-                 uint64_t n_features)
-    : samples_(samples, n_samples, n_features) {
-  FEATURE_TYPE* l = new FEATURE_TYPE[n_samples];
-  std::copy(labels, labels + n_samples, l);
-  labels_.reset(l, array_deleter<FEATURE_TYPE>);
+                 uint64_t n_features) :
+    samples_(samples, n_samples, n_features) {
+    FEATURE_TYPE* l = new FEATURE_TYPE[n_samples];
+    std::copy(labels, labels + n_samples, l);
+    labels_.reset(l, array_deleter<FEATURE_TYPE>);
 }
 
 Dataset::Dataset(std::vector<std::shared_ptr<FEATURE_TYPE>> samples,
                  std::vector<std::shared_ptr<FEATURE_TYPE>> labels,
                  uint64_t samples_per_batch,
-                 uint64_t features_per_sample)
-    : samples_(samples, samples_per_batch, features_per_sample) {
+                 uint64_t features_per_sample) :
+    samples_(samples, samples_per_batch, features_per_sample) {
   assert(labels.size() == samples.size());
 
   uint64_t num_labels = samples.size() * samples_per_batch;
@@ -57,41 +59,44 @@ Dataset::Dataset(std::vector<std::shared_ptr<FEATURE_TYPE>> samples,
 
   // copy labels in each minibatch sequentially
   for (uint64_t i = 0; i < labels.size(); ++i) {
-    std::memcpy(all_labels + i * samples_per_batch, labels[i].get(),
-                samples_per_batch * sizeof(FEATURE_TYPE));
+    std::memcpy(
+        all_labels + i * samples_per_batch,
+        labels[i].get(),
+        samples_per_batch * sizeof(FEATURE_TYPE));
   }
 
   labels_.reset(all_labels, array_deleter<FEATURE_TYPE>);
 }
 
 uint64_t Dataset::num_features() const {
-  return samples_.cols;
+    return samples_.cols;
 }
 
 uint64_t Dataset::num_samples() const {
-  return samples_.rows;
+    return samples_.rows;
 }
 
 void Dataset::check() const {
   const FEATURE_TYPE* l = labels_.get();
   for (uint64_t i = 0; i < num_samples(); ++i) {
     if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0)) {
-      throw std::runtime_error("Dataset::check_values wrong label value: " +
-                               std::to_string(l[i]));
+      throw std::runtime_error(
+          "Dataset::check_values wrong label value: " + std::to_string(l[i]));
     }
     if (std::isnan(l[i]) || std::isinf(l[i])) {
-      throw std::runtime_error("Dataset::check_values nan/inf error in labels");
+      throw std::runtime_error(
+          "Dataset::check_values nan/inf error in labels");
     }
   }
   samples_.check_values();
 }
 
 double Dataset::checksum() const {
-  return crc32(labels_.get(), num_samples()) + samples_.checksum();
+    return crc32(labels_.get(), num_samples()) + samples_.checksum();
 }
 
 void Dataset::print() const {
-  samples_.print();
+    samples_.print();
 }
 
 void Dataset::print_info() const {
@@ -99,7 +104,8 @@ void Dataset::print_info() const {
   std::cout << "Dataset #cols: " << samples_.cols << std::endl;
 }
 
-std::shared_ptr<FEATURE_TYPE> Dataset::build_s3_obj(uint64_t l, uint64_t r) {
+std::shared_ptr<FEATURE_TYPE>
+Dataset::build_s3_obj(uint64_t l, uint64_t r) {
   uint64_t num_samples = r - l;
   uint64_t entries_per_sample = samples_.cols + 1;
 
@@ -110,6 +116,7 @@ std::shared_ptr<FEATURE_TYPE> Dataset::build_s3_obj(uint64_t l, uint64_t r) {
   std::cout << "entries_per_sample: " << entries_per_sample << std::endl;
   for (uint64_t i = 0; i < num_samples; ++i) {
     FEATURE_TYPE* d = s3_obj.get() + i * entries_per_sample;
+
 
     // copy label
     *d = labels_.get()[i];
@@ -145,4 +152,5 @@ Dataset Dataset::Dataset::random_sample(uint64_t n_samples) const {
   return Dataset(samples, labels);
 }
 
-}  // namespace cirrus
+} // namespace cirrus
+

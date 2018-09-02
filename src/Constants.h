@@ -19,4 +19,4 @@ enum PS_OP {
 
 #define MAGIC_NUMBER (0x1337)
 
-#endif  // _CONSTANTS_H_
+#endif // _CONSTANTS_H_

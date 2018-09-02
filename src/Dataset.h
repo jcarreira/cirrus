@@ -13,10 +13,10 @@ namespace cirrus {
   * This class is used to hold a dataset (both labels and samples)
   */
 class Dataset {
- public:
+  public:
   Dataset(const FEATURE_TYPE* minibatch,
-          uint64_t n_samples,
-          uint64_t n_features);
+      uint64_t n_samples,
+      uint64_t n_features);
   /**
    * Construct empty dataset
    */
@@ -29,7 +29,7 @@ class Dataset {
    * @param labels Vector of labels
    */
   Dataset(const std::vector<std::vector<FEATURE_TYPE>>& samples,
-          const std::vector<FEATURE_TYPE>& labels);
+      const std::vector<FEATURE_TYPE>& labels);
   /**
    * Construct a dataset given a vector of samples and a vector of labels
    * This method copies all the inputs
@@ -39,9 +39,9 @@ class Dataset {
    * @param n_features Number of features on each sample
    */
   Dataset(const FEATURE_TYPE* samples,
-          const FEATURE_TYPE* labels,
-          uint64_t n_samples,
-          uint64_t n_features);
+      const FEATURE_TYPE* labels,
+      uint64_t n_samples,
+      uint64_t n_features);
 
   /**
    * Construct a dataset given a vector of minibatches (samples and labels)
@@ -52,9 +52,9 @@ class Dataset {
    * @param n_features Number of features on each sample
    */
   Dataset(std::vector<std::shared_ptr<FEATURE_TYPE>> samples,
-          std::vector<std::shared_ptr<FEATURE_TYPE>> labels,
-          uint64_t n_samples,
-          uint64_t n_features);
+      std::vector<std::shared_ptr<FEATURE_TYPE>> labels,
+      uint64_t n_samples,
+      uint64_t n_features);
 
   /**
    * Get the number of samples in this dataset
@@ -118,10 +118,11 @@ class Dataset {
    */
   Dataset random_sample(uint64_t n_samples) const;
 
- public:
-  Matrix samples_;                              //< dataset in matrix format
+  public:
+  Matrix samples_;  //< dataset in matrix format
   std::shared_ptr<const FEATURE_TYPE> labels_;  //< vector of labels
 };
+
 }
 
 #endif  // _DATASET_H_

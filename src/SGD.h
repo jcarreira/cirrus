@@ -6,11 +6,12 @@
 namespace cirrus {
 
 class SGD : public OptimizationMethod {
- public:
-  SGD(double lr);
+  public:
+    SGD(double lr);
 
-  void sgd_update(std::unique_ptr<SparseLRModel>& lr_model,
-                  const ModelGradient* gradient);
+    void sgd_update(
+        std::unique_ptr<SparseLRModel>& lr_model, 
+        const ModelGradient* gradient);
 };
 
 }  // namespace cirrus
