@@ -28,7 +28,10 @@ SparseDataset::SparseDataset(
 SparseDataset::SparseDataset(
     std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples,
     std::vector<FEATURE_TYPE>&& labels)
-    : data_(std::move(samples)), labels_(std::move(labels)) {}
+    : data_(std::move(samples)), labels_(std::move(labels)) {
+    assert(samples.size() > 0);
+    assert(samples.size() == labels.size());    
+}
 
 SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labels) {
   const char* data_begin = data;
@@ -117,6 +120,7 @@ void SparseDataset::check() const {
     for (const auto& v : w) {
       // check index value
       if (v.first < 0) {
+        std::cout << "Found v.first: " << v.first << std::endl;
         throw std::runtime_error("Input error");
       }
 
