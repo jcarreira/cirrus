@@ -2,7 +2,8 @@
 from random import seed
 from random import randrange
 from csv import reader
-from math import exp
+from math import exp, log
+import math
 import time
 import sys
 
@@ -246,11 +247,16 @@ def coefficients_sgd(train, l_rate, n_epoch):
     global base_index
     coef = [0.0 for i in range(base_index)]
     for epoch in range(n_epoch):
+        total_train_loss = 0
         for row in train:
             label = row[0]
             values = row[1]
 
             yhat = predict(values, coef)
+
+            log_loss = label * math.log(yhat) + (1-label)*math.log(1-yhat)
+            total_train_loss -= log_loss
+
             error = label - yhat
             #print "yhat: ", yhat
             #print "label: ", label
@@ -259,6 +265,8 @@ def coefficients_sgd(train, l_rate, n_epoch):
                 index = values[i][0]
                 value = values[i][1]
                 coef[index] = coef[index] + l_rate * error * yhat * (1.0 - yhat) * value
+        print("total_train_loss: ", total_train_loss, \
+              " avg train loss: ", total_train_loss / len(train))
 
     return coef
 
@@ -275,19 +283,28 @@ def logistic_regression(train, test, l_rate, n_epoch):
     print "logistic_regression n_epoch: ", n_epoch
     print "logistic_regression train len: ", len(train)
     coef = coefficients_sgd(train, l_rate, n_epoch)
+
+    total_test_loss = 0
     for row in test:
         #print("test row: ", row)
         label = row[0]
         values = row[1]
 
         yhat = predict(values, coef)
+
+        total_test_loss -= label * math.log(yhat) + (1-label)*math.log(1-yhat)
+
         yhat = round(yhat)
         predictions.append(yhat)
+
+    print("total_test_loss: ", total_test_loss, \
+          " avg test loss: ", total_test_loss / len(test))
     return(predictions)
 
 
 seed(1)
 # load and prepare data
+#filename = "/home/joao/data/criteo_kaggle/train.csv_100K"
 filename = "/home/joao/data/criteo_kaggle/train.csv_1M"
 #filename = "/home/joao/data/criteo_kaggle/train.csv_10K"
 
