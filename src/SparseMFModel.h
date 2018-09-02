@@ -135,12 +135,14 @@ class SparseMFModel : public CirrusModel {
       */
     //uint64_t size() const;
 
-    void serializeFromDense(
-        MFModel& model,
-        uint32_t base_user, uint32_t minibatch_size, uint32_t k_items,
-        const unsigned char* item_data_ptr, unsigned char* holder) const;
+    void serializeFromDense(MFModel& model,
+                            uint32_t base_user,
+                            uint32_t minibatch_size,
+                            uint32_t k_items,
+                            const unsigned char* item_data_ptr,
+                            unsigned char* holder) const;
 
- public:
+   public:
 
     // for each user we have in order:
     // 1. user id

@@ -134,7 +134,7 @@ void SparseMFModel::loadSerialized(const void* data, uint64_t minibatch_size, ui
   }
 
 #ifdef DEBUG
-  // check();
+    // check();
 #endif
 }
 
@@ -321,13 +321,15 @@ void SparseMFModel::print() const {
 }
 
 void SparseMFModel::check() const {
-    std::cout << "SparseMFModel::check() Not implemented" << std::endl;
+  std::cout << "SparseMFModel::check() Not implemented" << std::endl;
 }
 
-void SparseMFModel::serializeFromDense(
-    MFModel& mf_model,
-    uint32_t base_user_id, uint32_t minibatch_size, uint32_t k_items,
-    const unsigned char* item_data_ptr, unsigned char* holder) const {
+void SparseMFModel::serializeFromDense(MFModel& mf_model,
+                                       uint32_t base_user_id,
+                                       uint32_t minibatch_size,
+                                       uint32_t k_items,
+                                       const unsigned char* item_data_ptr,
+                                       unsigned char* holder) const {
 
   uint32_t to_send_size = 
     minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
