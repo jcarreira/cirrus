@@ -1181,6 +1181,8 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     labels.pop_back();
   }
   std::cout << "Returning.." << std::endl;
+  std::cout << "samples_float size: " << samples_float.size() << std::endl;
+  std::cout << "labels_float size: " << labels_float.size() << std::endl;
 
   shuffle_two_vectors(samples_float, labels_float);
 
@@ -1343,12 +1345,12 @@ void InputReader::preprocess(
           }
       }
   }
-  for (auto& sample : samples) {
-      for (auto it = sample.begin(); it != sample.end(); ++it) {
-          std::cout << it->first << " ";
-      }
-      std::cout << "\n";
-  }
+  //for (auto& sample : samples) {
+  //    for (auto it = sample.begin(); it != sample.end(); ++it) {
+  //        std::cout << it->first << " ";
+  //    }
+  //    std::cout << "\n";
+  //}
 }
       
 int InputReader::find_bucket(int64_t value, const std::vector<float>& buckets) const {
