@@ -192,11 +192,15 @@ class InputReader {
     +    */
   bool is_definitely_categorical(const char* s);
 
-  /** Shuffle both samples and labels
-    +    */
-  void shuffle_samples_labels(
-      std::vector<std::vector<FEATURE_TYPE>>& samples,
-      std::vector<FEATURE_TYPE>& labels);
+  /** Shuffle two generic vectors
+    */
+  template <class C, class D>
+  void shuffle_two_vectors(C& v1, D& v2) {
+      std::srand(42);
+      std::random_shuffle(v1.begin(), v1.end());
+      std::srand(42);
+      std::random_shuffle(v2.begin(), v2.end());
+  }
 
   void read_input_criteo_sparse_thread(std::ifstream& fin, std::mutex& lock,
     const std::string& delimiter,

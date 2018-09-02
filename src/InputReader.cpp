@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <functional>
 #include <sstream>
+#include <climits>
  
 #define DEBUG
 
@@ -252,15 +253,6 @@ void InputReader::split_data_labels(
     }
 }
 
-void InputReader::shuffle_samples_labels(
-    std::vector<std::vector<FEATURE_TYPE>>& samples,
-    std::vector<FEATURE_TYPE>& labels) {
-  std::srand(42);
-  std::random_shuffle(samples.begin(), samples.end());
-  std::srand(42);
-  std::random_shuffle(labels.begin(), labels.end());
-}
-
 Dataset InputReader::read_input_csv(const std::string& input_file,
         std::string delimiter, uint64_t nthreads,
         uint64_t limit_lines, uint64_t limit_cols,
@@ -357,7 +349,7 @@ Dataset InputReader::read_input_csv(const std::string& input_file,
   if (to_normalize)
     normalize(samples);
 
-  shuffle_samples_labels(samples, labels);
+  shuffle_two_vectors(samples, labels);
 
   std::cout << "Printing first sample after normalization" << std::endl;
   print_sample(samples[0]);
@@ -1165,25 +1157,32 @@ SparseDataset InputReader::read_criteo_sparse_tf(const std::string& input_file,
     * FIX THIS
     */
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> samples_float;
+  std::vector<FEATURE_TYPE> labels_float;
   for (int i = samples.size() - 1; i >= 0; --i) {
+    // new sample
     std::vector<std::pair<int, FEATURE_TYPE>> new_vec;
     new_vec.reserve(samples[i].size());
-    for (const auto& v : samples[i]) {
-      new_vec.push_back(std::make_pair(v.first, v.second));
+    if (samples[i].size() == 0) {
+        throw std::runtime_error("empty sample");
     }
+
+    for (const auto& v : samples[i]) {
+      new_vec.push_back(
+              std::make_pair(
+                  v.first,
+                  static_cast<FEATURE_TYPE>(v.second)));
+    }
+
+    // last sample becomes first and so on
     samples_float.push_back(new_vec);
     samples.pop_back();
+
+    labels_float.push_back(labels[i]);
+    labels.pop_back();
   }
-  std::vector<FEATURE_TYPE> labels_float;
-  labels_float.resize(labels.size());
-  std::copy(labels.begin(), labels.end(), labels_float.begin());
- 
   std::cout << "Returning.." << std::endl;
 
-  // we shuffle samples here
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(samples_float.begin(), samples_float.end(), g);
+  shuffle_two_vectors(samples_float, labels_float);
 
   SparseDataset ret(std::move(samples_float), std::move(labels_float));
   // we don't normalize here
@@ -1225,11 +1224,15 @@ void InputReader::preprocess(
     647159.3149109838, 970739.2273664756, 1456109.0960497134, 2184163.8990745707,
     3276246.103611856, 4914369.410417783, 7371554.370626675};
   std::cout << "buckets size: " << buckets.size() << std::endl;
-  
+ 
+  /**
+    * For every integer feature index:value we find which bucket it belongs to
+    * and then we change index to the new bucket index and value to 1
+    */ 
   uint32_t base_index = 0;
   for (int i = 0; i < 13; ++i) {
     for (auto& sample : samples) {
-      auto& index = sample[i].first;
+      int& index = sample[i].first;
       int64_t& value = sample[i].second;
       assert(index == i);
 
@@ -1280,13 +1283,15 @@ void InputReader::preprocess(
     int feature_id = 0;
     std::map<int64_t, int> col_feature_to_id;
     for (auto& sample : samples) {
-      auto& feat_key = sample[i].first;
-      auto& feat_value = sample[i].second;
+      int& feat_key = sample[i].first;
+      int64_t& feat_value = sample[i].second;
 
       // if this value is not int col_freq_count it means it was
       // previously deleted because it didn't appear frequently enough
       if (col_freq_count[i].find(feat_value) == col_freq_count[i].end()) {
           //std::cout << "i : " << i << " value: " << feat_value << " discarded" << "\n";
+          feat_key = INT_MIN; // we mark this pair to later remove it
+          feat_value = 1;
           continue;
       } else {
           //std::cout << "i : " << i << " value: " << feat_value << " kept" << "\n";
@@ -1302,13 +1307,47 @@ void InputReader::preprocess(
         // increment feature_id for next feature
         feature_id++;
       } else {
-        feat_key = base_index + col_feature_to_id[feat_value];
+        feat_key = base_index + it->second;
       }
       feat_value = 1;
     }
     base_index += feature_id; // advance base_id as many times as there were unique_values
+
     std::cout << "base_index after cat col: " << i
       << " features: " << base_index << std::endl;
+  }
+
+  /**
+    * Here we
+    * 1: check that all values are 1 due to integerization
+    * 2: remove indexes previously marked for removal due to low frequency
+    */
+  uint32_t count_removed = 0;
+  for (auto& sample : samples) {
+      for (auto it = sample.begin(); it != sample.end();) {
+          assert(it->second == 1);
+          if (it->first == INT_MIN) {
+              it = sample.erase(it);
+              count_removed++;
+              if (count_removed % 1000000 == 0) {
+                  std::cout << "count_removed: " << count_removed << "\n";
+              }
+          } else {
+            ++it;
+          }
+      }
+      for (auto it = sample.begin(); it != sample.end(); ++it) {
+          if (it->first < 0) {
+              std::cout << "it->first: " << it->first << std::endl;
+              assert(0);
+          }
+      }
+  }
+  for (auto& sample : samples) {
+      for (auto it = sample.begin(); it != sample.end(); ++it) {
+          std::cout << it->first << " ";
+      }
+      std::cout << "\n";
   }
 }
       
@@ -1326,36 +1365,6 @@ int InputReader::find_bucket(int64_t value, const std::vector<float>& buckets) c
   }
   return i;
 }
-
-#if 0
-void InputReader::bucketize_features(
-    const std::vector<std::vector<std::pair<int, int64_t>>> &samples) {
-
-  std::vector<float> buckets = {
-    0.49, 0.99, 1.74, 2.865, 4.5525, 7.08375, 10.880625, 16.5759375,
-    25.11890625, 37.933359375, 57.1550390625, 85.98755859375, 129.236337890625,
-    194.1095068359375, 291.41926025390626, 437.3838903808594, 656.3308355712891,
-    984.7512533569336, 1477.3818800354004, 2216.3278200531004, 3324.7467300796507,
-    4987.375095119476, 7481.317642679214, 11222.231464018821, 16833.602196028234,
-    25250.65829404235, 37876.24244106352, 56814.61866159528, 85222.18299239293,
-    127833.5294885894, 191750.54923288408, 287626.0788493261, 431439.3732739892,
-    647159.3149109838, 970739.2273664756, 1456109.0960497134, 2184163.8990745707,
-    3276246.103611856, 4914369.410417783, 7371554.370626675};
-
-  // bucketize integer features
-  for (const auto& sample : samples) {
-    for (int i = 0; i < 13; ++i) {
-      int ind = 0;
-
-      // while we have not checked all the buckets
-      // and the current value does not fall into the current ind bucket
-      // we try next bucket
-      while (ind < buckets.size() && sample[i] > buckets[ind]) {
-        ind++;
-      }
-    }
-}
-#endif
 
 void InputReader::read_criteo_tf_thread(std::ifstream& fin, std::mutex& fin_lock,
     const std::string& delimiter,
