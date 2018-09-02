@@ -143,7 +143,6 @@ class SparseMFModel : public CirrusModel {
                             unsigned char* holder) const;
 
    public:
-
     // for each user we have in order:
     // 1. user id
     // 2. user_bias

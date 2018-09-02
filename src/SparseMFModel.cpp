@@ -330,7 +330,6 @@ void SparseMFModel::serializeFromDense(MFModel& mf_model,
                                        uint32_t k_items,
                                        const unsigned char* item_data_ptr,
                                        unsigned char* holder) const {
-
   uint32_t to_send_size = 
     minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
     k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
