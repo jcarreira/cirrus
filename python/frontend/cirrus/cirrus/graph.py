@@ -119,11 +119,11 @@ def get_mem_usage():
 def get_traces(num, metric="LOSS"):
     trace_lst = []
     if metric == "LOSS":
-      num_exp = self.get_num_experiments()
+      num_exp = bundle.get_number_experiments()
     elif metric == "UPS":
-      num_exp = self.get_num_experiments_ups()
+      num_exp = bundle.get_number_experiments_ups()
     else:
-      num_exp = self.get_num_experiments_cps()
+      num_exp = bundle.get_number_experiments_cps()
     if num == 0:
         # Get all
         for i in range(num_exp):

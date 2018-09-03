@@ -9,7 +9,7 @@ from operator import itemgetter
 from utils import *
 
 class CrossValidation(MLJob):
-  def __init__(self, num_sets, param_base, machines, task = GridSearch, k = 10, hyper_vars = [], hyper_params = []):
+  def __init__(self, num_sets, param_base, machines, task = GridSearch, k = 2, hyper_vars = [], hyper_params = []):
     super(CrossValidation, self).__init__(task)
 
     per_set = num_sets // k
@@ -30,7 +30,7 @@ class CrossValidation(MLJob):
                                              machines=machines,
                                              base_port=base_port))
       base_port += 2 * len(list(itertools.product(*hyper_params)))
-      self.infos.append({'color': get_random_color()})
+      self.infos.extend([{'color': get_random_color()} for i in range(2 * len(list(itertools.product(*hyper_params))))])
     self.loss_lst = [[] for _ in range(self.get_number_experiments())]
     self.num_threads = len(self.loss_lst)
   
@@ -119,7 +119,7 @@ class CrossValidation(MLJob):
   def get_cost(self):
     return 0
 
-  def get_cost_per_second(self):
+  def get_cost_per_sec(self):
     return 0
 
 

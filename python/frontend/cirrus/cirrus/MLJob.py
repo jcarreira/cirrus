@@ -21,6 +21,10 @@ class MLJob(object):
     pass
 
   @abstractmethod
+  def get_info(self, i, param=None):
+    pass
+
+  @abstractmethod
   def get_number_experiments(self):
     pass
 
@@ -30,6 +34,26 @@ class MLJob(object):
 
   @abstractmethod
   def get_number_experiments_cps(self):
+    pass
+
+  @abstractmethod
+  def get_name_for(self, i):
+    pass
+
+  @abstractmethod
+  def get_info_for(self, i):
+    pass
+
+  @abstractmethod
+  def get_num_lambdas(self):
+    pass
+
+  @abstractmethod
+  def get_cost(self):
+    pass
+
+  @abstractmethod
+  def get_cost_per_sec(self):
     pass
   
   def kill_all(self):

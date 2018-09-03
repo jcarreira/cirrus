@@ -52,7 +52,7 @@ if __name__ == "__main__":
                            hyper_vars=["learning_rate", "worker_size"],
                            hyper_params=[learning_rates, [128, 246, 512]],
                            machines=machines,
-                           num_sets=841)
+                           num_sets=20)
     gs.run(UI=True)
 
 
