@@ -3,6 +3,7 @@ import graph
 import itertools
 import cirrus
 import time
+import os
 from MLJob import MLJob
 from GridSearch import GridSearch
 from operator import itemgetter
@@ -88,7 +89,9 @@ class CrossValidation(MLJob):
     for i in range(self.num_threads):
       p = threading.Thread(target=custodian, args=(self.cirrus_objs, i))
       p.start()
-
+    
+    
+    copy_threads = len(self.machines)
     def copy_and_run(thread_id):
         while True:
             if thread_id >= len(self.machines):
@@ -101,6 +104,7 @@ class CrossValidation(MLJob):
             print cmd
             os.system(cmd)
             cmd = 'ssh %s "chmod +x python_files/%s; ./python_files/%s &"' % (ubuntu_machine, sh_file, sh_file)
+            os.system(cmd)
             thread_id += copy_threads
         
     p_lst = []
