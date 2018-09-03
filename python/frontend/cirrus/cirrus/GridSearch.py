@@ -26,6 +26,7 @@ class GridSearch(MLJob):
         self.loss_lst = []
         self.start_time = time.time()
         self.base_port = base_port
+        self.command_dict = {}
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -54,6 +55,8 @@ class GridSearch(MLJob):
         base_port = self.base_port
         index = 0
         num_machines = len(machines)
+        for machine in self.machines:
+            self.command_dict[machine[0]] = []
         for p in possibilities:
             configuration = zip(hyper_vars, p)
             modified_config = param_base.copy()
@@ -69,6 +72,11 @@ class GridSearch(MLJob):
             self.infos.append({'color': get_random_color()})
             self.loss_lst.append({})
             self.param_lst.append(modified_config)
+            c.get_command(self.command_dict)
+
+    def get_command_dict(self):
+        return self.command_dict
+
 
     # Fetches custom metadata from experiment i
     def get_info_for(self, i):

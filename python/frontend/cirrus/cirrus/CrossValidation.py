@@ -19,25 +19,33 @@ class CrossValidation(MLJob):
     self.cirrus_objs = []
     self.k = k
     self.infos = []
+    self.machines = machines
+    self.command_dict = {}
+    for machine in self.machines:
+        self.command_dict[machine[0]] = []
     base_port = 1337
+    task_command_dicts = []
     for i in range(k):
       param_base['test_set'] = sets[i]
       param_base['train_set'] = sets[:i] + sets[i + 1:]
-      self.cirrus_objs.append(self.task(task=cirrus.LogisticRegression,
-                                             param_base=param_base,
-                                             hyper_vars=hyper_vars,
-                                             hyper_params=hyper_params,
-                                             machines=machines,
-                                             base_port=base_port))
+      task = self.task(task=cirrus.LogisticRegression,
+                       param_base = param_base,
+                       hyper_vars = hyper_vars,
+                       hyper_params = hyper_params,
+                       machines = machines,
+                       base_port = base_port)
+      self.cirrus_objs.append(task)
       base_port += 2 * len(list(itertools.product(*hyper_params)))
       self.infos.extend([{'color': get_random_color()} for i in range(2 * len(list(itertools.product(*hyper_params))))])
+      task_command_dicts.append(task.get_command_dict())
+    for machine in self.machines:
+        for c_dict in task_command_dicts:
+            self.command_dict[machine[0]].extend(c_dict[machine[0]])
     self.loss_lst = [[] for _ in range(self.get_number_experiments())]
     self.num_threads = len(self.loss_lst)
   
   def run(self, UI=False):
-    for obj in self.cirrus_objs:
-      obj.run()
-      time.sleep(15)
+    command_dict_to_file(self.command_dict)
     self.start_threads()
     if UI:
       def ui_func(self):
@@ -80,6 +88,29 @@ class CrossValidation(MLJob):
     for i in range(self.num_threads):
       p = threading.Thread(target=custodian, args=(self.cirrus_objs, i))
       p.start()
+
+    def copy_and_run(thread_id):
+        while True:
+            if thread_id >= len(self.machines):
+                return
+            
+            sh_file = "machine_%d.sh" % thread_id
+            ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
+
+            cmd = "scp %s %s:~/python_files" % (sh_file, ubuntu_machine)
+            print cmd
+            os.system(cmd)
+            cmd = 'ssh %s "chmod +x python_files/%s; ./python_files/%s &"' % (ubuntu_machine, sh_file, sh_file)
+            thread_id += copy_threads
+        
+    p_lst = []
+    for i in range(copy_threads):
+        p = threading.Thread(target=copy_and_run, args=(i, ))
+        p.start()
+        p_lst.append(p)
+
+    [p.join() for p in p_lst]
+            
 
   def get_xs_for(self, i, metric="LOSS"):
     if metric == "LOSS":
