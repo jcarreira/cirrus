@@ -188,7 +188,6 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
-    // std::cout << "Made MFModel";
     // TODO: Need to use delete[]?
     // delete[] buffer;
     return model;
