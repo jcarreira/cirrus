@@ -148,10 +148,8 @@ class BaseTask(object):
             print(payload)
             for i in range(shortage):
                 try:
-                    lc = lambda_name
-                    print(lc + '\n')
                     response = lambda_client.invoke(
-                        FunctionName=lc,
+                        FunctionName=lambda_name,
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)

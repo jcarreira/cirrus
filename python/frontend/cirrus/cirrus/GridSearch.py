@@ -14,7 +14,7 @@ class GridSearch(MLJob):
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1, base_port=1337):
+    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1, base_port=1337, config_num = 0):
 
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
@@ -27,6 +27,7 @@ class GridSearch(MLJob):
         self.start_time = time.time()
         self.base_port = base_port
         self.command_dict = {}
+        self.config_num = config_num
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -133,7 +134,7 @@ class GridSearch(MLJob):
             raise Exception('Metric not available')
         return [item[1] for item in lst]
 
-    def start_queue_threads(self):
+    def start_queue_threads(self, run = True):
 
         # Function that checks each experiment to restore lambdas, grab metrics
         def custodian(cirrus_objs, thread_id, num_jobs):
@@ -145,7 +146,7 @@ class GridSearch(MLJob):
             while True:
                 cirrus_obj = cirrus_objs[index]
 
-                cirrus_obj.relaunch_lambdas(st=index)
+                cirrus_obj.relaunch_lambdas(st=self.config_num)
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
 
@@ -191,13 +192,14 @@ class GridSearch(MLJob):
                 os.system(cmd)
                 thread_id += copy_threads
 
-        p_lst = []
-        for i in range(copy_threads):
-            p = threading.Thread(target=copy_and_run, args=(i,))
-            p.start()
-            p_lst.append(p)
+        if run: 
+            p_lst = []
+            for i in range(copy_threads):
+                p = threading.Thread(target=copy_and_run, args=(i,))
+                p.start()
+                p_lst.append(p)
 
-        [p.join() for p in p_lst]
+            [p.join() for p in p_lst]
 
         # Start custodian threads
         for i in range(self.num_jobs):
@@ -220,8 +222,8 @@ class GridSearch(MLJob):
 
 
     # Start threads to maintain all experiments
-    def run(self, UI=False):
-        self.start_queue_threads()
+    def run(self, UI=False, run=True):
+        self.start_queue_threads(run)
 
         if UI:
             def ui_func(self):

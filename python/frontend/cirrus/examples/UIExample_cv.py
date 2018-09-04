@@ -49,8 +49,8 @@ if __name__ == "__main__":
 
     gs = cirrus.CrossValidation(task=cirrus.GridSearch,
                            param_base=basic_params,
-                           hyper_vars=["learning_rate", "worker_size"],
-                           hyper_params=[learning_rates, [128, 246, 512]],
+                           hyper_vars=["learning_rate"],
+                           hyper_params=[learning_rates],
                            machines=machines,
                            num_sets=20)
     gs.run(UI=True)

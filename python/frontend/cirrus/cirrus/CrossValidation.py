@@ -34,7 +34,8 @@ class CrossValidation(MLJob):
                        hyper_vars = hyper_vars,
                        hyper_params = hyper_params,
                        machines = machines,
-                       base_port = base_port)
+                       base_port = base_port,
+                       config_num = i)
       self.cirrus_objs.append(task)
       base_port += 2 * len(list(itertools.product(*hyper_params)))
       self.infos.extend([{'color': get_random_color()} for i in range(2 * len(list(itertools.product(*hyper_params))))])
@@ -48,6 +49,8 @@ class CrossValidation(MLJob):
   def run(self, UI=False):
     command_dict_to_file(self.command_dict)
     self.start_threads()
+    for c in self.cirrus_objs:
+        c.run(run=False)
     if UI:
       def ui_func(self):
         graph.bundle = self
@@ -143,7 +146,9 @@ class CrossValidation(MLJob):
     return [item[1] for item in lst]
 
   def get_name_for(self, i):
-    return "blah"
+    first_i = i // self.get_number_experiments()
+    second_i = i % self.get_number_experiments()
+    return self.cirrus_objs[first_i].get_name_for(second_i)
 
   def get_info_for(self, i):
     return "blah2"
