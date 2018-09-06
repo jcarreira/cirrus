@@ -217,8 +217,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
   char* msg = new char[MAX_MSG_SIZE];
-  char* msg_begin = msg;  // need to keep this pointer to delete later
-
+  char* msg_begin = msg; // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
@@ -229,13 +228,10 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
-      // std::cout << "movieId: " << movieId << "\n";
-
       if (seen[movieId])
         continue;
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
-      // store_value<uint32_t>(msg, movieId); // encode the index
       item_ids_count++;
       num_bytes += sizeof(uint32_t);
     }
