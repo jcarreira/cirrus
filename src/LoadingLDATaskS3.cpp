@@ -123,17 +123,24 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     // delete[] msg;
   }
   // check_loading(config, s3_client);
-
+  //
   // Storing global variables
   std::vector<int> global_vocab_vec(global_vocab.begin(), global_vocab.end());
-  LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
+
+  std::shared_ptr<LDAUpdates> initial_global_var;
+  initial_global_var.reset(new LDAUpdates());
+  initial_global_var->slice = global_vocab_vec;
+  initial_global_var->change_nvt_ptr.reset(new std::vector<int>(nvt));
+  initial_global_var->change_nt_ptr.reset(new std::vector<int>(nt));
+
+  // LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
   std::cout << "Putting object(initial global var) in S3 with size: "
-            << initial_global_var.getSerializedSize() << std::endl;
+            << initial_global_var->getSerializedSize() << std::endl;
   std::string obj_id =
       std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
 
   uint32_t len;
-  std::shared_ptr<char> s3_obj = initial_global_var.serialize(&len);
+  std::shared_ptr<char> s3_obj = initial_global_var->serialize(&len);
 
   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                            std::string(s3_obj.get(), len));

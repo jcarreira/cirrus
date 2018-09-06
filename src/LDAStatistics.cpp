@@ -44,7 +44,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
     w_.push_back(w);
   }
 
-  int16_t s = load_value<int16_t>(msg);
+  int32_t s = load_value<int32_t>(msg);
   slice_.clear();
   slice_.reserve(s);
 
@@ -97,7 +97,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
     store_value<int32_t>(msg, w_[i]);
   }
 
-  store_value<int16_t>(msg, slice_.size());
+  store_value<int32_t>(msg, slice_.size());
   for (const auto& v : slice_) {
     store_value<int32_t>(msg, v);
   }
@@ -137,8 +137,8 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   }
 
   to_send_size = sizeof(int8_t) * ndt_.size() +
-                 sizeof(int16_t) * (3 + 2 * t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
-                 sizeof(int32_t) * (1 + t_.size() + slice_.size());
+                 sizeof(int16_t) * (2 + 2 * t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
+                 sizeof(int32_t) * (2 + t_.size() + slice_.size());
 
   return msg_begin;
 
@@ -149,7 +149,7 @@ char* LDAStatistics::serialize_slice() {
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
   // issue is here
-  store_value<int16_t>(msg, slice_.size());
+  store_value<int32_t>(msg, slice_.size());
   for (const auto& v : slice_) {
     store_value<int32_t>(msg, v);
   }
@@ -166,7 +166,7 @@ int LDAStatistics::get_serialize_size() {
 }
 
 int LDAStatistics::get_serialize_slice_size() {
-  return sizeof(int16_t) + sizeof(int32_t) * slice_.size();
+  return sizeof(int32_t) * (slice_.size() + 1);
 }
 
 int LDAStatistics::get_receive_size() {

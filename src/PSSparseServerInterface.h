@@ -42,12 +42,13 @@ class PSSparseServerInterface {
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
 
-  double time_send = 0.0, time_receive = 0.0;
+  double time_send = 0.0, time_receive = 0.0, num_get_lda_model = 0.0, time_whole = 0.0, time_create_model = 0.0, time_receive_size = 0.0;
 
  private:
   std::string ip;
   int port;
   int sock = -1;
+  int slice_id = -1;
   struct sockaddr_in serv_addr;
 };
 

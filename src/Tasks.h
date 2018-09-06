@@ -285,6 +285,8 @@ class PSSparseServerTask : public MLTask {
   void update_ndt(int bucket_id);
   void update_nvt_nt(const std::vector<int>& vocabs_to_update);
 
+  void pre_assign_slices(int slice_size);
+
  private:
   /**
     * Handle the situation when a socket read fails within worker threads
@@ -380,9 +382,16 @@ class PSSparseServerTask : public MLTask {
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
   int init_ll_flag = 0;
-  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send = 0.0, time_temp = 0.0;
-  std::mutex ll_lock;
-  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
+  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
+  double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
+  std::mutex ll_lock, slice_lock;
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads, send_global_slices_threads;
+  double num_to_find_partial = 0.;
+  int when_to_check = 5;
+  std::vector<std::vector<int>> fixed_slices;
+  std::vector<int> unused_slice_id;
+  int num_slices;
+  std::array<int, 1000000> sock_lookup;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections

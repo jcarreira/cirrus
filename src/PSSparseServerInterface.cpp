@@ -345,6 +345,11 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
   mem.reset();
 }
 
+
+// TODO:
+//      Send: worker id
+//      Receive: partial model assigned by the server
+//      Then init LDAModel & send back
 void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_bucket, std::unique_ptr<LDAModel>& model) {
 
 #ifdef DEBUG
@@ -357,37 +362,62 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
 
   auto start_time_benchmark = get_time_ms();
 
+  num_get_lda_model += 1;
+
+  auto start_time_temp = get_time_ms();
+
   // 1. Send operation
   uint32_t operation = GET_LDA_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
     throw std::runtime_error("Error sending operation_m");
   }
 
-  // 2. Send the size of vocab slise
-  uint32_t msg_size = info.get_serialize_slice_size();
-#ifdef DEBUG
-  std::cout << "msg_size: " << msg_size << std::endl;
-#endif
-  send_all(sock, &msg_size, sizeof(uint32_t));
+//   // 2. Send the size of vocab slise
+//   // uint32_t msg_size = info.get_serialize_slice_size();
+// #ifdef DEBUG
+//   std::cout << "msg_size: " << msg_size << std::endl;
+// #endif
+//   send_all(sock, &msg_size, sizeof(uint32_t));
+//
+//   // 3. Send slice
+//   char* msg_slice_begin = info.serialize_slice();
+//   if (send_all(sock, msg_slice_begin, msg_size) == -1) {
+//     throw std::runtime_error("Error sending slice");
+//   }
 
-  // 3. Send slice
-  char* msg_slice_begin = info.serialize_slice();
-  if (send_all(sock, msg_slice_begin, msg_size) == -1) {
-    throw std::runtime_error("Error sending slice");
+  // 2. Send the size of int
+  int size_send = sizeof(int);
+  send_all(sock, &size_send, sizeof(int));
+
+  // 3. Send slice id
+  if (send_all(sock, &slice_id, size_send) == -1) {
+    throw std::runtime_error("Error sending slice_id");
   }
 
-  time_send += (get_time_ms() - start_time_benchmark) / 1000.0;
+  time_send += (get_time_ms() - start_time_temp) / 1000.0;
 
-  start_time_benchmark = get_time_ms();
+  start_time_temp = get_time_ms();
 
-  // 4. receive the size of partial_nvt from server
+  // 4. receive the size of compressed partial_nvt from server
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
 
+  // 5. receive the size of original partial_nvt from server
+  uint32_t uncompressed_size;
+  read_all(sock, &uncompressed_size, sizeof(uint32_t));
+
+  // 6. receive the new slice_id
+  read_all(sock, &slice_id, sizeof(uint32_t));
+
+  time_receive_size += (get_time_ms() - start_time_temp) / 1000.0;
+
   // std::cout << "current: " << to_receive_size << " pre: " << info.get_receive_size() << std::endl;;
 
-  // 5. receive partial_nvt from server
+  // 7. receive partial_nvt from server
   // uint32_t to_receive_size = info.get_receive_size();
+
+  start_time_temp = get_time_ms();
+
 #ifdef DEBUG
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
@@ -399,16 +429,21 @@ void PSSparseServerInterface::get_lda_model(LDAStatistics& info, int update_buck
   std::cout << "Loading model from memory" << std::endl;
 #endif
 
-  time_receive += (get_time_ms() - start_time_benchmark) / 1000.0;
+  time_receive += (get_time_ms() - start_time_temp) / 1000.0;
+
+  start_time_temp = get_time_ms();
 
   uint64_t to_send_size;
   char* msg_begin = info.serialize(to_send_size);
 
-  model.reset(new LDAModel(buffer, msg_begin, update_bucket));
+  model.reset(new LDAModel(buffer, msg_begin, update_bucket, to_receive_size, uncompressed_size));
 
-  delete[] msg_slice_begin;
+  // delete[] msg_slice_begin;
   delete[] msg_begin;
   delete[] buffer;
+
+  time_create_model += (get_time_ms() - start_time_temp) / 1000.0;
+  time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
 }
 
 }  // namespace cirrus

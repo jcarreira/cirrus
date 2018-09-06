@@ -11,7 +11,7 @@
 #include <map>
 #include <deque>
 
-#include <codecfactory.h>
+#include "lz4.h"
 
 // #include "temp.h"
 // #include <boost>
@@ -23,52 +23,20 @@
 // #define MAX_MSG_SIZE (1024 * 1024 * 100)
 namespace cirrus {
 
-LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
+LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_update, int compressed_size, int uncompressed_size) {
 
-  uint32_t receive_size = load_value<uint32_t>(buffer);
-  uint32_t original_size = load_value<uint32_t>(buffer);
-
-  // std::cout << "original size: " << original_size << std::endl;
-  // std::cout << "receive_size size: " << receive_size << std::endl;
-
-  FastPForLib::IntegerCODEC &codec = *FastPForLib::CODECFactory::getFromName("simdfastpfor256");
-
-  // TODO
-  std::vector<uint32_t> to_decompress;
-  to_decompress.reserve(receive_size);
-  for (int i = 0; i < receive_size; ++i) {
-    uint32_t temp = load_value<uint32_t>(buffer);
-    to_decompress.push_back(temp);
-  }
-
-  // for(int i=0; i<10; ++i){
-  //   std::cout << to_decompress[i] << " ";
-  // }
-  // std::cout << std::endl;
-
-  std::vector<uint32_t> decompressed(original_size);
-  size_t recoveredsize = decompressed.size();
-  codec.decodeArray(to_decompress.data(), to_decompress.size(), decompressed.data(), recoveredsize);
-  decompressed.resize(original_size);
-
-  // for ()
-
-  std::deque<uint32_t> partial_model(decompressed.begin(), decompressed.end());
+  // std::cout << compressed_size << " " << uncompressed_size << std::endl;
+  char* buffer_decompressed = new char[uncompressed_size + 1024];
+  LZ4_decompress_fast(buffer_to_decompress, buffer_decompressed, uncompressed_size);
+  const char* buffer = buffer_decompressed;
 
   update_bucket = to_update;
 
-  // int V_by_K = load_value<int>(buffer);
-  // V_ = load_value<int>(buffer);
-  V_ = partial_model.front();
-  partial_model.pop_front();
+  V_ = load_value<int>(buffer);
 
   // std::cout << "V: " << V_ << std::endl;
 
   K_ = load_value<int16_t>(info);
-  // K_ = load_value<int>(info);
-
-  // std::cout << V_ << " " << K_ << std::endl;
-  // V_ = V_by_K / K_;
 
   nvt.clear();
   nvt.reserve(V_);
@@ -76,40 +44,18 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
     std::vector<int> nt_vi;
     std::vector<int> nz_nt_vi;
     nz_nt_vi.reserve(K_);
-    // nt_vi.reserve(K_);
-    // int len = load_value<int>(buffer);
-    // for (int j = 0; j < len; ++j) {
-    //   int top = load_value<int>(buffer);
-    //   int count = load_value<int>(buffer);
-    //   nt_vi[top] = count;
-    // }
-    // for (int j = 0; j < K_; ++j) {
-    //   int temp = load_value<int>(buffer);
-    //   nt_vi.push_back(temp);
-    // }
 
-    // uint8_t store_type = load_value<uint8_t>(buffer); // 1 -> sparse, 2 -> dense
-
-    uint32_t store_type = partial_model.front();
-    partial_model.pop_front();
-
-    // std::cout << store_type << " ***\n";
+    uint16_t store_type = load_value<uint16_t>(buffer); // 1 -> sparse, 2 -> dense
+    // std::cout << store_type << " " << i << std::endl;
     if (store_type == 1) {
       // sparse
       nt_vi.resize(K_, 0);
 
-      // uint16_t len = load_value<uint16_t>(buffer);
-      uint32_t len = partial_model.front();
-      partial_model.pop_front();
+      uint16_t len = load_value<uint16_t>(buffer);
 
       for (int j = 0; j < len; ++j) {
-        // uint16_t top = load_value<uint16_t>(buffer);
-        // uint16_t count = load_value<uint16_t>(buffer);
-
-        uint32_t top = partial_model.front();
-        partial_model.pop_front();
-        uint32_t count = partial_model.front();
-        partial_model.pop_front();
+        uint16_t top = load_value<uint16_t>(buffer);
+        uint16_t count = load_value<uint16_t>(buffer);
 
         nt_vi[top] = count;
         nz_nt_vi.push_back(top);
@@ -119,10 +65,7 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
       nt_vi.reserve(K_);
 
       for (int j = 0; j < K_; ++j) {
-        // uint16_t temp = load_value<uint16_t>(buffer);
-
-        uint32_t temp = partial_model.front();
-        partial_model.pop_front();
+        uint16_t temp = load_value<uint16_t>(buffer);
 
         nt_vi.push_back(temp);
         if (temp != 0) {
@@ -140,9 +83,7 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
   nt.reserve(K_);
   nz_nt_indices.reserve(K_);
   for (int i = 0; i < K_; ++i) {
-    // int temp = load_value<int>(buffer);
-    uint32_t temp = partial_model.front();
-    partial_model.pop_front();
+    int temp = load_value<int>(buffer);
     nt.push_back(temp);
     if (temp != 0) {
       nz_nt_indices.push_back(i);
@@ -165,8 +106,9 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
     w.push_back(word);
   }
 
+  // gonna remove later
   slice.clear();
-  int16_t S = load_value<int16_t>(info);
+  int32_t S = load_value<int32_t>(info);
   slice.reserve(S);
   for (int i = 0; i < S; ++i) {
     int s = load_value<int>(info);
@@ -212,6 +154,15 @@ LDAModel::LDAModel(const char* buffer, const char* info, int to_update) {
     ndt.push_back(nt_di);
     nz_ndt_indices.push_back(nz_nt_di);
   }
+
+  slice.clear();
+  slice.reserve(V_);
+  for (int i = 0; i < V_; ++i) {
+    uint32_t s = load_value<uint32_t>(buffer);
+    slice.push_back(s);
+  }
+
+  delete buffer_decompressed;
 }
 
 LDAModel& LDAModel::operator=(LDAModel& model) {
@@ -291,7 +242,7 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     top = t[i], doc = d[i], gindex = w[i];
     // if (slice_map.find(gindex) == slice_map.end())
     //   continue;
-    if (slice_map.at(gindex) == -1)
+    if (slice_map[gindex] == -1)
       continue;
     lindex = slice_map.at(gindex);
     temp++;
@@ -317,10 +268,6 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
       }
 
     }
-
-    // if (nvt[lindex][top] <= 0) {
-    //   continue;
-    // }
 
     nvt[lindex][top] -= 1;
     ndt[doc][top] -= 1;
@@ -353,7 +300,6 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     double rdn = rand() * (smoothing_threshold + doc_threshold + word_threshold) / RAND_MAX;
 
     // std::cout << doc_threshold << " " << word_threshold << std::endl;
-
     // 'smoothing only' bucket
     if (rdn < smoothing_threshold) {
 

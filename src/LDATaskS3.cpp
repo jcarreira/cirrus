@@ -129,7 +129,7 @@ void LDATaskS3::pre_fetch_model_fn(std::unique_ptr<LDAModel>& model,
 
 void LDATaskS3::run(const Configuration& config, int worker) {
 
-  double lambda_time_out = 3.0 * 6000000000.0; // 3 min currently
+  double lambda_time_out = 300.0; // 3 min currently
   double time_upload = 0.0, time_download = 0.0,
          time_update = 0.0, time_get_model = 0.0, time_sample = 0.0,
          time_get_model_self = 0.0;
@@ -166,8 +166,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
-  std::cout << "aa\n";
-
   uint64_t version = 1;
   std::unique_ptr<LDAModel> model, next_model;
 
@@ -175,8 +173,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   int count = 0;
   auto start_time = get_time_ms();
   std::shared_ptr<LDAStatistics> s3_local_vars; //, pre_fetch_vars;
-
-  std::cout << "bb\n";
 
   // Load the first LDAStatistics from S3
   auto start_time_benchmark = get_time_ms();
@@ -212,10 +208,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   // double averaged_iteration_time = 0.0, index = 1.0;
 
-  std::cout << "cc\n";
-
   while (1) {
-
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
@@ -236,48 +229,48 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start]), update_bucket)
       );
 
-      // The early exit is added in case that
-      // worker expires even if it hasn't stored the
-      // updated LDAStatistics to S3
-      auto elapsed_ms = get_time_ms() - start_time;
-      float elapsed_sec = elapsed_ms / 1000.0;
-      // 20 seconds before lambda times out
-      if (elapsed_sec > (lambda_time_out - 20.0)) {
-        // If there's a bucket that gets updated,
-        // send an empty LDAUpdates with only the bucket id
-        if (update_bucket != 0) {
-          auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
-          push_gradient(bucket_update.get());
-        }
-
-        std::cout << "--------------------------\n";
-        std::cout << "Time to upload to S3: " << time_upload << std::endl;
-        std::cout << "Time to download from S3: " << time_download << std::endl;
-        std::cout << "Time to send update to server: " << time_update << std::endl;
-        std::cout << "Time to get model from server: " << time_get_model << std::endl;
-        std::cout << "\tTime to get model (self): " << time_get_model_self << std::endl;
-        std::cout << "Time to sample: " << time_sample << std::endl;
-
-        std::cout << "--------------------------\n";
-        std::cout << "documents/sec: " << (double)total_sampled_doc / ((get_time_ms() - start_time) / 1000) << std::endl;
-        std::cout << "tokens/sec: " << (double)total_sampled_tokens / ((get_time_ms() - start_time) / 1000) << std::endl;
-
-        std::cout << "--------------------------\n";
-        if (full_iteration == 0 ){
-          std::cout << "sec/iteration: N/A yet \n";
-        } else{
-          std::cout << "sec/iteration: " << (double)full_iteration / ((get_time_ms() - start_time) / 1000) << std::endl;
-        }
-
-        std::cout << "successfully exit\n";
-        break;
-      }
-
       // Get the next LDAStatistics from S3
       cur_train_idx += 1;
       if (cur_train_idx == end) {
         cur_train_idx = start;
         full_iteration += 1;
+
+        // The early exit is added in case that
+        // worker expires even if it hasn't stored the
+        // updated LDAStatistics to S3
+        auto elapsed_ms = get_time_ms() - start_time;
+        float elapsed_sec = elapsed_ms / 1000.0;
+        // 20 seconds before lambda times out
+        if (elapsed_sec > (lambda_time_out - 30.0)) {
+          // If there's a bucket that gets updated,
+          // send an empty LDAUpdates with only the bucket id
+          if (update_bucket != 0) {
+            auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
+            push_gradient(bucket_update.get());
+          }
+
+          std::cout << "--------------------------\n";
+          std::cout << "Time to upload to S3: " << time_upload << std::endl;
+          std::cout << "Time to download from S3: " << time_download << std::endl;
+          std::cout << "Time to send update to server: " << time_update << std::endl;
+          std::cout << "Time to get model from server: " << time_get_model << std::endl;
+          std::cout << "\tTime to get model (self): " << time_get_model_self << std::endl;
+          std::cout << "Time to sample: " << time_sample << std::endl;
+
+          std::cout << "--------------------------\n";
+          std::cout << "documents/sec: " << (double)total_sampled_doc / ((get_time_ms() - start_time) / 1000) << std::endl;
+          std::cout << "tokens/sec: " << (double)total_sampled_tokens / ((get_time_ms() - start_time) / 1000) << std::endl;
+
+          std::cout << "--------------------------\n";
+          if (full_iteration == 0 ){
+            std::cout << "sec/iteration: N/A yet \n";
+          } else{
+            std::cout << "sec/iteration: " << (double)full_iteration / ((get_time_ms() - start_time) / 1000) << std::endl;
+          }
+
+          std::cout << "successfully exit\n";
+          break;
+        }
       }
 
       if (end == start + 1) {
@@ -391,7 +384,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
               << " at time: " << get_time_us() << " version " << version
               << "\n";
 #endif
-    gradient->setVersion(version++);
+    // gradient->setVersion(version++);
 
     try {
       start_time_benchmark = get_time_ms();
@@ -422,8 +415,16 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::cout << "Time to upload to S3: " << time_upload << std::endl;
       std::cout << "Time to download from S3: " << time_download << std::endl;
       std::cout << "Time to send update to server: " << time_update << std::endl;
-      std::cout << "Time to get model from server: " << time_get_model << std::endl;
-      std::cout << "\tTime to get model (self): " << time_get_model_self << std::endl;
+      std::cout << "Time to get model from server (whole): " << psint->time_whole << std::endl;
+      std::cout << "\tTime to send: " << psint->time_send << std::endl;
+      std::cout << "\tTime to receive sizes: " << psint->time_receive_size << std::endl;
+      std::cout << "\tTime to receive partial global model: " << psint->time_receive << std::endl;
+      std::cout << "\tTime to create local model: " << psint->time_create_model << std::endl;
+      std::cout << "Avg Time to get model from server (whole): " << psint->time_whole / psint->num_get_lda_model << std::endl;
+      std::cout << "\tAvg Time to send: " << psint->time_send / psint->num_get_lda_model << std::endl;
+      std::cout << "\tAvg Time to receive sizes: " << psint->time_receive_size / psint->num_get_lda_model << std::endl;
+      std::cout << "\tAvg Time to receive partial global model: " << psint->time_receive / psint->num_get_lda_model << std::endl;
+      std::cout << "\tAvg Time to create local model: " << psint->time_create_model / psint->num_get_lda_model << std::endl;
       std::cout << "Time to sample: " << time_sample << std::endl;
 
       std::cout << "--------------------------\n";

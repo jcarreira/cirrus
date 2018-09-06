@@ -26,7 +26,7 @@ class LDAModel {
     *               (ndt, topics assignments, vocab slice)
     * @param to_update: to indicate which bucket's ll the server needs to update
     */
-  LDAModel(const char* buffer, const char* info, int to_update);
+  LDAModel(const char* buffer, const char* info, int to_update, int compressed_size, int uncompressed_size);
   /**
     * LDA sampling function (currently using Gibbs Sampler)
     * Sampling is based on all the statistics stored in the object
