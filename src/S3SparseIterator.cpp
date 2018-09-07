@@ -8,6 +8,7 @@
 #include <semaphore.h>
 
 //#define DEBUG
+#define USE_OLD_NAMES
 
 namespace cirrus {
   
@@ -234,7 +235,13 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
     std::cout << "Waiting for pref_sem" << std::endl;
     pref_sem.wait();
 
+#ifdef USE_OLD_NAMES
+    uint64_t objId = getObjId(left_id, right_id); 
+    std::string obj_id_str =
+        std::to_string(hash_f(std::to_string(objId).c_str())) + "-CRITEO";
+#else
     std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
+#endif
 
     std::ostringstream* s3_obj;
 try_start:
