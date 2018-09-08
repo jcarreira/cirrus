@@ -142,6 +142,9 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
     try {
       LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
+      if (lrg->getNumWeights() == 0) {
+        continue;
+      }
       push_gradient(lrg);
     } catch(...) {
       std::cout << "[WORKER] "

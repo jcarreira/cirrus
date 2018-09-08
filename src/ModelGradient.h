@@ -110,6 +110,8 @@ class LRSparseGradient : public ModelGradient {
 
     void print() const override;
     void check_values() const override;
+
+    uint64_t getNumWeights() const { return weights.size(); }
  protected:
     std::vector<std::pair<int, FEATURE_TYPE>> weights;  //< weights
 };
