@@ -175,7 +175,11 @@ bool PSSparseServerTask::process_send_lda_update(
   model_lock.unlock();
 
   if (update_bucket != 0) {
-    update_ndt(update_bucket);
+    update_ndt_threads.push_back(std::make_unique<std::thread>(
+          std::bind(&PSSparseServerTask::update_ndt, this,
+                    std::placeholders::_1), update_bucket)
+    );
+    // update_ndt(update_bucket);
   }
 
   gradientUpdatesCount++;

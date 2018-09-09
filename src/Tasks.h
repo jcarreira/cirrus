@@ -385,7 +385,7 @@ class PSSparseServerTask : public MLTask {
   double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
   double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
   std::mutex ll_lock, slice_lock;
-  std::vector<std::unique_ptr<std::thread>> compute_ll_threads, send_global_slices_threads;
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads, send_global_slices_threads, update_ndt_threads;
   double num_to_find_partial = 0.;
   int when_to_check = 5;
   std::vector<std::vector<int>> fixed_slices;
