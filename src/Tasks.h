@@ -392,6 +392,7 @@ class PSSparseServerTask : public MLTask {
   std::vector<int> unused_slice_id;
   int num_slices;
   std::array<int, 1000000> sock_lookup;
+  std::array<int, 1000> bucket_in_update;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections

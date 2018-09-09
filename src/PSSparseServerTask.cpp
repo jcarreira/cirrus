@@ -175,10 +175,14 @@ bool PSSparseServerTask::process_send_lda_update(
   model_lock.unlock();
 
   if (update_bucket != 0) {
-    update_ndt_threads.push_back(std::make_unique<std::thread>(
-          std::bind(&PSSparseServerTask::update_ndt, this,
-                    std::placeholders::_1), update_bucket)
-    );
+    if (bucket_in_update[update_bucket] == -1) {
+      bucket_in_update[update_bucket] = 1;
+      update_ndt_threads.push_back(std::make_unique<std::thread>(
+            std::bind(&PSSparseServerTask::update_ndt, this,
+                      std::placeholders::_1), update_bucket)
+      );
+    }
+
     // update_ndt(update_bucket);
   }
 
@@ -694,6 +698,7 @@ void PSSparseServerTask::start_server() {
 
     std::srand(std::time(nullptr));
     sock_lookup.fill(-1);
+    bucket_in_update.fill(-1);
 
     // compute_loglikelihood();
     // s3_shutdown_aws();
@@ -1187,12 +1192,15 @@ void PSSparseServerTask::update_ndt(int bucket_id){
 
   const std::string tmp = s3_obj->str();
   const char* s3_data = tmp.c_str();
-  LDAStatistics ndt_partial(s3_data);
 
+
+  // LDAStatistics ndt_partial(s3_data);
+  std::unique_ptr<LDAStatistics> ndt_partial;
+  ndt_partial.reset(new LDAStatistics(s3_data));
   delete s3_obj;
 
   std::vector<std::vector<int>> ndt;
-  ndt_partial.get_ndt(ndt);
+  ndt_partial->get_ndt(ndt);
 
   // model_lock.lock();
   ll_lock.lock();
@@ -1211,6 +1219,12 @@ void PSSparseServerTask::update_ndt(int bucket_id){
 
   // model_lock.unlock();
   ll_lock.unlock();
+
+  ndt.clear();
+  ndt_partial.reset();
+  s3_client.reset();
+
+  bucket_in_update[bucket_id] = -1;
 
   // s3_shutdown_aws();
 
