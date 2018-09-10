@@ -47,6 +47,10 @@ PSSparseServerInterface::~PSSparseServerInterface() {
   }
 }
 
+/*
+ * Logistic regression
+ */
+
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   uint32_t operation = SEND_LR_GRADIENT;
 #ifdef DEBUG
@@ -87,7 +91,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   store_value<uint32_t>(msg, num_weights); // just make space for the number of weights
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      store_value<uint32_t>(msg, w.first); // encode the index
+      store_value<uint32_t>(msg, w.first);  // encode the index
       num_weights++;
     }
   }
@@ -118,8 +122,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   if (send_all(sock, msg_begin, msg_size) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
-  
-  //4. receive weights from PS
+
+  // 4. receive weights from PS
   uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
   //std::cout << "Model sent. Receiving: " << num_weights << " weights" << std::endl;
 
@@ -134,8 +138,10 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 #endif
   // build a truly sparse model and return
   // XXX this copy could be avoided
-  lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, (uint32_t*)msg, num_weights, config);
-  
+  lr_model.loadSerializedSparse(reinterpret_cast<FEATURE_TYPE*>(buffer),
+                                reinterpret_cast<uint32_t*>(msg), num_weights,
+                                config);
+
   delete[] msg_begin;
   delete[] buffer;
 }
@@ -197,7 +203,95 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   }
 }
 
-// Collaborative filtering
+SparseLRModel PSSparseServerInterface::send_lr_gradient_get_sparse_model(
+    const LRSparseGradient& gradient,
+    const SparseDataset& ds,
+    SparseLRModel& lr_model,
+    const Configuration& config) {
+  uint32_t operation = SEND_LR_GRADIENT_GET_SPARSE_MODEL;
+#ifdef DEBUG
+  std::cout << "Sending gradient + get sparse model" << std::endl;
+#endif
+  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending operation");
+  }
+
+  // we first allocate enough memory for the gradient to send
+  // and for the get model part
+  // we don't know the get model part size yet so we allocate MAX_MSG_SIZE bytes
+  uint32_t msg1_size = gradient.getSerializedSize();
+  uint32_t mem_size = msg1_size + MAX_MSG_SIZE;
+  std::shared_ptr<char[]> msg_data(new char[mem_size]);
+
+  char* data_ptr = msg_data.get();
+  gradient.serialize(data_ptr);
+  advance_ptr(data_ptr, msg1_size);  // get sparse model goes after
+
+  /*
+   * get model msg
+   */
+  char* sparse_model_indices = data_ptr;
+  char* model_msg_ptr = sparse_model_indices;
+
+  uint32_t num_weights = 0;
+  // just make space for the number of weights
+  store_value<uint32_t>(model_msg_ptr, num_weights);
+  for (const auto& sample : ds.data_) {
+    for (const auto& w : sample) {
+      store_value<uint32_t>(model_msg_ptr, w.first);  // encode the index
+      num_weights++;
+    }
+  }
+  store_single_value<uint32_t>(data_ptr,
+                               num_weights);  // store correct value here
+#ifdef DEBUG
+  assert(std::distance(sparse_model_indices, model_msg_ptr) < MAX_MSG_SIZE);
+  std::cout << std::endl;
+#endif
+
+  uint32_t msg2_size = sizeof(uint32_t) + sizeof(uint32_t) * num_weights;
+  uint32_t total_msg_size = msg1_size + msg2_size;
+  // XXX put here also size of 2nd message
+
+#ifdef DEBUG
+  std::cout << "msg1_size: " << msg1_size << " msg2_size: " << msg2_size
+            << " total_msg_size: " << total_msg_size
+            << " num_weights: " << num_weights << std::endl;
+#endif
+  ret = send(sock, &total_msg_size, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending total msg size");
+  }
+
+  ret = send_all(sock, msg_data.get(), total_msg_size);
+  if (ret == 0) {
+    throw std::runtime_error("Error sending send_grad+get_model msg");
+  }
+
+  // 4. receive weights from PS
+  uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
+
+#ifdef DEBUG
+  std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
+#endif
+  std::shared_ptr<char[]> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(), to_receive_size);
+
+#ifdef DEBUG
+  std::cout << "Loading model from memory" << std::endl;
+#endif
+  // build a truly sparse model and return
+  // XXX I think this copy could be avoided
+  lr_model.loadSerializedSparse(
+      reinterpret_cast<FEATURE_TYPE*>(buffer.get()),
+      reinterpret_cast<uint32_t*>(sparse_model_indices), num_weights, config);
+  return lr_model;
+}
+
+/*
+ * Collaborative filtering
+ */
 
 /**
   * This function needs to send to the PS a list of users and items

@@ -26,15 +26,38 @@ class PSSparseServerInterface {
 
   void connect();
 
+  /*
+   * Send gradient
+   */
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
-  
-  SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
-  void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
-  SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
-  std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
+  /*
+   * Get model
+   */
+  SparseLRModel get_lr_sparse_model(const SparseDataset& ds,
+                                    const Configuration& config);
+  void get_lr_sparse_model_inplace(const SparseDataset& ds,
+                                   SparseLRModel&,
+                                   const Configuration& config);
+  SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
+                                    uint32_t,
+                                    uint32_t);
 
+  // XXX  use a better argument here
+  std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering);
+
+  /*
+   * Hybrid
+   */
+  SparseLRModel send_lr_gradient_get_sparse_model(const LRSparseGradient&,
+                                                  const SparseDataset& ds,
+                                                  SparseLRModel&,
+                                                  const Configuration& config);
+
+  /*
+   * Status messages
+   */
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
 
