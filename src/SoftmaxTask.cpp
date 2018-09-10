@@ -63,7 +63,6 @@ bool SoftmaxTask::get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
 }
 
 void SoftmaxTask::run(const Configuration& config, int worker) {
-  s3_initialize_aws();
   std::cout << "Starting SoftmaxTask" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
