@@ -84,8 +84,6 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg; // need to keep this pointer to delete later
 
-  uint32_t uncompressed_size = 0;
-  store_value<uint32_t>(msg, uncompressed_size); // just make space for this size
   uint32_t num_weights = 0;
   store_value<uint32_t>(msg, num_weights); // just make space for the number of weights
   for (const auto& sample : ds.data_) {
@@ -101,8 +99,6 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 #endif
   
   msg = msg_begin;
-  uint32_t msg_size = sizeof(uint32_t) * 2 + sizeof(uint32_t) * num_weights;
-  store_value<uint32_t>(msg, msg_size); // uncompressed size
   store_value<uint32_t>(msg, num_weights); // store correct value here
 
 #ifdef DEBUG
@@ -113,22 +109,35 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
-  // 2. Send msg size
+
+  uint32_t msg_size = sizeof(uint32_t) + sizeof(uint32_t) * num_weights;
+  uint32_t to_send_size = msg_size;
+  char* msg_data = msg_begin;
+
+#ifdef ENABLE_LR_COMPRESSION
+  size_t max_compressed_size = LZ4_compressBound(msg_size) + 2048;
+  std::shared_ptr<char[]> comp_data(new char[max_compressed_size]);
+
+  char* comp_ptr = comp_data.get();
+  store_value<uint32_t>(comp_ptr, msg_size);
+  to_send_size =
+          LZ4_compress_default(msg_begin, // dont compress the uncompr size
+                               comp_ptr, msg_size, max_compressed_size) +
+          sizeof(uint32_t);
+#endif
+  
+// 2. Send msg size
   // num_weights + uncopmress size
 #ifdef DEBUG
   std::cout << "msg_size: " << msg_size
     << " num_weights: " << num_weights
+    << " to_send_size: " << to_send_size
     << std::endl;
 #endif
 
-  size_t max_compressed_size = LZ4_compressBound(msg_size) + 1024;
-  std::shared_ptr<char[]> comp_data(new char[max_compressed_size]);
-  uint32_t to_send_size =
-          LZ4_compress_default(msg_begin, comp_data.get(), msg_size, max_compressed_size);
-
   send_all(sock, &to_send_size, sizeof(uint32_t));
   // 3. Send num_weights + weights
-  if (send_all(sock, comp_data.get(), to_send_size) == -1) {
+  if (send_all(sock, msg_data, to_send_size) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
   
