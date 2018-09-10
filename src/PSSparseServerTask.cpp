@@ -161,24 +161,17 @@ bool PSSparseServerTask::process_send_lr_gradient_get_sparse_model(
   } catch (...) {
     throw std::runtime_error("Uhandled error");
   }
-
-  /*
-   * First we read and apply the gradient
-   */
-  LRSparseGradient gradient(0);
-  gradient.loadSerialized(thread_buffer.data());
-
-  model_lock.lock();
-  opt_method->sgd_update(
-      lr_model, &gradient);
-  model_lock.unlock();
-  gradientUpdatesCount++;
-
+ 
+  const char* ptr = thread_buffer.data();
+  (void)load_value<int>(ptr);
+  int num_weights = load_value<int>(ptr);
+  int grad_size =
+      num_weights * (sizeof(FEATURE_TYPE) + sizeof(int)) + 2 * sizeof(int);
+  
   /*
    * Next we read the sparse model
    */
-
-  const char* data = thread_buffer.data() + gradient.getSerializedSize();
+  const char* data = thread_buffer.data() + grad_size;
   uint64_t num_entries = load_value<uint32_t>(data);
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
@@ -201,6 +194,18 @@ bool PSSparseServerTask::process_send_lr_gradient_get_sparse_model(
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;
   }
+
+/*
+   * First we read and apply the gradient
+   */
+  LRSparseGradient gradient(0);
+  gradient.loadSerialized(thread_buffer.data());
+
+  model_lock.lock();
+  opt_method->sgd_update(
+      lr_model, &gradient);
+  model_lock.unlock();
+  gradientUpdatesCount++;
   return true;
 }
 
@@ -558,14 +563,15 @@ void PSSparseServerTask::start_server() {
 
   sem_init(&sem_new_req, 0, 0);
 
+  std::cout << "NUM_POLL_THREADS: " << NUM_POLL_THREADS << std::endl;
+  std::cout << "NUM_PS_WORK_THREADS: " << NUM_PS_WORK_THREADS << std::endl;
+
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     server_threads.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     gradient_thread.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::gradient_f, this)));
   }
