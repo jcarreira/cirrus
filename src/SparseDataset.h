@@ -105,8 +105,6 @@ class SparseDataset {
   
   SparseDataset sample_from(uint64_t start, uint64_t n_samples) const;
 
-  Dataset to_dataset(const Configuration& config) const;
-
   void normalize(uint64_t hash_size);
 
   const std::vector<std::pair<int, FEATURE_TYPE>>& get_row(uint64_t) const;

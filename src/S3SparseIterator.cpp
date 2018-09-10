@@ -154,10 +154,13 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss) {
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
       if (use_label) {
         FEATURE_TYPE label = load_value<FEATURE_TYPE>(s3_data); // read label
+#ifdef DEBUG
+        assert(label == 0.0 || label == 1.0);
+#endif
       }
       int num_values = load_value<int>(s3_data); 
 #ifdef DEBUG
-      //std::cout << "num_values: " << num_values << std::endl;
+      std::cout << "num_values: " << num_values << std::endl;
 #endif
       assert(num_values >= 0 && num_values < 1000000);
     

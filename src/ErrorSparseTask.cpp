@@ -60,8 +60,9 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   if (use_softmax) {
     return psi->get_sm_full_model(config);
+  } else {
+    return psi->get_full_model(use_col_filtering);
   }
-  return psi->get_full_model(use_col_filtering);
 }
 
 void ErrorSparseTask::error_response() {
@@ -112,7 +113,6 @@ void ErrorSparseTask::error_response() {
 }
 
 void ErrorSparseTask::run(const Configuration& config, bool testing) {
-  s3_initialize_aws();
   std::cout << "Creating error response thread" << std::endl;
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
