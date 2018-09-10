@@ -210,13 +210,21 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   }
 
   const char* data = thread_buffer.data();
+#ifdef ENABLE_LR_COMPRESSION
   uint32_t uncompressed_size = load_value<uint32_t>(data);
 
+  //std::cout << "thread_buffer size: " << thread_buffer.size() << std::endl;
+  std::cout << "incoming_size : " << incoming_size << std::endl;
+  std::cout << "uncompressed_size : " << uncompressed_size << std::endl;
+
+  assert(incoming_size + uncompressed_size < thread_buffer.size());
   LZ4_decompress_fast(data,
                       thread_buffer.data() + incoming_size,
                       uncompressed_size);
 
   data = thread_buffer.data() + incoming_size;
+#endif
+
   uint64_t num_entries = load_value<uint32_t>(data);
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
@@ -500,13 +508,11 @@ void PSSparseServerTask::start_server() {
   sem_init(&sem_new_req, 0, 0);
 
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     server_threads.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     gradient_thread.push_back(std::make_unique<std::thread>(
           std::bind(&PSSparseServerTask::gradient_f, this)));
   }
