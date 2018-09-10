@@ -126,7 +126,7 @@ class BaseTask(object):
 
     def relaunch_lambdas(self):
         if self.is_dead():
-            print "dead"
+            print "Experiments are dead"
             return
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()

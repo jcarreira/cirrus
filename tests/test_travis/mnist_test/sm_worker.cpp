@@ -35,7 +35,7 @@ int main() {
     Dataset minibatch = train_dataset.random_sample(20);
     SoftmaxModel model = *(psi->get_sm_full_model(config));
     auto gradient = model.minibatch_grad(minibatch.get_samples(),
-                                         (float*) minibatch.get_labels().get(),
+                                         dynamic_cast<float*>(minibatch.get_labels().get()),
                                          20, config.get_learning_rate());
     gradient->setVersion(version++);
     SoftmaxGradient* smg = dynamic_cast<SoftmaxGradient*>(gradient.get());

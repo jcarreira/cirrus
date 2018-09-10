@@ -9,7 +9,7 @@ class SoftmaxTask(BaseTask):
         super(SoftmaxTask, self).__init__(*args, **kwargs)
 
     def __del__(self):
-        print("Softmax Task Lost")
+      print("Softmax Task with config: \n" + self.define_config() + "deleted")
 
     def define_config(self):
         
