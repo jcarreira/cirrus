@@ -146,7 +146,7 @@ class GridSearch(MLJob):
             while True:
                 cirrus_obj = cirrus_objs[index]
 
-                cirrus_obj.relaunch_lambdas(st=self.config_num)
+                cirrus_obj.relaunch_lambdas(config_num=self.config_num)
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
 

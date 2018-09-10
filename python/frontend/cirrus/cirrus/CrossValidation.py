@@ -151,7 +151,7 @@ class CrossValidation(MLJob):
     return self.cirrus_objs[first_i].get_name_for(second_i)
 
   def get_info_for(self, i):
-    return "blah2"
+    return ""
 
   def get_num_lambdas(self):
     return 0

@@ -42,13 +42,11 @@ class BaseTask(object):
             threshold_loss,
             progress_callback,
             cross_validation=False,
-            st = 0
             ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
         self.lambda_size = lambda_size
         self.n_ps = n_ps
-        self.set = st
         self.worker_size = worker_size
         self.dataset=dataset
         self.learning_rate = learning_rate
@@ -128,7 +126,7 @@ class BaseTask(object):
         else:
             return self.time_ups_lst
 
-    def relaunch_lambdas(self, st=0):
+    def relaunch_lambdas(self, config_num=0):
         if self.is_dead():
             return
 
@@ -144,7 +142,7 @@ class BaseTask(object):
             shortage = self.n_workers - num_lambdas
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d, "config_path": \"%s\"}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port, "configs/criteo_kaggle_" + str(st) + ".cfg")
+                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port, "configs/criteo_kaggle_" + str(config_num) + ".cfg")
             print(payload)
             for i in range(shortage):
                 try:
