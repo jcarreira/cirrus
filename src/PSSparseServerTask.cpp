@@ -51,6 +51,7 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
   operation_to_name[7] = "GET_TASK_STATUS";
   operation_to_name[8] = "REGISTER_TASK";
   operation_to_name[9] = "GET_NUM_CONNS";
+  operation_to_name[10] = "SEND_LR_GRADIENT_GET_SPARSE_MODEL";
 
   for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
     thread_msg_buffer[i] =
@@ -122,7 +123,7 @@ bool PSSparseServerTask::process_send_lr_gradient(
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  //buffer.resize(incoming_size);
+  // buffer.resize(incoming_size);
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -135,10 +136,71 @@ bool PSSparseServerTask::process_send_lr_gradient(
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
+  opt_method->sgd_update(lr_model, &gradient);
+  model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
+bool PSSparseServerTask::process_send_lr_gradient_get_sparse_model(
+    const Request& req,
+    std::vector<char>& thread_buffer) {
+  uint32_t incoming_size = req.incoming_size;
+#ifdef DEBUG
+  std::cout << "SEND_LR_GRADIENT_GET_SPARSE_MODEL incoming size: "
+            << incoming_size << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+  // buffer.resize(incoming_size);
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  /*
+   * First we read and apply the gradient
+   */
+  LRSparseGradient gradient(0);
+  gradient.loadSerialized(thread_buffer.data());
+
+  model_lock.lock();
   opt_method->sgd_update(
       lr_model, &gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
+
+  /*
+   * Next we read the sparse model
+   */
+
+  const char* data = thread_buffer.data() + gradient.getSerializedSize();
+  uint64_t num_entries = load_value<uint32_t>(data);
+
+  uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
+
+  // sanity check since we allocate this in the stack
+  assert(to_send_size < 1024 * 1024);
+
+  char data_to_send[to_send_size];
+  char* data_to_send_ptr = data_to_send;
+#ifdef DEBUG
+  std::cout << "Sending back: " << num_entries
+            << " weights from model. Size: " << to_send_size << std::endl;
+#endif
+  for (uint32_t i = 0; i < num_entries; ++i) {
+    uint32_t entry_index = load_value<uint32_t>(data);
+    double weight = lr_model->get_nth_weight(entry_index);
+    opt_method->edit_weight(weight);
+    store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
+  }
+  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+    return false;
+  }
   return true;
 }
 
@@ -351,7 +413,8 @@ void PSSparseServerTask::gradient_f() {
       continue;
     } else if (operation == SEND_LR_GRADIENT || operation == SEND_MF_GRADIENT ||
                operation == GET_LR_SPARSE_MODEL ||
-               operation == GET_MF_SPARSE_MODEL) {
+               operation == GET_MF_SPARSE_MODEL ||
+               operation == SEND_LR_GRADIENT_GET_SPARSE_MODEL) {
       // read 4 bytes of the size of the remaining message
       uint32_t incoming_size = 0;
       if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
@@ -381,6 +444,10 @@ void PSSparseServerTask::gradient_f() {
       auto elapsed = get_time_us() - before;
       std::cout << "GET_LR_SPARSE_MODEL Elapsed(us): " << elapsed << std::endl;
 #endif
+    } else if (operation == SEND_LR_GRADIENT_GET_SPARSE_MODEL) {
+      if (!process_send_lr_gradient_get_sparse_model(req, thread_buffer)) {
+        break;
+      }
     } else if (operation == GET_MF_SPARSE_MODEL) {
       if (!process_get_mf_sparse_model(req, thread_buffer, thread_number)) {
         break;

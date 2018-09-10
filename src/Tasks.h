@@ -286,6 +286,8 @@ class PSSparseServerTask : public MLTask {
   // message handling
   bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
   bool process_send_lr_gradient(const Request& req, std::vector<char>&);
+  bool process_send_lr_gradient_get_sparse_model(const Request&,
+                                                 std::vector<char>&);
   bool process_get_mf_sparse_model(const Request& req,
                                    std::vector<char>&,
                                    int tn);

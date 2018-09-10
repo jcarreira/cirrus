@@ -107,8 +107,9 @@ LRSparseGradient& LRSparseGradient::operator=(LRSparseGradient&& other) {
   return *this;
 }
 
-/**
- *
+/*
+ * Load gradient from mem
+ * return pointer to end of gradient in mem
  */
 void LRSparseGradient::loadSerialized(const void* mem) {
   // load version and number of weights
@@ -116,18 +117,17 @@ void LRSparseGradient::loadSerialized(const void* mem) {
   int num_weights = load_value<int>(mem);
   assert(num_weights > 0 && num_weights < 10000000);
 
-  int size = num_weights * (sizeof(FEATURE_TYPE)+sizeof(int)) + 2 * sizeof(int);
-  char* data_begin = (char*)mem;
-
-  //std::cout << "Number of weights: " << num_weights << std::endl;
-  //std::cout << "Version: " << version << std::endl;
-  //std::cout << "size: " << size << std::endl;
+  int size =
+      num_weights * (sizeof(FEATURE_TYPE) + sizeof(int)) + 2 * sizeof(int);
+  const char* data_begin = reinterpret_cast<const char*>(mem);
 
   // clear weights
   weights.resize(0);
+  weights.reserve(num_weights);
 
   for (int i = 0; i < num_weights; ++i) {
-    assert(std::distance(data_begin, (char*)mem) < size);
+    assert(std::distance(data_begin, reinterpret_cast<const char*>(mem)) <
+           size);
     int index = load_value<int>(mem);
     FEATURE_TYPE w = load_value<FEATURE_TYPE>(mem);
     weights.push_back(std::make_pair(index, w));
