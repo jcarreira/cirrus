@@ -6,6 +6,7 @@
 #include "Checksum.h"
 #include "Constants.h"
 #include "lz4.h"
+#include "config.h"
 
 //#define DEBUG
 
@@ -124,6 +125,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
           LZ4_compress_default(msg_begin, // dont compress the uncompr size
                                comp_ptr, msg_size, max_compressed_size) +
           sizeof(uint32_t);
+  msg_data = comp_data.get();
 #endif
   
 // 2. Send msg size
