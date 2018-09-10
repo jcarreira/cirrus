@@ -10,6 +10,7 @@
 #include "Momentum.h"
 #include "SGD.h"
 #include "Nesterov.h"
+#include "lz4.h"
 
 #undef DEBUG
 
@@ -209,11 +210,18 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   }
 
   const char* data = thread_buffer.data();
+  uint32_t uncompressed_size = load_value<uint32_t>(data);
+
+  LZ4_decompress_fast(data,
+                      thread_buffer.data() + incoming_size,
+                      uncompressed_size);
+
+  data = thread_buffer.data() + incoming_size;
   uint64_t num_entries = load_value<uint32_t>(data);
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
   assert(to_send_size < 1024 * 1024);
-  char data_to_send[1024 * 1024]; // 1MB
+  char data_to_send[to_send_size];
   char* data_to_send_ptr = data_to_send;
 #ifdef DEBUG
   std::cout << "Sending back: " << num_entries
