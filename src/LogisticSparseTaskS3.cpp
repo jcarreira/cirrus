@@ -94,6 +94,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
+  std::unique_ptr<ModelGradient> gradient;
   while (1) {
     // get data, labels and model
 #ifdef DEBUG
@@ -109,11 +110,17 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
     //dataset->print_info();
     auto now = get_time_us();
 #endif
-    // compute mini batch gradient
-    std::unique_ptr<ModelGradient> gradient;
 
-    // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(*dataset, model, config);
+    // in the first iteration we don't have gradient to push
+    // but we have after the first
+    if (count == 0) {
+      // we get the model subset with just the right amount of weights
+      sparse_model_get->get_new_model_inplace(*dataset, model, config);
+    } else {
+      LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
+      psint->send_lr_gradient_get_sparse_model(*lrg, *dataset,
+                                               model, config);
+    }
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -140,17 +147,17 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 #endif
     gradient->setVersion(version++);
 
-    try {
-      LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
-      push_gradient(lrg);
-    } catch(...) {
-      std::cout << "[WORKER] "
-        << "Worker task error doing put of gradient" << "\n";
-      exit(-1);
-    }
-#ifdef DEBUG
-    std::cout << get_time_us() << " [WORKER] Sent gradient" << std::endl;
-#endif
+    //try {
+    //  LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
+    //  //push_gradient(lrg);
+    //} catch(...) {
+    //  std::cout << "[WORKER] "
+    //    << "Worker task error doing put of gradient" << "\n";
+    //  exit(-1);
+    //}
+//#ifdef DEBUG
+//    std::cout << get_time_us() << " [WORKER] Sent gradient" << std::endl;
+//#endif
     count++;
     if (count % 10 == 0 && !printed_rate) {
       auto elapsed_ms = get_time_ms() - start_time;
