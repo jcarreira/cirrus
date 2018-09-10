@@ -213,9 +213,10 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 #ifdef ENABLE_LR_COMPRESSION
   uint32_t uncompressed_size = load_value<uint32_t>(data);
 
-  //std::cout << "thread_buffer size: " << thread_buffer.size() << std::endl;
+#ifdef DEBUG
   std::cout << "incoming_size : " << incoming_size << std::endl;
   std::cout << "uncompressed_size : " << uncompressed_size << std::endl;
+#endif
 
   assert(incoming_size + uncompressed_size < thread_buffer.size());
   LZ4_decompress_fast(data,
