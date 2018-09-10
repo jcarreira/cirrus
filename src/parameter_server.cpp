@@ -1,6 +1,7 @@
-#include <Utils.h>
 #include <Configuration.h>
+#include <S3.h>
 #include <Tasks.h>
+#include <Utils.h>
 #include <config.h>
 
 #include <S3.h>
@@ -8,6 +9,7 @@
 #include <cstdint>
 #include <string>
 
+#include <S3.h>
 #include <gflags/gflags.h>
 
 DEFINE_int64(nworkers, -1, "number of workers");
@@ -204,8 +206,7 @@ int main(int argc, char** argv) {
 
   // call the right task for this process
   std::cout << "Running task" << std::endl;
-  run_tasks(rank, nworkers, batch_size, config, ps_ips, ps_ports);
-
+  run_tasks(rank, nworkers, batch_size, config, FLAGS_ps_ip, FLAGS_ps_port);
   std::cout << "Test successful" << std::endl;
 
   return 0;
