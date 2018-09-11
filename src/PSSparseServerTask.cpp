@@ -144,6 +144,7 @@ bool PSSparseServerTask::process_send_lda_update(
     const Request& req,
     std::vector<char>& thread_buffer) {
 
+  // std::cout << "Enter\n";
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
   std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
@@ -163,14 +164,14 @@ bool PSSparseServerTask::process_send_lda_update(
   }
 
   const char* data = thread_buffer.data();
-
-  LDAUpdates gradient;
-  // gradient.loadSerialized(data);
-  gradient.loadSparseSerialized(data);
+  // //
+  std::shared_ptr<LDAUpdates> gradient_ptr;
+  gradient_ptr.reset(new LDAUpdates());
+  gradient_ptr->loadSparseSerialized(data);
   std::vector<int> vocabs_to_update;
 
   model_lock.lock();
-  int update_bucket = lda_global_vars->update(gradient, vocabs_to_update);
+  int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
   // update_nvt_nt(vocabs_to_update);
   model_lock.unlock();
 
@@ -185,6 +186,8 @@ bool PSSparseServerTask::process_send_lda_update(
 
     // update_ndt(update_bucket);
   }
+
+  // std::cout << "Exit\n";
 
   gradientUpdatesCount++;
   return true;
@@ -282,32 +285,11 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   return true;
 }
 
-// TODO;
-//     Receive worker id
-//     Call some operations to find partial odel
-//     XXX: 	priority:
-                		// * no other workers working on
-                		// * previous 1, 2, ….
 bool PSSparseServerTask::process_get_lda_model(
     const Request& req,
     std::vector<char>& thread_buffer) {
-  // std::cout << "Sending lda model\n";
-  // need to parse the buffer to get the indices of the model we want
-  // to send back to the client
-//   uint32_t incoming_size = req.incoming_size;
-//   if (incoming_size > thread_buffer.size()) {
-//     throw std::runtime_error("Not enough buffer");
-//   }
-// #ifdef DEBUG
-//   std::cout << "GET_MODEL_REQ incoming size: " << incoming_size << std::endl;
-// #endif
-//   try {
-//     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
-//       return false;
-//     }
-//   } catch (...) {
-//     throw std::runtime_error("Uhandled error");
-//   }
+
+  // std::cout << "aa\n";
 
   auto start_time_benchmark = get_time_ms();
   auto start_time_temp = get_time_ms();
@@ -315,15 +297,13 @@ bool PSSparseServerTask::process_get_lda_model(
   int previous_slice_id;
   read_all(req.sock, &previous_slice_id, sizeof(int));
 
-  // std::cout << previous_slice_id << " **\n";
-
-  // std::cout << "aa\n";
 
   slice_lock.lock();
 
   start_time_temp = get_time_ms();
 
   int rand_max = unused_slice_id.size();
+  // std::cout << unused_slice_id.size() << std::endl;
   int id_to_send = std::rand() % (rand_max);
   int slice_id_to_send = unused_slice_id[id_to_send];
   unused_slice_id.erase(unused_slice_id.begin() + id_to_send);
@@ -346,7 +326,7 @@ bool PSSparseServerTask::process_get_lda_model(
 
   start_time_temp = get_time_ms();
 
-  // model_lock.lock();
+  model_lock.lock();
 
   auto pure_partial_benchmark = get_time_ms();
   char* data_to_send;
@@ -359,7 +339,8 @@ bool PSSparseServerTask::process_get_lda_model(
   // auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size, uncompressed_size);
   time_pure_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
 
-  // model_lock.unlock();
+  // std::cout << "pass after b?\n";
+  model_lock.unlock();
 
   time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
   num_to_find_partial += 1.;
@@ -395,6 +376,7 @@ bool PSSparseServerTask::process_get_lda_model(
   time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
 
   delete data_to_send;
+  // std::cout << "cc\n";
   return true;
 }
 

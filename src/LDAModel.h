@@ -27,6 +27,10 @@ class LDAModel {
     * @param to_update: to indicate which bucket's ll the server needs to update
     */
   LDAModel(const char* buffer, const char* info, int to_update, int compressed_size, int uncompressed_size);
+
+  LDAModel(const char* info);
+
+  void update_model(const char* buffer, int to_update, int compressed_size, int uncompressed_size);
   /**
     * LDA sampling function (currently using Gibbs Sampler)
     * Sampling is based on all the statistics stored in the object
@@ -54,7 +58,7 @@ protected:
     * K_: number of topics
     * V_: number of words
     */
-  int K_, V_, update_bucket;
+  int K_, V_, update_bucket, local_V;
   /**
     * Set to fixed constants:
     * alpha = .1, eta = .01

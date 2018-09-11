@@ -76,6 +76,7 @@ class LDAStatistics {
 
   void get_ndt(std::vector<std::vector<int> >& ndt) { ndt = ndt_; }
   void get_slice(std::vector<int>& slice) { slice = slice_; }
+  int get_slice_size() { return slice_.size(); }
   void reset_current() { current = 0; }
   void incre_current() { current += slice_size; }
 
