@@ -166,11 +166,8 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
             const SparseDataset& dataset,
             const Configuration& config,
             uint64_t base_user) {
-
-  std::cout <<
-    "base_user: " << base_user
-    << " dataset size: " << dataset.data_.size()
-    << std::endl;
+  std::cout << "base_user: " << base_user
+    << " dataset size: " << dataset.data_.size() << std::endl;
 
   FEATURE_TYPE learning_rate = config.get_learning_rate();
   auto gradient = std::make_unique<MFSparseGradient>();
@@ -190,10 +187,9 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
     for (uint64_t j = 0; j < dataset.data_[user_from_0].size(); ++j) {
       // first user matches the model in user_models[0]
       uint64_t itemId = dataset.data_[user_from_0][j].first;
-      FEATURE_TYPE rating = dataset.data_[user_from_0][j].second;
-      
+      FEATURE_TYPE rating = dataset.data_[user_from_0][j].second; 
 
-      //std::cout <<
+      // std::cout <<
       //  "user_from_0: " << user_from_0
       //  << " itemId: " << itemId
       //  << std::endl;
@@ -321,7 +317,7 @@ void SparseMFModel::print() const {
 }
 
 void SparseMFModel::check() const {
-    std::cout << "SparseMFModel::check() Not Implmeneted" << std::endl;
+  std::cout << "SparseMFModel::check() Not Implmeneted" << std::endl;
 }
 
 void SparseMFModel::serializeFromDense(
