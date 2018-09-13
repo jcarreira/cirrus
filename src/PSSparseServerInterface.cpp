@@ -145,7 +145,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   }
 
   uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
-  
+
 #ifdef DEBUG
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
