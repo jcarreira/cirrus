@@ -4,6 +4,7 @@ import time
 from abc import ABCMeta, abstractmethod
 
 import boto3
+import time
 
 import messenger
 from CostModel import CostModel
@@ -127,6 +128,18 @@ class BaseTask(object):
             return self.time_ups_lst
 
     def relaunch_lambdas(self, config_num=0):
+        def lambda_loop(lambda_name, payloadi, num_start):
+            for _ in range(num_start):
+                try:
+                    response = lambda_client.invoke(
+                                    FunctionName=lambda_name,
+                                    InvocationType='Event',
+                                    LogType='Tail',
+                                    Payload=payload)
+                except Exception as e:
+                    print "client.invoke exception caught"
+                    print str(e)
+
         if self.is_dead():
             return
 
@@ -143,17 +156,14 @@ class BaseTask(object):
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d, "config_path": \"%s\"}' \
                         % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port, "configs/criteo_kaggle_" + str(config_num) + ".cfg")
-            print(payload)
-            for i in range(shortage):
-                try:
-                    response = lambda_client.invoke(
-                        FunctionName=lambda_name,
-                        InvocationType='Event',
-                        LogType='Tail',
-                        Payload=payload)
-                except Exception as e:
-                    print "client.invoke exception caught"
-                    print str(e)
+            p_lst = []
+            for i in range(shortage // 2):
+                start_time = time.time()
+                t = threading.Thread(target=lambda_loop, args=(lambda_name, payload, 2))    
+                t.start()
+                p_lst.append(t)
+                print "time to launch thread: ", time.time() - start_time
+            [p.join() for p in p_lst]
 
     def get_time_loss(self, rtl=False):
 

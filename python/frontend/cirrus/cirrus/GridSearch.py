@@ -14,7 +14,7 @@ class GridSearch(MLJob):
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1, base_port=1337, config_num = 0):
+    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=10, timeout=-1, base_port=1337, config_num = 0):
 
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
