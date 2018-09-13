@@ -360,8 +360,8 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
   for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
     uint64_t off_userId = userId + start_index;
 #ifdef DEBUG
-      std::cout << "off_userId: " << off_userId << " userId: " << userId
-                << " dataset.data_.size(): " << dataset.data_.size() << std::endl;
+    std::cout << "off_userId: " << off_userId << " userId: " << userId
+              << " dataset.data_.size(): " << dataset.data_.size() << std::endl;
 #endif
     for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
       uint64_t movieId = dataset.data_.at(userId).at(j).first;
