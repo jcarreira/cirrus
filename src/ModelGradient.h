@@ -272,13 +272,14 @@ class LDAUpdates {
   std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
   std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>> sparse_change_nvt_ptr;
   std::vector<std::vector<int>> change_nvt_indices;
-  std::vector<std::vector<std::pair<int, int>>> sparse_nvt;
+  std::vector<std::vector<int>> sparse_nvt_indices;
   // std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<std::vector<int>> fixed_slices;
   std::array<int, 1000000> temp_look_up, sparse_look_up;
   std::vector<int> slice;
   uint64_t version = 0;
   int update_bucket = 0, temp_counter = 0;
+  int global_v = 0;
 
 
   double total_to_compress_size = 0., total_compressed_size = 0., total_time_to_compress = 0.;

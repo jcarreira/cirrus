@@ -314,7 +314,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
+void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sampled_tokens) {
   uint32_t operation = SEND_LDA_UPDATE;
 #ifdef DEBUG
   std::cout << "Sending LDA updates" << std::endl;
@@ -333,6 +333,11 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient) {
   ret = send_all(sock, &size, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
+  }
+
+  ret = send_all(sock, &total_sampled_tokens, sizeof(int));
+  if (ret == -1) {
+    throw std::runtime_error("Error sending # of tokens");
   }
 
   // void* data = reinterpret_cast<void*>(mem.get());
@@ -382,7 +387,6 @@ char* PSSparseServerInterface::get_lda_model(uint32_t& to_receive_size, uint32_t
 
   // 7. receive partial_nvt from server
   char* buffer = new char[to_receive_size];
-
   read_all(sock, buffer, to_receive_size);  // XXX
 
 #ifdef DEBUG

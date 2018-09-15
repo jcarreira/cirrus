@@ -13,12 +13,12 @@
 
 namespace cirrus {
 
-void LDATaskS3::push_gradient(LDAUpdates* gradient) {
+void LDATaskS3::push_gradient(LDAUpdates* gradient, int total_sampled_tokens) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
 #endif
-  psint->send_lda_update(*gradient);
+  psint->send_lda_update(*gradient, total_sampled_tokens);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -269,7 +269,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
           // send an empty LDAUpdates with only the bucket id
           if (update_bucket != 0) {
             auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
-            push_gradient(bucket_update.get());
+            push_gradient(bucket_update.get(), 0);
           }
 
           std::cout << "--------------------------\n";
@@ -423,7 +423,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     try {
       start_time_benchmark = get_time_ms();
-      push_gradient(gradient.get());
+      push_gradient(gradient.get(), total_sampled_tokens);
       time_update += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (...) {
       std::cout << "[WORKER] "

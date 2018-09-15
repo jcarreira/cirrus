@@ -393,6 +393,7 @@ class PSSparseServerTask : public MLTask {
   int num_slices;
   std::array<int, 1000000> sock_lookup;
   std::array<int, 1000> bucket_in_update;
+  int tokens_sampled = 0;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
@@ -491,7 +492,7 @@ class LDATaskS3 : public MLTask {
   //                         std::unique_ptr<LDAStatistics>& local_vars,
   //                         int update_bucket,
   //                         bool& done);
-  void push_gradient(LDAUpdates*);
+  void push_gradient(LDAUpdates*, int total_sampled_tokens);
   // void create_lda_model(LDAStatistics& info, int update_bucket, char* buffer,
   //                                  std::unique_ptr<LDAModel>& model,
   //                                  uint32_t to_receive_size,
@@ -538,7 +539,7 @@ class LoadingLDATaskS3 : public MLTask {
       std::vector<int>& nvt,
       std::vector<int>& nt,
       int K,
-      std::set<int>& global_vocab);
+      std::vector<int>& global_vocab);
 };
 }
 

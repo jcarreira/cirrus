@@ -29,10 +29,10 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     std::vector<int>& nvt,
     std::vector<int>& nt,
     int K,
-    std::set<int>& global_vocab) {
+    std::vector<int>& global_vocab) {
   std::vector<int> t, d, w;
   std::vector<std::vector<int>> ndt;
-  std::set<int> local_vocab;
+  std::vector<int> local_vocab;
 
   lindex_map.fill(-1);
 
@@ -42,11 +42,13 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
       if (lindex_map[gindex] == -1) {
-        local_vocab.insert(local_vocab.begin(), gindex);
+        // local_vocab.insert(local_vocab.begin(), gindex);
+        local_vocab.push_back(gindex);
         lindex_map[gindex] = 1;
       }
       if (lookup_map[gindex] == -1){
-        global_vocab.insert(global_vocab.end(), gindex);
+        // global_vocab.insert(global_vocab.end(), gindex);
+        global_vocab.push_back(gindex);
         lookup_map[gindex] = idx;
         idx++;
       }
@@ -57,7 +59,7 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         d.push_back(ndt.size());
         // w.push_back(vocab_map[gindex]);
         w.push_back(gindex);
-        ++ndt_row[top];
+        ndt_row[top] += 1;
 
         // nvt[gindex * K + top] += 1;
         nvt[lookup_map.at(gindex) * K + top] += 1;
@@ -66,9 +68,20 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     }
     ndt.push_back(ndt_row);
   }
-  std::vector<int> local_vocab_vec(local_vocab.begin(), local_vocab.end());
 
-  return LDAStatistics(K, ndt, local_vocab_vec, t, d, w);
+  // for (auto& i: global_vocab) {
+  //   std::cout << i << " ";
+  // }
+  // std::cout << std::endl;
+  //
+  // for (auto& i: global_vocab) {
+  //   std::cout << lookup_map[i]<< " ";
+  // }
+  // std::cout << std::endl;
+
+  // std::vector<int> local_vocab_vec(local_vocab.begin(), local_vocab.end());
+
+  return LDAStatistics(K, ndt, local_vocab, t, d, w);
 }
 
 void LoadingLDATaskS3::run(const Configuration& config) {
@@ -97,7 +110,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   nvt.resize(dataset.num_vocabs() * K);
   nt.resize(K);
 
-  std::set<int> global_vocab;
+  std::vector<int> global_vocab;
   uint64_t to_send_size;
 
   // Storing local variables (LDAStatistics)
@@ -125,11 +138,11 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   // check_loading(config, s3_client);
   //
   // Storing global variables
-  std::vector<int> global_vocab_vec(global_vocab.begin(), global_vocab.end());
+  // std::vector<int> global_vocab_vec(global_vocab.begin(), global_vocab.end());
 
   std::shared_ptr<LDAUpdates> initial_global_var;
   initial_global_var.reset(new LDAUpdates());
-  initial_global_var->slice = global_vocab_vec;
+  initial_global_var->slice = global_vocab;
   initial_global_var->change_nvt_ptr.reset(new std::vector<int>(nvt));
   initial_global_var->change_nt_ptr.reset(new std::vector<int>(nt));
 
