@@ -10,6 +10,7 @@
 #include <config.h>
 #include <memory>
 #include <map>
+#include <set>
 // #include <codecfactory.h>
 
 namespace cirrus {
@@ -272,7 +273,7 @@ class LDAUpdates {
   std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
   std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>> sparse_change_nvt_ptr;
   std::vector<std::vector<int>> change_nvt_indices;
-  std::vector<std::vector<int>> sparse_nvt_indices;
+  std::vector<std::set<int>> sparse_nvt_indices;
   // std::vector<int> change_nvt, change_nt;  //< weights of the LDA update
   std::vector<std::vector<int>> fixed_slices;
   std::array<int, 1000000> temp_look_up, sparse_look_up;

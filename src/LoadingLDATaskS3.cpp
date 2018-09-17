@@ -101,6 +101,9 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   dataset.set_sample_size(s3_obj_num_samples);
 
   uint64_t num_s3_objs = dataset.num_docs() / s3_obj_num_samples;
+  if (num_s3_objs * s3_obj_num_samples != dataset.num_docs()) {
+    num_s3_objs += 1;
+  }
   std::cout << "[LOADER-SPARSE] "
             << "Adding " << dataset.num_docs()
             << " #s3 objs: " << num_s3_objs + 1
@@ -135,6 +138,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
         std::string(msg, to_send_size));
     // delete[] msg;
   }
+
   // check_loading(config, s3_client);
   //
   // Storing global variables
