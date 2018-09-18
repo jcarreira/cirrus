@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
 
   // call the right task for this process
   std::cout << "Running task" << std::endl;
-  run_tasks(rank, nworkers, batch_size, config, FLAGS_ps_ip, FLAGS_ps_port);
+  run_tasks(rank, nworkers, batch_size, config, ps_ips, ps_ports);
   std::cout << "Test successful" << std::endl;
 
   return 0;
