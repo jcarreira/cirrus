@@ -222,7 +222,8 @@ class LDAUpdates {
   void loadSparseSerialized(const char* mem);
   std::shared_ptr<char> serialize_sparse(uint32_t*);
 
-  int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);
+  int update(const char* mem);
+  // int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);
   char* get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse, int local_model_id);
 
   char* get_slices_indices(int local_model_id, uint32_t& to_send_size);

@@ -528,9 +528,9 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
   std::vector<double> coeff_di;
 
   int max_value = slice_indices.size();
-  std::cout << "max_value: " << max_value << std::endl;
+  // std::cout << "max_value: " << max_value << std::endl;
 
-  std::cout << "t size: " << t.size() << std::endl;
+  // std::cout << "t size: " << t.size() << std::endl;
 
   for (int i = 0; i < max_value; i++) {
 

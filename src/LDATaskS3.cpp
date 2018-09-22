@@ -107,7 +107,7 @@ void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
                              int bucket_id){
 
   while (true) {
-    std::this_thread::sleep_for (std::chrono::milliseconds(10));
+    std::this_thread::sleep_for (std::chrono::milliseconds(1));
     if (upload_lock == -1){
       upload_lock = 1;
       break;
@@ -273,12 +273,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       s3_local_vars->store_new_stats(*model.get());
 
-      help_upload_threads.push_back(std::make_unique<std::thread>(
-            std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
-                      std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3),
-            s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start]), update_bucket)
-      );
+      if (end != start + 1) {
+        help_upload_threads.push_back(std::make_unique<std::thread>(
+              std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
+                        std::placeholders::_1, std::placeholders::_2,
+                        std::placeholders::_3),
+              s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start]), update_bucket)
+        );
+      }
 
       double ll_to_send = model->compute_ll_ndt();
       psint->update_ll_ndt(cur_train_idx, ll_to_send);
@@ -298,10 +300,18 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         if (elapsed_sec > (lambda_time_out - 30.0)) {
           // If there's a bucket that gets updated,
           // send an empty LDAUpdates with only the bucket id
-          if (update_bucket != 0) {
-            auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
-            push_gradient(bucket_update.get(), 0);
-          }
+          // if (update_bucket != 0) {
+          //   auto bucket_update = std::make_unique<LDAUpdates>(update_bucket);
+          //   push_gradient(bucket_update.get(), 0);
+          // }
+          // help_upload_threads.push_back(std::make_unique<std::thread>(
+          //       std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
+          //                 std::placeholders::_1, std::placeholders::_2,
+          //                 std::placeholders::_3),
+          //       s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start - 1]), update_bucket)
+          // );
+
+          upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start - 1], update_bucket);
 
           std::cout << "early--------------------------\n";
           std::cout << "Time to download from S3: " << time_download << std::endl;
@@ -339,7 +349,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       }
 
       while (true) {
-        std::this_thread::sleep_for (std::chrono::milliseconds(10));
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (upload_lock_indicators[cur_train_idx - start] == -1){
           upload_lock_indicators[cur_train_idx - start] = 1;
           break;
@@ -392,7 +402,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 #endif
     std::unique_ptr<LDAUpdates> gradient;
 
-    std::cout << "Getting new model\n";
+    // std::cout << "Getting new model\n";
 
     // we get the model subset with just the right amount of weights
     start_time_benchmark = get_time_ms();
@@ -400,7 +410,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     char* partial_model = psint->get_lda_model(cur_train_idx - start, to_receive_size, uncompressed_size);
     time_get_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
-    std::cout << "finish\n";
+    // std::cout << "finish\n";
     start_time_benchmark = get_time_ms();
     // create_lda_model(*local_vars, update_bucket, partial_model, model, to_receive_size, uncompressed_size);
 
@@ -410,7 +420,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     // std::cout << "here?\n";
     model->update_model(partial_model, update_bucket, to_receive_size, uncompressed_size, psint->slice_id);
-    std::cout << "pass!\n";
+    // std::cout << "pass!\n";
     delete partial_model;
 
     time_create_model += (get_time_ms() - start_time_benchmark) / 1000.0;
@@ -430,7 +440,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     now = get_time_us();
 #endif
 
-    std::cout << "b4 sampling\n";
+    // std::cout << "b4 sampling\n";
 
     try {
       start_time_benchmark = get_time_ms();
@@ -446,7 +456,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // }
     // s3_local_vars->store_new_stats(*model.get());
 
-    std::cout << "finish sampling\n";
+    // std::cout << "finish sampling\n";
 
 #ifdef DEBUG
     auto elapsed_us = get_time_us() - now;
@@ -467,7 +477,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       exit(-1);
     }
 
-    std::cout << "finish pushing update\n";
+    // std::cout << "finish pushing update\n";
 
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] Sent gradient" << std::endl;

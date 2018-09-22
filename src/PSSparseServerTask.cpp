@@ -172,16 +172,17 @@ bool PSSparseServerTask::process_send_lda_update(
 
   const char* data = thread_buffer.data();
   // //
-  std::shared_ptr<LDAUpdates> gradient_ptr;
-  gradient_ptr.reset(new LDAUpdates());
-  gradient_ptr->loadSparseSerialized(data);
-  std::vector<int> vocabs_to_update;
+  // std::shared_ptr<LDAUpdates> gradient_ptr;
+  // gradient_ptr.reset(new LDAUpdates());
+  // gradient_ptr->loadSparseSerialized(data);
+  // std::vector<int> vocabs_to_update;
 
   // std::cout << "tokens: " << tokens << std::endl;
 
   model_lock.lock();
-  std::this_thread::sleep_for (std::chrono::milliseconds(10));
-  int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
+  // std::this_thread::sleep_for (std::chrono::milliseconds(10));
+  // int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
+  int update_bucket = lda_global_vars->update(data);
   // update_nvt_nt(vocabs_to_update);
   model_lock.unlock();
 
@@ -1349,7 +1350,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "\tAvg Time of serializing whole nvt: " << lda_global_vars->time_nvt_find / lda_global_vars->counts << std::endl;
   std::cout << "\tAvg Time of checking sparsity: " << lda_global_vars->time_check_sparse / lda_global_vars->counts << std::endl;
   std::cout << "\tAvg Time of serializing the sparse: " << lda_global_vars->time_serial_sparse / lda_global_vars->counts << std::endl;
-  std::cout << "\tAvg Time of easy init: " << lda_global_vars->time_check / lda_global_vars->counts << std::endl;
+  std::cout << "\tAvg Time of compressing: " << lda_global_vars->time_compress / lda_global_vars->counts << std::endl;
 
   tokens_sampled = 0;
   start_time_tokens = get_time_ms();

@@ -597,6 +597,14 @@ void LDAUpdates::loadSparseSerialized(const char* mem) {
   int V = load_value<int>(mem);
   int K = load_value<int>(mem);
 
+  slice.clear();
+  slice.reserve(V);
+  for (int i = 0; i < V; ++i) {
+    int temp = load_value<int>(mem);
+    slice.push_back(temp);
+    // std::cout << temp << " ";
+  }
+
   sparse_change_nvt_ptr.reset(new std::vector<std::vector<std::pair<int, int>>>());
   sparse_change_nvt_ptr->reserve(V);
 
@@ -624,13 +632,6 @@ void LDAUpdates::loadSparseSerialized(const char* mem) {
     change_nt_ptr->push_back(temp);
   }
 
-  slice.clear();
-  slice.reserve(V);
-  for (int i = 0; i < V; ++i) {
-    int temp = load_value<int>(mem);
-    slice.push_back(temp);
-    // std::cout << temp << " ";
-  }
   // std::cout << std::endl;
 
   update_bucket = load_value<uint32_t>(mem);
@@ -728,6 +729,11 @@ std::shared_ptr<char> LDAUpdates::serialize_sparse(uint32_t* serialize_size) {
   store_value<int>(mem, slice.size());
   store_value<uint32_t>(mem, change_nt_ptr->size());
 
+  int* data = reinterpret_cast<int*>(mem);
+  std::copy(slice.begin(), slice.end(), data);
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
+
   for (int i = 0; i < slice.size(); ++i) {
     store_value<int>(mem, sparse_change_nvt[i].size());
     for (auto& temp: sparse_change_nvt[i]) {
@@ -736,16 +742,12 @@ std::shared_ptr<char> LDAUpdates::serialize_sparse(uint32_t* serialize_size) {
     }
   }
 
-  int* data = reinterpret_cast<int*>(mem);
+  data = reinterpret_cast<int*>(mem);
   std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
   mem = reinterpret_cast<char*>(
       (reinterpret_cast<char*>(mem) + sizeof(int) * change_nt_ptr->size()));
 
   // store_value<uint32_t>(mem, slice.size());
-  data = reinterpret_cast<int*>(mem);
-  std::copy(slice.begin(), slice.end(), data);
-  mem = reinterpret_cast<char*>(
-      (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
 
   // for (int i = 0; i < slice.size(); ++i) {
     // std::cout << slice[i] << " ";
@@ -781,10 +783,16 @@ void LDAUpdates::print() const {
   std::cout << std::endl;
 }
 
-int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update) {
+// int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update) {
+int LDAUpdates::update(const char* mem) {
 
   // std::cout << "aa\n";
-  int K = change_nt_ptr->size();
+  version = load_value<uint64_t>(mem);
+
+  int V = load_value<int>(mem);
+  int K = load_value<int>(mem);
+
+  // int K = change_nt_ptr->size();
 
   int bb = 0;
 
@@ -806,7 +814,15 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
   // }
   // std::cout << std::endl;
 
-  for (int i = 0; i < gradient.slice.size(); ++i) {
+  std::vector<int> gradient_slice;
+  gradient_slice.reserve(V);
+  for (int i = 0; i < V; ++i) {
+    int temp = load_value<int>(mem);
+    gradient_slice.push_back(temp);
+    // std::cout << temp << " ";
+  }
+
+  for (int i = 0; i < V; ++i) {
 
     // if (temp_look_up[gradient.slice[i]] != -1) {
     //   std::cout << "----------\n";
@@ -818,39 +834,45 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
     //   std::cout << "pre length: " << sparse_records[gradient.slice[i]] << std::endl;
     // }
 
+    int len = load_value<int>(mem);
 
-    for (auto& a: gradient.sparse_change_nvt_ptr->operator[](i)) {
+    // for (auto& a: gradient.sparse_change_nvt_ptr->operator[](i)) {
+    for (int j = 0; j < len; ++j) {
+
+      int16_t top = load_value<int16_t>(mem);
+      int16_t count = load_value<int16_t>(mem);
+      int gindex = gradient_slice[i];
 
       // int temp = change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + a.first);
 
-      if (temp_look_up[gradient.slice[i]] != -1 && change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + a.first) == 0) {
+      if (temp_look_up[gindex] != -1 && change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) == 0) {
 
         // std::cout << "top: " << a.first << " update count: " << a.second << std::endl;
         // sparse_nvt_indices[temp_look_up[gradient.slice[i]]].push_back(a.first);
-        sparse_nvt_indices[temp_look_up[gradient.slice[i]]].insert(a.first);
-        if (sparse_records[gradient.slice[i]] == -1) {
+        sparse_nvt_indices[temp_look_up[gindex]].insert(top);
+        if (sparse_records[gindex] == -1) {
           throw std::runtime_error("Error in store type");
         }
         // std::set<int> temp_set(sparse_nvt_indices[temp_look_up[gradient.slice[i]]].begin(),
         //                        sparse_nvt_indices[temp_look_up[gradient.slice[i]]].end());
         // sparse_nvt_indices[temp_look_up[gradient.slice[i]]] = std::vector<int>(temp_set.begin(), temp_set.end());
-        sparse_records[gradient.slice[i]] = sparse_nvt_indices[temp_look_up[gradient.slice[i]]].size();
+        sparse_records[gindex] = sparse_nvt_indices[temp_look_up[gindex]].size();
       }
 
-      change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + a.first) += a.second;
+      change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) += count;
 
-      if (temp_look_up[gradient.slice[i]] != -1 && change_nvt_ptr->operator[](slice_map.at(gradient.slice[i]) * K + a.first) == 0) {
+      if (temp_look_up[gindex] != -1 && change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) == 0) {
         // std::remove(sparse_nvt_indices[temp_look_up[gradient.slice[i]]].begin(),
         //             sparse_nvt_indices[temp_look_up[gradient.slice[i]]].end(),
         //             a.first);
-        sparse_nvt_indices[temp_look_up[gradient.slice[i]]].erase(a.first);
-        if (sparse_records[gradient.slice[i]] == -1) {
+        sparse_nvt_indices[temp_look_up[gindex]].erase(top);
+        if (sparse_records[gindex] == -1) {
           throw std::runtime_error("Error in store type");
         }
         // std::set<int> temp_set(sparse_nvt_indices[temp_look_up[gradient.slice[i]]].begin(),
         //                        sparse_nvt_indices[temp_look_up[gradient.slice[i]]].end());
         // sparse_nvt_indices[temp_look_up[gradient.slice[i]]] = std::vector<int>(temp_set.begin(), temp_set.end());
-        sparse_records[gradient.slice[i]] = sparse_nvt_indices[temp_look_up[gradient.slice[i]]].size();
+        sparse_records[gindex] = sparse_nvt_indices[temp_look_up[gindex]].size();
       }
 
       // if (temp == 0) {
@@ -892,13 +914,20 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
     // }
   }
 
-  for (int i = 0; i < change_nt_ptr->size(); ++i) {
+  for (int i = 0; i < K; ++i) {
     // change_nt[i] += gradient.change_nt[i];
-    change_nt_ptr->operator[](i) += gradient.change_nt_ptr->operator[](i);
+    int temp = load_value<int>(mem);
+    change_nt_ptr->operator[](i) += temp;
 
   }
 
-  vocabs_to_update = std::vector<int>(gradient.slice.begin(), gradient.slice.end());
+  // for (int i = 0; i < change_nt_ptr->size(); ++i) {
+  //   // change_nt[i] += gradient.change_nt[i];
+  //   change_nt_ptr->operator[](i) += gradient.change_nt_ptr->operator[](i);
+  //
+  // }
+
+  // vocabs_to_update = std::vector<int>(gradient.slice.begin(), gradient.slice.end());
 
   // std::cout << "bb\n";
 
@@ -916,9 +945,10 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
   //   std::cout << change_nt_ptr->operator[](i) << " ";
   // }
   // std::cout << std::endl;
+  int update_bucket = load_value<uint32_t>(mem);
 
 
-  return gradient.update_bucket;
+  return update_bucket;
 }
 
 // void LDAUpdates::get_partial_nvt(std::vector<int>& nvt, std::vector<int>& local_slice) {
