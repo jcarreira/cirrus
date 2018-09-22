@@ -36,7 +36,10 @@ class PSSparseServerInterface {
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
   // void get_lda_model(LDAStatistics&, int update_bucket, std::unique_ptr<LDAModel>& model);
-  char* get_lda_model(uint32_t& to_receive_size, uint32_t& uncompressed_size);
+  char* get_lda_model(int local_model_id, uint32_t& to_receive_size, uint32_t& uncompressed_size);
+
+  char* get_slices_indices(int local_model_id);
+  void update_ll_ndt(int bucket_id, double ll);
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
 
@@ -44,12 +47,12 @@ class PSSparseServerInterface {
   uint32_t get_status(uint32_t id);
 
   double time_send = 0.0, time_receive = 0.0, num_get_lda_model = 0.0, time_whole = 0.0, time_create_model = 0.0, time_receive_size = 0.0;
+  int slice_id = -1;
 
  private:
   std::string ip;
   int port;
   int sock = -1;
-  int slice_id = -1;
   struct sockaddr_in serv_addr;
 };
 

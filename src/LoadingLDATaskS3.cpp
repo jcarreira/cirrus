@@ -28,9 +28,11 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     const std::vector<std::vector<std::pair<int, int>>>& docs,
     std::vector<int>& nvt,
     std::vector<int>& nt,
+    std::vector<int>& w,
     int K,
-    std::vector<int>& global_vocab) {
-  std::vector<int> t, d, w;
+    std::vector<int>& global_vocab,
+    std::vector<std::vector<int>>& topic_scope) {
+  std::vector<int> d, t;
   std::vector<std::vector<int>> ndt;
   std::vector<int> local_vocab;
 
@@ -53,11 +55,11 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         idx++;
       }
       for (int i = 0; i < count; ++i) {
-        int top = rand() % K;
+        // int top = rand() % K;
+        int top = topic_scope[gindex][(rand() % topic_scope[gindex].size())];
 
         t.push_back(top);
         d.push_back(ndt.size());
-        // w.push_back(vocab_map[gindex]);
         w.push_back(gindex);
         ndt_row[top] += 1;
 
@@ -110,21 +112,48 @@ void LoadingLDATaskS3::run(const Configuration& config) {
             << " bucket: " << config.get_s3_bucket() << std::endl;
 
   std::vector<int> nvt, nt;
+  std::vector<std::vector<int>> ws;
+
   nvt.resize(dataset.num_vocabs() * K);
   nt.resize(K);
+  ws.reserve(num_s3_objs);
+
+  std::vector<std::vector<int>> nvt_init_rnd_scope;
+  std::vector<int> temp_global_vocab;
+  temp_global_vocab.reserve(K);
+  for(int i = 0; i < K; ++i) {
+    temp_global_vocab.push_back(i);
+  }
+  int length = K / 10;
+  nvt_init_rnd_scope.reserve(dataset.num_vocabs());
+  for (int i = 0; i < dataset.num_vocabs(); ++i) {
+    std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());
+    std::vector<int> vi_init_scope(temp_global_vocab.begin(), temp_global_vocab.begin() + length);
+    // for (int j = 0; j < length; ++j) {
+    //   std::cout << vi_init_scope[j] << " ";
+    // }
+    // std::cout << std::endl;
+    nvt_init_rnd_scope.push_back(vi_init_scope);
+  }
 
   std::vector<int> global_vocab;
   uint64_t to_send_size;
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
+
+    std::vector<int> w;
+
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
     // Only get corpus of size s3_obj_num_samples
     std::vector<std::vector<std::pair<int, int>>> partial_docs;
     dataset.get_some_docs(partial_docs);
+
     LDAStatistics to_save =
-        count_dataset(partial_docs, nvt, nt, K, global_vocab);
+        count_dataset(partial_docs, nvt, nt, w, K, global_vocab, nvt_init_rnd_scope);
+    std::cout << i << " : " << w.size() << std::endl;
+    ws.push_back(w);
 
     char* msg = to_save.serialize(to_send_size);
 
@@ -136,7 +165,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     s3_client->s3_put_object(
         obj_id, config.get_s3_bucket(),
         std::string(msg, to_send_size));
-    // delete[] msg;
+    delete msg;
   }
 
   // check_loading(config, s3_client);
@@ -149,6 +178,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   initial_global_var->slice = global_vocab;
   initial_global_var->change_nvt_ptr.reset(new std::vector<int>(nvt));
   initial_global_var->change_nt_ptr.reset(new std::vector<int>(nt));
+  initial_global_var->ws_ptr.reset(new std::vector<std::vector<int>>(ws));
 
   // LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
   std::cout << "Putting object(initial global var) in S3 with size: "

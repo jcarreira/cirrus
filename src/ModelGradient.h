@@ -223,7 +223,9 @@ class LDAUpdates {
   std::shared_ptr<char> serialize_sparse(uint32_t*);
 
   int update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_update);
-  char* get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse);
+  char* get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse, int local_model_id);
+
+  char* get_slices_indices(int local_model_id, uint32_t& to_send_size);
 
   // void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
   // void get_nt(std::vector<int>& nt) { nt = change_nt; }
@@ -272,6 +274,8 @@ class LDAUpdates {
    */
   std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
   std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>> sparse_change_nvt_ptr;
+  std::shared_ptr<std::vector<std::vector<int>>> ws_ptr;
+  std::vector<std::vector<std::vector<int>>> w_slices;
   std::vector<std::vector<int>> change_nvt_indices;
   std::vector<std::set<int>> sparse_nvt_indices;
   // std::vector<int> change_nvt, change_nt;  //< weights of the LDA update

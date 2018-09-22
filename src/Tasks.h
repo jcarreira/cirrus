@@ -330,6 +330,10 @@ class PSSparseServerTask : public MLTask {
                                std::vector<char>& thread_buffer);
   bool process_get_lda_model(const Request& req,
                              std::vector<char>& thread_buffer);
+  bool process_get_slices_indices(const Request& req,
+                              std::vector<char>& thread_buffer);
+  bool process_send_ll_update(const Request& req,
+                             std::vector<char>& thread_buffer);
   void kill_server();
 
   void update_ll_word_thread(double ll);
@@ -502,10 +506,12 @@ class LDATaskS3 : public MLTask {
                                    std::unique_ptr<LDAModel>& model,
                                    uint32_t to_receive_size,
                                    uint32_t uncompressed_size);
+  void load_serialized_indices(char* mem_begin);
   // std::shared_ptr<LDAStatistics> pre_fetch_vars;
   std::vector<std::unique_ptr<std::thread>> help_upload_threads, pre_fetch_model_threads;
   std::mutex redis_lock, pre_fetch_lock;
   std::vector<int> upload_lock_indicators;
+  std::vector<std::vector<int>> slice_indices;
   bool pre_fetch_done = false;
   PSSparseServerInterface* psint;
 };
@@ -538,8 +544,10 @@ class LoadingLDATaskS3 : public MLTask {
       const std::vector<std::vector<std::pair<int, int>>>& docs,
       std::vector<int>& nvt,
       std::vector<int>& nt,
+      std::vector<int>& w,
       int K,
-      std::vector<int>& global_vocab);
+      std::vector<int>& global_vocab,
+      std::vector<std::vector<int>>& topic_scope);
 };
 }
 

@@ -514,7 +514,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   change_nvt_ptr.reset(new std::vector<int>());
   // change_nvt_ptr->clear();
 
-  std::cout << len << std::endl;
+  // std::cout << len << std::endl;
   change_nvt_ptr->reserve(len);
   // change_nvt_indices.reserve(V);
 
@@ -555,7 +555,28 @@ void LDAUpdates::loadSerialized(const char* mem) {
     slice.push_back(temp);
   }
 
+  std::cout << "get here at least plz\n";
+
+  int len_temp = load_value<int8_t>(mem);
+  std::cout << "len_temp: " << len_temp << std::endl;
+  ws_ptr.reset(new std::vector<std::vector<int>>());
+  ws_ptr->reserve(len_temp);
+  for (int i = 0; i < len_temp; ++i) {
+    len = load_value<int32_t>(mem);
+    std::cout << "len: " << len << std::endl;
+    std::vector<int> w;
+    w.reserve(len);
+    for (int j = 0; j < len; ++j) {
+      int temp = load_value<int32_t>(mem);
+      w.push_back(temp);
+      // std::cout << temp << " ";
+    }
+    std::cout << std::endl;
+    ws_ptr->push_back(w);
+  }
+
   update_bucket = load_value<uint32_t>(mem);
+  std::cout << "update bucket: " << update_bucket << std::endl;
 
   int idx = 0;
   for (int i : slice) {
@@ -623,9 +644,16 @@ void LDAUpdates::loadSparseSerialized(const char* mem) {
 }
 
 std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
+
+  int N = 0;
+  for (int i = 0; i < ws_ptr->size(); ++i) {
+    N += ws_ptr->operator[](i).size();
+  }
+
   *serialize_size =
       sizeof(uint64_t) +
-      sizeof(int) * (4 + change_nvt_ptr->size() + change_nt_ptr->size() + slice.size());
+      sizeof(int) * (4 + ws_ptr->size() + N + change_nvt_ptr->size() + change_nt_ptr->size() + slice.size()) +
+      sizeof(int8_t);
   std::shared_ptr<char> mem_begin = std::shared_ptr<char>(
       new char[*serialize_size], std::default_delete<char[]>());
   char* mem = mem_begin.get();
@@ -651,7 +679,18 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
   mem = reinterpret_cast<char*>(
       (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
 
+  store_value<uint8_t>(mem, ws_ptr->size());
+  std::cout << "loading ws.size(): " << ws_ptr->size() << std::endl;
+  for (int i = 0; i < ws_ptr->size(); ++i) {
+    store_value<uint32_t>(mem, ws_ptr->operator[](i).size());
+    std::cout << "loading w size: " << ws_ptr->operator[](i).size() << std::endl;
+    int32_t* data_32 = reinterpret_cast<int32_t*>(mem);
+    std::copy(ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(), data_32);
+    mem = reinterpret_cast<char*>(
+        (reinterpret_cast<char*>(mem) + sizeof(int32_t) * ws_ptr->operator[](i).size()));
+  }
   store_value<uint32_t>(mem, update_bucket);
+  std::cout << "update bucket: " << update_bucket << std::endl;
 
   return mem_begin;
 }
@@ -747,7 +786,7 @@ int LDAUpdates::update(const LDAUpdates& gradient, std::vector<int>& vocabs_to_u
   // std::cout << "aa\n";
   int K = change_nt_ptr->size();
 
-  // int bb = 0;
+  int bb = 0;
 
   // std::cout << "pre: \n";
   // for (int i = 0; i < K; ++i) {
@@ -935,7 +974,7 @@ void LDAUpdates::get_partial_sparse_nvt_ptr(
 }
 
 
-char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse) {
+char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse, int local_model_id) {
 
   auto ttt = get_time_ms();
 
@@ -1111,6 +1150,11 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
     store_value<int32_t>(mem, fixed_slices[slice_id][i]);
   }
 
+  // store_value<int32_t>(mem, w_slices[local_model_id][slice_id].size());
+  // for (int i = 0; i < w_slices[local_model_id][slice_id].size(); ++i) {
+  //   store_value<int32_t>(mem, w_slices[local_model_id][slice_id][i]);
+  // }
+
   // int32_t* data = reinterpret_cast<int32_t*>(mem);
   // std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
   // mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) + sizeof(int32_t) * change_nt_ptr->size()));
@@ -1126,6 +1170,8 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
   // uncompressed_size = sizeof(int32_t) * (2 + K + len) + sizeof(uint16_t) * (len + S + 2 * N + (len - S) * K);
   uncompressed_size = sizeof(int32_t) * (2 + K + len) +
                       sizeof(int16_t) * (len + S + 2 * N + (len - S) * K);
+  // std::cout << "pre: " << ttemp_size << std::endl;
+  // std::cout << "now: " << uncompressed_size << std::endl;
                       // sizeof(int8_t) * len;
   size_t max_compressed_size = LZ4_compressBound(uncompressed_size);
   char* compressed_mem = new char[uncompressed_size];
@@ -1189,28 +1235,78 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
 int LDAUpdates::pre_assign_slices(int slice_size) {
 
   int num_slices = slice.size() / slice_size;
+  std::array<int, 1000000> gindex_2_slice_id;
+  gindex_2_slice_id.fill(-1);
+
   std::cout << "Global vocab dim: " << slice.size() << " slice_size: " << slice_size << " num_slices: " << num_slices << std::endl;
 
   fixed_slices.clear();
   fixed_slices.reserve(num_slices);
-  int cur = 0;
   for (int i = 0; i < num_slices; ++i) {
-    // fixed_slices[i].clear();
     std::vector<int> to_push;
-    if (slice.size() - cur <= slice_size) {
-      // fixed_slices[i].resize(slice.size() - cur);
-      // std::copy(slice.begin() + cur, slice.end(), fixed_slices[i].begin());
-      break;
-    } else {
-      // fixed_slices[i].resize(slice_size);
-      to_push.resize(slice_size);
-      std::copy(slice.begin() + cur, slice.begin() + cur + slice_size, to_push.begin());
-      cur += slice_size;
-      fixed_slices.push_back(to_push);
+    to_push.reserve(slice_size);
+    fixed_slices.push_back(to_push);
+  }
+  int cur = 0;
+  for (int i = 0; i < slice.size(); ++i) {
+    fixed_slices[cur].push_back(slice[i]);
+    gindex_2_slice_id[slice[i]] = cur;
+    cur += 1;
+    if (cur == num_slices) {
+      cur = 0;
     }
   }
-  global_v = cur;
+
+  w_slices.clear();
+  w_slices.reserve(ws_ptr->size());
+  for (int i = 0; i < ws_ptr->size(); ++i) {
+    std::vector<std::vector<int>> w_slice_i;
+    w_slice_i.resize(num_slices, std::vector<int>());
+    for (int j = 0; j < num_slices; ++j) {
+      w_slice_i[j].reserve(slice.size());
+    }
+    for (int j = 0; j < ws_ptr->operator[](i).size(); ++j) {
+      int gindex = ws_ptr->operator[](i)[j];
+      w_slice_i[gindex_2_slice_id[gindex]].push_back(j);
+      // std::cout << gindex_2_slice_id[gindex] << " " << w_slice_i[gindex_2_slice_id[gindex]].size() << std::endl;
+    }
+    w_slices.push_back(w_slice_i);
+    // for (int j = 0; j < num_slices; ++j) {
+    //   std::cout << w_slice_i[j].size() << " ";
+    // }
+    // std::cout << std::endl;
+  }
+
+  ws_ptr.reset();
+
+  std::cout << "finish\n";
+  global_v = slice.size();
   return fixed_slices.size();
 }
+
+char* LDAUpdates::get_slices_indices(int local_model_id, uint32_t& to_send_size) {
+
+  int N = 0;
+  // std::cout << local_model_id << " **\n";
+  for (int i = 0; i < w_slices[local_model_id].size(); ++i) {
+    N += w_slices[local_model_id][i].size();
+  }
+
+  to_send_size = sizeof(int32_t) * (1 + w_slices[local_model_id].size() + N);
+  char* mem_begin = new char[to_send_size];
+  char* mem = mem_begin;
+
+  store_value<int32_t>(mem, w_slices[local_model_id].size());
+  for (int i = 0; i < w_slices[local_model_id].size(); ++i) {
+    int len = w_slices[local_model_id][i].size();
+    store_value<int32_t>(mem, len);
+    for (int j = 0; j < len; ++j) {
+      store_value<int32_t>(mem, w_slices[local_model_id][i][j]);
+    }
+  }
+
+  return mem_begin;
+}
+
 
 }  // namespace cirrus

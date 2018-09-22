@@ -28,14 +28,14 @@ class LDAModel {
     */
   LDAModel(const char* buffer, const char* info, int to_update, int compressed_size, int uncompressed_size);
 
-  LDAModel(const char* info);
+  LDAModel(const char* info, bool save = false);
 
-  void update_model(const char* buffer, int to_update, int compressed_size, int uncompressed_size);
+  void update_model(const char* buffer, int to_update, int compressed_size, int uncompressed_size, int slice_id);
   /**
     * LDA sampling function (currently using Gibbs Sampler)
     * Sampling is based on all the statistics stored in the object
     */
-  std::unique_ptr<LDAUpdates> sample_model(int& total_sampled_tokens);
+  std::unique_ptr<LDAUpdates> sample_model(int& total_sampled_tokens, std::vector<int>& slice_indices);
 
   void get_ndt(std::vector<std::vector<int>>& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
@@ -43,7 +43,12 @@ class LDAModel {
 
   LDAModel& operator=(LDAModel& model);
 
+  double compute_ll_ndt();
+
 protected:
+
+  // std::vector<std::pair<std::pair<int, int>, double>> generateAlias(std::vector<double> p, int l);
+
 
   std::unique_ptr<LDAUpdates> sample_thread(std::vector<int>& t,
                                             std::vector<int>& d,
@@ -52,7 +57,8 @@ protected:
                                             std::vector<std::vector<int>>& nvt,
                                             std::vector<std::vector<int>>& ndt,
                                             std::vector<int>& slice,
-                                            int& total_sampled_tokens);
+                                            int& total_sampled_tokens,
+                                            std::vector<int>& slice_indices);
 
   /**
     * K_: number of topics
@@ -82,6 +88,13 @@ protected:
     * that are being considered currently
     */
   std::vector<int> slice;
+
+  bool save_slice_indices = false;
+  int cur_slice_id = -1, counter_slice = 0;
+  std::vector<std::vector<int>> slices_indices;
+  std::array<int, 100> slice_look_up;
+
+
 };
 }
 #endif

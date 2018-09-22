@@ -37,7 +37,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
     int16_t t = load_value<int16_t>(msg);
     t_.push_back(t);
 
-    int16_t d = load_value<int16_t>(msg);
+    int32_t d = load_value<int32_t>(msg);
     d_.push_back(d);
 
     int32_t w = load_value<int32_t>(msg);
@@ -53,7 +53,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
     slice_.push_back(slice_i);
   }
 
-  int16_t num_docs = load_value<int16_t>(msg);
+  int32_t num_docs = load_value<int32_t>(msg);
   ndt_.clear();
   ndt_.reserve(num_docs);
   std::vector<int> ndt_row;
@@ -91,9 +91,10 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   store_value<int16_t>(msg, K_);
 
   store_value<int32_t>(msg, t_.size());
+  // std::cout << "t_size: " << t_.size() << std::endl;
   for (int32_t i = 0; i < t_.size(); ++i) {
     store_value<int16_t>(msg, t_[i]);
-    store_value<int16_t>(msg, d_[i]);
+    store_value<int32_t>(msg, d_[i]);
     store_value<int32_t>(msg, w_[i]);
   }
 
@@ -104,7 +105,8 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
 
   int nz, N = 0, S = 0, sparse_type = 1, dense_type = 2;
 
-  store_value<int16_t>(msg, ndt_.size());
+  // std::cout << "ndt size: " << ndt_.size() << std::endl;
+  store_value<int32_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
 
     // sparse_nt_di.clear();
@@ -137,8 +139,8 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   }
 
   to_send_size = sizeof(int8_t) * ndt_.size() +
-                 sizeof(int16_t) * (2 + 2 * t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
-                 sizeof(int32_t) * (2 + t_.size() + slice_.size());
+                 sizeof(int16_t) * (1 + t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
+                 sizeof(int32_t) * (3 + 2 * t_.size() + slice_.size());
 
   return msg_begin;
 
@@ -162,7 +164,7 @@ char* LDAStatistics::serialize_slice() {
 // 2. store the size of corpus and word counts for each (doc_id, topic) entries
 // 3. store the length of local slice and word_idx for each vocabularies
 int LDAStatistics::get_serialize_size() {
-  return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int);
+  return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int32_t);
 }
 
 int LDAStatistics::get_serialize_slice_size() {
