@@ -13,12 +13,14 @@
 
 namespace cirrus {
 
-void LDATaskS3::push_gradient(LDAUpdates* gradient, int total_sampled_tokens) {
+// void LDATaskS3::push_gradient(LDAUpdates* gradient, int total_sampled_tokens) {
+void LDATaskS3::push_gradient(char* gradient_mem, int total_sampled_tokens, uint32_t to_send_size) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
 #endif
-  psint->send_lda_update(*gradient, total_sampled_tokens);
+  // psint->send_lda_update(*gradient, total_sampled_tokens);
+  psint->send_lda_update(gradient_mem, total_sampled_tokens, to_send_size);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -442,9 +444,13 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     // std::cout << "b4 sampling\n";
 
+    char* gradient_mem;
+    uint32_t gradient_size;
+
     try {
       start_time_benchmark = get_time_ms();
-      gradient = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id]);
+      // gradient = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id]);
+      gradient_mem = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id], gradient_size);
       time_sample += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
@@ -468,7 +474,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     try {
       start_time_benchmark = get_time_ms();
-      push_gradient(gradient.get(), total_sampled_tokens);
+      // push_gradient(gradient.get(), total_sampled_tokens);
+      push_gradient(gradient_mem, total_sampled_tokens, gradient_size);
       time_update += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (...) {
       std::cout << "[WORKER] "

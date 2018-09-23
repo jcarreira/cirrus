@@ -35,7 +35,7 @@ class LDAModel {
     * LDA sampling function (currently using Gibbs Sampler)
     * Sampling is based on all the statistics stored in the object
     */
-  std::unique_ptr<LDAUpdates> sample_model(int& total_sampled_tokens, std::vector<int>& slice_indices);
+  char* sample_model(int& total_sampled_tokens, std::vector<int>& slice_indices, uint32_t& to_send_size);
 
   void get_ndt(std::vector<std::vector<int>>& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
@@ -50,15 +50,16 @@ protected:
   // std::vector<std::pair<std::pair<int, int>, double>> generateAlias(std::vector<double> p, int l);
 
 
-  std::unique_ptr<LDAUpdates> sample_thread(std::vector<int>& t,
-                                            std::vector<int>& d,
-                                            std::vector<int>& w,
-                                            std::vector<int>& nt,
-                                            std::vector<std::vector<int>>& nvt,
-                                            std::vector<std::vector<int>>& ndt,
-                                            std::vector<int>& slice,
-                                            int& total_sampled_tokens,
-                                            std::vector<int>& slice_indices);
+  char* sample_thread(std::vector<int>& t,
+                      std::vector<int>& d,
+                      std::vector<int>& w,
+                      std::vector<int>& nt,
+                      std::vector<std::vector<int>>& nvt,
+                      std::vector<std::vector<int>>& ndt,
+                      std::vector<int>& slice,
+                      int& total_sampled_tokens,
+                      std::vector<int>& slice_indices,
+                      uint32_t& to_send_size);
 
   /**
     * K_: number of topics

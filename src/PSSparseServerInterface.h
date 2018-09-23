@@ -30,7 +30,8 @@ class PSSparseServerInterface {
 
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
-  void send_lda_update(LDAUpdates&, int total_sampled_tokens);
+  // void send_lda_update(LDAUpdates&, int total_sampled_tokens);
+  void send_lda_update(char* gradient_mem, int total_sampled_tokens, uint32_t to_send_size);
 
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);

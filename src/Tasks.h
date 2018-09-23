@@ -496,7 +496,8 @@ class LDATaskS3 : public MLTask {
   //                         std::unique_ptr<LDAStatistics>& local_vars,
   //                         int update_bucket,
   //                         bool& done);
-  void push_gradient(LDAUpdates*, int total_sampled_tokens);
+  // void push_gradient(LDAUpdates*, int total_sampled_tokens);
+  void push_gradient(char* gradient_mem, int total_sampled_tokens, uint32_t to_send_size);
   // void create_lda_model(LDAStatistics& info, int update_bucket, char* buffer,
   //                                  std::unique_ptr<LDAModel>& model,
   //                                  uint32_t to_receive_size,

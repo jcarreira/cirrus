@@ -314,7 +314,8 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sampled_tokens) {
+// void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sampled_tokens) {
+void PSSparseServerInterface::send_lda_update(char* gradient_mem, int total_sampled_tokens, uint32_t size) {
   uint32_t operation = SEND_LDA_UPDATE;
 #ifdef DEBUG
   std::cout << "Sending LDA updates" << std::endl;
@@ -324,9 +325,9 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sa
     throw std::runtime_error("Error sending operation_u");
   }
 
-  uint32_t size;
+  // uint32_t size;
   // std::shared_ptr<char> mem = gradient.serialize(&size);
-  std::shared_ptr<char> mem = gradient.serialize_sparse(&size);
+  // std::shared_ptr<char> mem = gradient.serialize_sparse(&size);
 #ifdef DEBUG
   std::cout << "Sending LDA updates with size: " << size << std::endl;
 #endif
@@ -341,13 +342,14 @@ void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sa
     throw std::runtime_error("Error sending # of tokens");
   }
 
-  // void* data = reinterpret_cast<void*>(mem.get());
-  ret = send_all(sock, mem.get(), size - sizeof(int));
+  // ret = send_all(sock, mem.get(), size - sizeof(int));
+  ret = send_all(sock, gradient_mem, size - sizeof(int));
   if (ret == -1 || ret == 0) {
     throw std::runtime_error("Error sending grad");
   }
 
-  mem.reset();
+  // mem.reset();
+  delete gradient_mem;
 }
 
 void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {

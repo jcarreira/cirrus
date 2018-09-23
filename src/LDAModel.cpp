@@ -449,13 +449,14 @@ double LDAModel::compute_ll_ndt() {
   return ll;
 }
 
-std::unique_ptr<LDAUpdates> LDAModel::sample_model(int& total_sampled_tokens,
-                                                   std::vector<int>& slice_indices) {
+char* LDAModel::sample_model(int& total_sampled_tokens,
+                                                   std::vector<int>& slice_indices,
+                                                   uint32_t& to_send_size) {
   return sample_thread(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
-                       std::ref(nvt), std::ref(ndt), std::ref(slice), total_sampled_tokens, slice_indices);
+                       std::ref(nvt), std::ref(ndt), std::ref(slice), total_sampled_tokens, slice_indices, to_send_size);
 }
 
-std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
+char* LDAModel::sample_thread(
     std::vector<int>& t,
     std::vector<int>& d,
     std::vector<int>& w,
@@ -464,7 +465,8 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     std::vector<std::vector<int>>& ndt,
     std::vector<int>& slice,
     int& total_sampled_tokens,
-    std::vector<int>& slice_indices) {
+    std::vector<int>& slice_indices,
+    uint32_t& to_send_size) {
 
   // std::cout << K_ << " " << V_ << std::endl;
   //
@@ -506,6 +508,7 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
 
   std::vector<int> change_nvt(nvt.size() * K_, 0);
   std::vector<int> change_nt(K_, 0);
+  std::vector<std::set<int>> change_nvt_indices(nvt.size(), std::set<int>());
 
   int temp = 0;
 
@@ -665,10 +668,26 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
     ndt[doc][new_top] += 1;
     nt[new_top] += 1;
 
+    if (change_nvt[lindex * K_ + top] == 0) {
+      change_nvt_indices[lindex].insert(top);
+    }
+
+    if (change_nvt[lindex * K_ + new_top] == 0) {
+      change_nvt_indices[lindex].insert(new_top);
+    }
+
     change_nvt[lindex * K_ + top] -= 1;
     change_nvt[lindex * K_ + new_top] += 1;
     change_nt[top] -= 1;
     change_nt[new_top] += 1;
+
+    if (change_nvt[lindex * K_ + top] == 0) {
+      change_nvt_indices[lindex].erase(top);
+    }
+
+    if (change_nvt[lindex * K_ + new_top] == 0) {
+      change_nvt_indices[lindex].erase(new_top);
+    }
 
     smoothing_threshold -= smoothing_vec[new_top];
     doc_threshold -= doc_vec[new_top];
@@ -739,12 +758,52 @@ std::unique_ptr<LDAUpdates> LDAModel::sample_thread(
   // }
   // std::cout << std::endl;
 
+  uint32_t temp_size =
+        sizeof(uint64_t) +
+        sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
+        sizeof(int16_t) * (nvt.size() * change_nt.size());
+  char* mem = new char[temp_size];
+  char* mem_begin = mem;
 
-  std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
+  store_value<uint64_t>(mem, 1);
+  store_value<int>(mem, slice.size());
+  store_value<uint32_t>(mem, change_nt.size());
+
+  int* data = reinterpret_cast<int*>(mem);
+  std::copy(slice.begin(), slice.end(), data);
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
+
+  int N = 0;
+  for (int i = 0; i < slice.size(); ++i) {
+    store_value<int>(mem, change_nvt_indices[i].size());
+    N += change_nvt_indices[i].size();
+    for (auto& temp: change_nvt_indices[i]) {
+      store_value<int16_t>(mem, temp);
+      store_value<int16_t>(mem, change_nvt[i * K_ + temp]);
+    }
+  }
+
+  data = reinterpret_cast<int*>(mem);
+  std::copy(change_nt.begin(), change_nt.end(), data);
+  mem = reinterpret_cast<char*>(
+      (reinterpret_cast<char*>(mem) + sizeof(int) * change_nt.size()));
+
+  store_value<uint32_t>(mem, 1);
+
+  to_send_size =
+      sizeof(uint64_t) +
+      sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
+      sizeof(int16_t) * (2 * N);
+
+  std::cout << "update size: " << to_send_size << std::endl;
+
+
+  // std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
 
 
   // std::unique_ptr<LDAUpdates> ret =
   //     std::make_unique<LDAUpdates>(std::move(change_nvt), std::move(change_nt), slice, update_bucket);
-  return ret;
+  return mem_begin;
 }
 }

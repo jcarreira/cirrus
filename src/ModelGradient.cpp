@@ -796,10 +796,18 @@ int LDAUpdates::update(const char* mem) {
 
   int bb = 0;
 
+  std::vector<int> gradient_slice;
+  gradient_slice.reserve(V);
+  for (int i = 0; i < V; ++i) {
+    int temp = load_value<int>(mem);
+    gradient_slice.push_back(temp);
+    // std::cout << temp << " ";
+  }
+
   // std::cout << "pre: \n";
   // for (int i = 0; i < K; ++i) {
-  //   bb += change_nvt_ptr->operator[](slice_map.at(gradient.slice[100]) * K + i);
-  //   std::cout << change_nvt_ptr->operator[](slice_map.at(gradient.slice[100]) * K + i) << " ";
+  //   bb += change_nvt_ptr->operator[](slice_map.at(gradient_slice[100]) * K + i);
+  //   std::cout << change_nvt_ptr->operator[](slice_map.at(gradient_slice[100]) * K + i) << " ";
   // }
   // std::cout << std::endl;
   // std::cout << "pre count: " << bb << " !!\n";
@@ -813,14 +821,6 @@ int LDAUpdates::update(const char* mem) {
   //   std::cout << temp[i] << " ";
   // }
   // std::cout << std::endl;
-
-  std::vector<int> gradient_slice;
-  gradient_slice.reserve(V);
-  for (int i = 0; i < V; ++i) {
-    int temp = load_value<int>(mem);
-    gradient_slice.push_back(temp);
-    // std::cout << temp << " ";
-  }
 
   for (int i = 0; i < V; ++i) {
 
@@ -934,8 +934,8 @@ int LDAUpdates::update(const char* mem) {
   // std::cout << "after: \n";
   // bb = 0;
   // for (int i = 0; i < K; ++i) {
-  //   bb += change_nvt_ptr->operator[](slice_map.at(gradient.slice[100]) * K + i);
-  //   std::cout << change_nvt_ptr->operator[](slice_map.at(gradient.slice[100]) * K + i) << " ";
+  //   bb += change_nvt_ptr->operator[](slice_map.at(gradient_slice[100]) * K + i);
+  //   std::cout << change_nvt_ptr->operator[](slice_map.at(gradient_slice[100]) * K + i) << " ";
   // }
   // std::cout << std::endl;
   // std::cout << "after count: " << bb << " !!\n";
@@ -1226,6 +1226,8 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
   double time_taken = (get_time_ms() - ttt) / 1000.0;
 
   delete mem_begin;
+
+  std::cout << "partial modoel size: " << to_send_size << std::endl;
 
   // std::cout << to_send_size << " " << uncompressed_size << std::endl;
 
