@@ -11,6 +11,7 @@
 #include <memory>
 #include <map>
 #include <set>
+#include <mutex>
 // #include <codecfactory.h>
 
 namespace cirrus {
@@ -231,10 +232,8 @@ class LDAUpdates {
   // void get_nvt(std::vector<int>& nvt) { nvt = change_nvt; }
   // void get_nt(std::vector<int>& nt) { nt = change_nt; }
   void get_slice(std::vector<int>& s) { s = slice; }
-  void get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr)
-                      {nvt_ptr = change_nvt_ptr;}
-  void get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr)
-                      {nt_ptr = change_nt_ptr;}
+  void get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr);
+  void get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr);
   int get_nvt_size() { return change_nvt_ptr->size(); }
   int get_nt_size() { return change_nt_ptr->size(); }
   int get_slice_size() { return slice.size(); }
@@ -289,6 +288,7 @@ class LDAUpdates {
 
 
   double total_to_compress_size = 0., total_compressed_size = 0., total_time_to_compress = 0.;
+  std::mutex model_lock, update_lock;
 };
 
 } // namespace cirrus

@@ -179,12 +179,12 @@ bool PSSparseServerTask::process_send_lda_update(
 
   // std::cout << "tokens: " << tokens << std::endl;
 
-  model_lock.lock();
+  // model_lock.lock();
   // std::this_thread::sleep_for (std::chrono::milliseconds(10));
   // int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
   int update_bucket = lda_global_vars->update(data);
   // update_nvt_nt(vocabs_to_update);
-  model_lock.unlock();
+  // model_lock.unlock();
 
   // std::cout << "finish update\n";
 
@@ -341,7 +341,7 @@ bool PSSparseServerTask::process_get_lda_model(
 
   start_time_temp = get_time_ms();
 
-  model_lock.lock();
+  // model_lock.lock();
 
   auto pure_partial_benchmark = get_time_ms();
   char* data_to_send;
@@ -355,7 +355,7 @@ bool PSSparseServerTask::process_get_lda_model(
   time_pure_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
 
   // std::cout << "pass after b?\n";
-  model_lock.unlock();
+  // model_lock.unlock();
 
   time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
   num_to_find_partial += 1.;
@@ -404,9 +404,9 @@ bool PSSparseServerTask::process_get_slices_indices(
   uint32_t to_send_size;
   auto train_range = task_config.get_train_range();
 
-  model_lock.lock();
+  // model_lock.lock();
   char* data_to_send = lda_global_vars->get_slices_indices(local_model_id - train_range.first, to_send_size);
-  model_lock.unlock();
+  // model_lock.unlock();
 
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
     return false;
@@ -1295,10 +1295,10 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
 
   std::shared_ptr<std::vector<int>> nvt_ptr, nt_ptr;
 
-  model_lock.lock();
+  // model_lock.lock();
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
-  model_lock.unlock();
+  // model_lock.unlock();
 
   double current_time = (get_time_ms() - start_time) / 1000.0;
   double alpha = 0.1, eta = .01;
@@ -1339,6 +1339,8 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "Avg Time to find partial model (excluding waiting): " << time_pure_find_partial / num_to_find_partial << std::endl;
   std::cout << "Avg Time to send the sizes: " << time_send_sizes / num_to_find_partial << std::endl;
   std::cout << "Avg Time to send the partial model: " << time_send_partial / num_to_find_partial << std::endl;
+  std::cout << "Avg Time to assign slice id: " << time_assign_slice_id / num_to_find_partial << std::endl;
+
   std::cout << "compress speed: " << lda_global_vars->get_compress_rate() << std::endl;
   std::cout << "compress effect: " << lda_global_vars->get_compress_effect() << std::endl;
   std::cout << "----------------------------------------------------------\n";

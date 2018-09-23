@@ -856,10 +856,15 @@ int LDAUpdates::update(const char* mem) {
         // std::set<int> temp_set(sparse_nvt_indices[temp_look_up[gradient.slice[i]]].begin(),
         //                        sparse_nvt_indices[temp_look_up[gradient.slice[i]]].end());
         // sparse_nvt_indices[temp_look_up[gradient.slice[i]]] = std::vector<int>(temp_set.begin(), temp_set.end());
+
+        // model_lock.lock();
         sparse_records[gindex] = sparse_nvt_indices[temp_look_up[gindex]].size();
+        // model_lock.unlock();
       }
 
+      // update_lock.lock();
       change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) += count;
+      // update_lock.unlock();
 
       if (temp_look_up[gindex] != -1 && change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) == 0) {
         // std::remove(sparse_nvt_indices[temp_look_up[gradient.slice[i]]].begin(),
@@ -914,12 +919,13 @@ int LDAUpdates::update(const char* mem) {
     // }
   }
 
+  update_lock.lock();
   for (int i = 0; i < K; ++i) {
     // change_nt[i] += gradient.change_nt[i];
     int temp = load_value<int>(mem);
     change_nt_ptr->operator[](i) += temp;
-
   }
+  update_lock.unlock();
 
   // for (int i = 0; i < change_nt_ptr->size(); ++i) {
   //   // change_nt[i] += gradient.change_nt[i];
@@ -1123,11 +1129,14 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
 
       } else {
         store_value<int16_t>(mem, n);
+
+        model_lock.lock();
         sparse_records[word_idx] = n;
 
         sparse_nvt_indices.push_back(sparse_nt_vi);
         temp_look_up[word_idx] = temp_counter;
         temp_counter += 1;
+        model_lock.unlock();
 
         // std::cout << word_idx << " " << temp_counter << " " << temp_look_up[word_idx] << std::endl;
         // std::cout << n << " " << sparse_nt_vi.size() << std::endl;
@@ -1226,8 +1235,6 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
   double time_taken = (get_time_ms() - ttt) / 1000.0;
 
   delete mem_begin;
-
-  std::cout << "partial modoel size: " << to_send_size << std::endl;
 
   // std::cout << to_send_size << " " << uncompressed_size << std::endl;
 
@@ -1340,5 +1347,16 @@ char* LDAUpdates::get_slices_indices(int local_model_id, uint32_t& to_send_size)
   return mem_begin;
 }
 
+void LDAUpdates::get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr){
+  // update_lock.lock();
+  nvt_ptr = change_nvt_ptr;
+  // update_lock.unlock();
+}
+
+void LDAUpdates::get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr){
+  // update_lock.lock();
+  nt_ptr = change_nt_ptr;
+  // update_lock.unlock();
+}
 
 }  // namespace cirrus
