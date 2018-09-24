@@ -309,6 +309,8 @@ bool PSSparseServerTask::process_get_lda_model(
   read_all(req.sock, &previous_slice_id, sizeof(int));
   read_all(req.sock, &local_model_id, sizeof(int));
 
+  task_id_lookup[req.poll_fd.fd] = local_model_id - task_config.get_train_range().first;
+
   slice_lock.lock();
 
   start_time_temp = get_time_ms();
@@ -504,6 +506,7 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
   }
   std::cout << "PS closing connection after process(): " << num_connections
             << std::endl;
+  std::cout << "Task id: " << task_id_lookup[pfd->fd] + 5 << std::endl;
   pfd->fd = -1;
   pfd->revents = 0;
 }
@@ -753,6 +756,7 @@ void PSSparseServerTask::start_server() {
     std::srand(std::time(nullptr));
     sock_lookup.fill(-1);
     bucket_in_update.fill(-1);
+    task_id_lookup.fill(-1);
 
     // compute_loglikelihood();
     // s3_shutdown_aws();

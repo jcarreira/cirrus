@@ -257,7 +257,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   delete slice_indices_mem;
 
   int cur = 0, num_runs = s3_local_vars->get_slice_size() / config.get_slice_size() + 1;
-
+  // std::cout << cur << "  " << num_runs << " ***\n";
   while (1) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
@@ -299,7 +299,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         auto elapsed_ms = get_time_ms() - start_time;
         float elapsed_sec = elapsed_ms / 1000.0;
         // 20 seconds before lambda times out
-        if (elapsed_sec > (lambda_time_out - 30.0)) {
+        if (elapsed_sec > (lambda_time_out - 20.0)) {
+
           // If there's a bucket that gets updated,
           // send an empty LDAUpdates with only the bucket id
           // if (update_bucket != 0) {
@@ -313,7 +314,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
           //       s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start - 1]), update_bucket)
           // );
 
-          upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start - 1], update_bucket);
+          if (end == start + 1) {
+            upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start], update_bucket);
+          }
 
           std::cout << "early--------------------------\n";
           std::cout << "Time to download from S3: " << time_download << std::endl;
@@ -409,7 +412,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // we get the model subset with just the right amount of weights
     start_time_benchmark = get_time_ms();
     uint32_t to_receive_size, uncompressed_size;
-    char* partial_model = psint->get_lda_model(cur_train_idx - start, to_receive_size, uncompressed_size);
+    char* partial_model = psint->get_lda_model(cur_train_idx, to_receive_size, uncompressed_size);
     time_get_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
     // std::cout << "finish\n";
@@ -423,7 +426,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // std::cout << "here?\n";
     model->update_model(partial_model, update_bucket, to_receive_size, uncompressed_size, psint->slice_id);
     // std::cout << "pass!\n";
-    delete partial_model;
+    // delete partial_model;
 
     time_create_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
@@ -447,15 +450,21 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     char* gradient_mem;
     uint32_t gradient_size;
 
-    try {
-      start_time_benchmark = get_time_ms();
-      // gradient = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id]);
-      gradient_mem = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id], gradient_size);
-      time_sample += (get_time_ms() - start_time_benchmark) / 1000.0;
-    } catch (const std::runtime_error& e) {
-      std::cout << "Error. " << e.what() << std::endl;
-      exit(-1);
-    }
+    // try {
+    //   start_time_benchmark = get_time_ms();
+    //   // gradient = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id]);
+    //   gradient_mem = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id], gradient_size);
+    //   std::cout << "finsi\n";
+    //   time_sample += (get_time_ms() - start_time_benchmark) / 1000.0;
+    // } catch (const std::runtime_error& e) {
+    //   std::cout << "Error. " << e.what() << std::endl;
+    //   exit(-1);
+    // }
+    start_time_benchmark = get_time_ms();
+    // gradient = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id]);
+    gradient_mem = model->sample_model(total_sampled_tokens, slice_indices[psint->slice_id], gradient_size);
+    // std::cout << "finsi\n";
+    time_sample += (get_time_ms() - start_time_benchmark) / 1000.0;
     // } catch (...) {
     //   std::cout << "There was an error computing the gradient" << std::endl;
     //   exit(-1);

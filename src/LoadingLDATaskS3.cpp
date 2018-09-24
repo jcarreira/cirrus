@@ -124,7 +124,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   for(int i = 0; i < K; ++i) {
     temp_global_vocab.push_back(i);
   }
-  int length = K / 10;
+  int length = K;
   nvt_init_rnd_scope.reserve(dataset.num_vocabs());
   for (int i = 0; i < dataset.num_vocabs(); ++i) {
     std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());

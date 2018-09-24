@@ -395,7 +395,8 @@ class PSSparseServerTask : public MLTask {
   std::vector<std::vector<int>> fixed_slices;
   std::vector<int> unused_slice_id;
   int num_slices;
-  std::array<int, 1000000> sock_lookup;
+  std::array<int, 100000> sock_lookup;
+  std::array<int, 100000> task_id_lookup;
   std::array<int, 1000> bucket_in_update;
   int tokens_sampled = 0;
 

@@ -758,12 +758,17 @@ char* LDAModel::sample_thread(
   // }
   // std::cout << std::endl;
 
+  // std::cout << "aa\n";
+
   uint32_t temp_size =
         sizeof(uint64_t) +
         sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
-        sizeof(int16_t) * (nvt.size() * change_nt.size());
+        sizeof(int16_t) * (nvt.size() * change_nt.size() * 2);
+
   char* mem = new char[temp_size];
   char* mem_begin = mem;
+
+  // std::cout << "bb\n";
 
   store_value<uint64_t>(mem, 1);
   store_value<int>(mem, slice.size());
@@ -774,29 +779,48 @@ char* LDAModel::sample_thread(
   mem = reinterpret_cast<char*>(
       (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
 
+  // std::cout << "cc\n";
+
   int N = 0;
+  // std::cout << slice.size() << " " << change_nvt_indices.size() << std::endl;
   for (int i = 0; i < slice.size(); ++i) {
     store_value<int>(mem, change_nvt_indices[i].size());
-    N += change_nvt_indices[i].size();
-    for (auto& temp: change_nvt_indices[i]) {
-      store_value<int16_t>(mem, temp);
-      store_value<int16_t>(mem, change_nvt[i * K_ + temp]);
+    // std::cout << "\t" << change_nvt_indices[i].size() << std::endl;
+    // N += change_nvt_indices[i].size();
+
+    // for (auto& temp: change_nvt_indices[i]) {
+    //   std::cout << temp << " ";
+    // }
+    // std::cout << std::endl;
+
+    for (auto& top: change_nvt_indices[i]) {
+      store_value<int16_t>(mem, top);
+      store_value<int16_t>(mem, change_nvt[i * K_ + top]);
+      N += 1;
+      // std::cout << "\t\t" << temp << " " << change_nvt[i * K_ + temp] << std::endl;
     }
   }
+  // std::cout << "dd\n";
 
   data = reinterpret_cast<int*>(mem);
   std::copy(change_nt.begin(), change_nt.end(), data);
   mem = reinterpret_cast<char*>(
       (reinterpret_cast<char*>(mem) + sizeof(int) * change_nt.size()));
 
+  // std::cout << "ee\n";
+
+
   store_value<uint32_t>(mem, 1);
+
+  // std::cout << "ff\n";
+
 
   to_send_size =
       sizeof(uint64_t) +
       sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
       sizeof(int16_t) * (2 * N);
 
-  std::cout << "update size: " << to_send_size << std::endl;
+  // std::cout << "update size: " << to_send_size << " " << temp_size << std::endl;
 
 
   // std::unique_ptr<LDAUpdates> ret = std::make_unique<LDAUpdates>(change_nvt, change_nt, slice, update_bucket);
