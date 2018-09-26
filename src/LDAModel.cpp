@@ -57,8 +57,8 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
   nz_nvt_indices.reserve(local_V);
   for (int i = 0; i < local_V; ++i) {
     std::vector<int> nt_vi;
-    std::vector<int> nz_nt_vi;
-    nz_nt_vi.reserve(K_);
+    std::set<int> nz_nt_vi;
+    // nz_nt_vi.reserve(K_);
 
     uint16_t store_type = load_value<uint16_t>(buffer); // 1 -> sparse, 2 -> dense
     // std::cout << store_type << " " << i << std::endl;
@@ -73,7 +73,7 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
         uint16_t count = load_value<uint16_t>(buffer);
 
         nt_vi[top] = count;
-        nz_nt_vi.push_back(top);
+        nz_nt_vi.insert(top);
       }
     } else if (store_type == 2) {
       // dense
@@ -84,7 +84,7 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
 
         nt_vi.push_back(temp);
         if (temp != 0) {
-          nz_nt_vi.push_back(j);
+          nz_nt_vi.insert(j);
         }
       }
     } else {
@@ -96,12 +96,12 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
 
   nt.clear();
   nt.reserve(K_);
-  nz_nt_indices.reserve(K_);
+  // nz_nt_indices.reserve(K_);
   for (int i = 0; i < K_; ++i) {
     int temp = load_value<int>(buffer);
     nt.push_back(temp);
     if (temp != 0) {
-      nz_nt_indices.push_back(i);
+      nz_nt_indices.insert(i);
     }
   }
 
@@ -138,7 +138,8 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
   int16_t D = load_value<int16_t>(info);
   ndt.reserve(D);
 
-  std::vector<int> nt_di, nz_nt_di;
+  std::vector<int> nt_di;
+  std::set<int> nz_nt_di;
 
   for (int i = 0; i < D; ++i) {
     // nt_di.reserve(K_);
@@ -151,21 +152,21 @@ LDAModel::LDAModel(const char* buffer_to_decompress, const char* info, int to_up
     if (store_type == 1) {
       int16_t len = load_value<int16_t>(info);
       nt_di.resize(K_, 0);
-      nz_nt_di.reserve(len);
+      // nz_nt_di.reserve(len);
       for (int j = 0; j < len; ++j) {
         int16_t top = load_value<int16_t>(info);
         int16_t count = load_value<int16_t>(info);
         nt_di[top] = count;
-        nz_nt_di.push_back(top);
+        nz_nt_di.insert(top);
       }
     } else if (store_type == 2) {
       nt_di.reserve(K_);
-      nz_nt_di.reserve(K_);
+      // nz_nt_di.reserve(K_);
       for (int j = 0; j < K_; ++j) {
         int16_t temp = load_value<int16_t>(info);
         nt_di.push_back(temp);
         if (temp != 0) {
-          nz_nt_di.push_back(j);
+          nz_nt_di.insert(j);
         }
       }
     }
@@ -230,7 +231,8 @@ LDAModel::LDAModel(const char* info,  bool save) {
   ndt.reserve(D);
   nz_ndt_indices.reserve(D);
 
-  std::vector<int> nt_di, nz_nt_di;
+  std::vector<int> nt_di;
+  std::set<int> nz_nt_di;
 
   for (int i = 0; i < D; ++i) {
     // nt_di.reserve(K_);
@@ -243,21 +245,21 @@ LDAModel::LDAModel(const char* info,  bool save) {
     if (store_type == 1) {
       int16_t len = load_value<int16_t>(info);
       nt_di.resize(K_, 0);
-      nz_nt_di.reserve(K_);
+      // nz_nt_di.reserve(K_);
       for (int j = 0; j < len; ++j) {
         int16_t top = load_value<int16_t>(info);
         int16_t count = load_value<int16_t>(info);
         nt_di[top] = count;
-        nz_nt_di.push_back(top);
+        nz_nt_di.insert(top);
       }
     } else if (store_type == 2) {
       nt_di.reserve(K_);
-      nz_nt_di.reserve(K_);
+      // nz_nt_di.reserve(K_);
       for (int j = 0; j < K_; ++j) {
         int16_t temp = load_value<int16_t>(info);
         nt_di.push_back(temp);
         if (temp != 0) {
-          nz_nt_di.push_back(j);
+          nz_nt_di.insert(j);
         }
       }
     }
@@ -299,8 +301,8 @@ void LDAModel::update_model(const char* buffer_to_decompress, int to_update, int
 
   for (int i = 0; i < local_V; ++i) {
     std::vector<int> nt_vi;
-    std::vector<int> nz_nt_vi;
-    nz_nt_vi.reserve(K_);
+    std::set<int> nz_nt_vi;
+    // nz_nt_vi.reserve(K_);
 
     int16_t store_type = load_value<int16_t>(buffer); // 1 -> sparse, 2 -> dense
     // std::cout << store_type << std::endl;
@@ -317,7 +319,7 @@ void LDAModel::update_model(const char* buffer_to_decompress, int to_update, int
         int16_t count = load_value<int16_t>(buffer);
 
         nt_vi[top] = count;
-        nz_nt_vi.push_back(top);
+        nz_nt_vi.insert(top);
 
       }
 
@@ -338,7 +340,7 @@ void LDAModel::update_model(const char* buffer_to_decompress, int to_update, int
 
         nt_vi.push_back(temp);
         if (temp != 0) {
-          nz_nt_vi.push_back(j);
+          nz_nt_vi.insert(j);
         }
       }
       // std::cout << std::endl;
@@ -354,12 +356,12 @@ void LDAModel::update_model(const char* buffer_to_decompress, int to_update, int
   nt.clear();
   nt.reserve(K_);
   nz_nt_indices.clear();
-  nz_nt_indices.reserve(K_);
+  // nz_nt_indices.reserve(K_);
   for (int i = 0; i < K_; ++i) {
     int32_t temp = load_value<int32_t>(buffer);
     nt.push_back(temp);
     if (temp != 0) {
-      nz_nt_indices.push_back(i);
+      nz_nt_indices.insert(i);
     }
   }
 
@@ -571,9 +573,12 @@ char* LDAModel::sample_thread(
       // Compute coefficients vector
       coeff_di.clear();
       coeff_di.resize(K_, 0);
-      for (int j = 0; j < K_; ++j) {
-        coeff_di[j] = 1.0 * (alpha + (double) ndt[doc][j]) / ( eta * (double) V_ + (float) nt[j]);
+      for (auto& nz_top: nz_ndt_indices[doc]) {
+        coeff_di[nz_top] = 1.0 * (alpha + (double) ndt[doc][nz_top]) / ( eta * (double) V_ + (float) nt[nz_top]);
       }
+      // for (int j = 0; j < K_; ++j) {
+      //   coeff_di[j] = 1.0 * (alpha + (double) ndt[doc][j]) / ( eta * (double) V_ + (float) nt[j]);
+      // }
     }
 
     nvt[lindex][top] -= 1;
@@ -632,7 +637,9 @@ char* LDAModel::sample_thread(
       rdn -= word_threshold;
       if (rdn < doc_threshold) {
         for (auto& nz_top: nz_ndt_indices[doc]) {
-          rdn -= doc_vec[nz_top];
+          // rdn -= doc_vec[nz_top];
+          double temp = ndt[doc][new_top] / (eta * V_ + nt[nz_top]);
+          // std::cout << "doc_threshold check: " << temp << std::endl;
           if (rdn <= 0) {
             new_top = nz_top;
             break;
@@ -641,7 +648,10 @@ char* LDAModel::sample_thread(
       } else {
         rdn -= doc_threshold;
         for (int j = 0; j < K_; ++j) {
-          rdn -= smoothing_vec[j];
+          // rdn -= smoothing_vec[j];
+          double temp = 1.0 / (eta * V_ + nt[j]);
+          // std::cout << "s_threshold check: " << temp << std::endl;
+          rdn -= temp;
           if (rdn <= 0) {
             new_top = j;
             break;
@@ -651,15 +661,23 @@ char* LDAModel::sample_thread(
     }
 
     if (ndt[doc][new_top] == 0) {
-      nz_ndt_indices[doc].push_back(new_top);
+      nz_ndt_indices[doc].insert(new_top);
+      // for (int q = 0; q < nz_ndt_indices[doc].size(); ++q) {
+      //   std::cout << nz_ndt_indices[doc][q] << " ";
+      // }
+      // std::cout << std::endl;
     }
 
     if (nvt[lindex][new_top] == 0) {
-      nz_nvt_indices[lindex].push_back(new_top);
+      nz_nvt_indices[lindex].insert(new_top);
+      // for (int q = 0; q < nz_nvt_indices[lindex].size(); ++q) {
+      //   std::cout << nz_nvt_indices[lindex][q] << " ";
+      // }
+      // std::cout << std::endl;
     }
 
     if (nt[new_top] == 0) {
-      nz_nt_indices.push_back(new_top);
+      nz_nt_indices.insert(new_top);
     }
 
     // t[i] = new_top;

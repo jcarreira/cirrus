@@ -82,8 +82,8 @@ protected:
   std::vector<std::vector<int>> ndt, nvt;
   std::vector<int> nt;
 
-  std::vector<std::vector<int>> nz_ndt_indices, nz_nvt_indices;
-  std::vector<int> nz_nt_indices;
+  std::vector<std::set<int>> nz_ndt_indices, nz_nvt_indices;
+  std::set<int> nz_nt_indices;
   /**
     * vocabulary slice containing word indices
     * that are being considered currently
