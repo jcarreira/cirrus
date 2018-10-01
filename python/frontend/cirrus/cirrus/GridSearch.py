@@ -24,6 +24,7 @@ class GridSearch:
         self.kill_signal = threading.Event()
         self.loss_lst = []
         self.start_time = time.time()
+        self.total_costs = []
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -39,7 +40,7 @@ class GridSearch:
                 hyper_params=hyper_params,
                 machines=machines)
 
-        adjust_num_threads();
+        self.adjust_num_threads();
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -87,7 +88,11 @@ class GridSearch:
         return cost
 
     def get_cost_per_sec(self):
-        return sum([c.cost_model.get_cost_per_second() for c in self.cirrus_objs])
+        total = 0
+        for c in self.cirrus_objs:
+            if not c.is_dead():
+                total += c.cost_model.get_cost_per_second()
+        return total
 
     def get_num_lambdas(self):
         return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
@@ -99,7 +104,7 @@ class GridSearch:
         elif metric == "UPS":
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
+            lst = self.total_costs
         else:
             raise Exception('Metric not available')
         return [item[0] for item in lst]
@@ -118,7 +123,7 @@ class GridSearch:
         elif metric == "UPS":
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
+            lst = self.total_costs
         else:
             raise Exception('Metric not available')
         return [item[1] for item in lst]
@@ -138,7 +143,7 @@ class GridSearch:
                 cirrus_obj.relaunch_lambdas()
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
-
+                self.total_costs.append((time.time() - self.start_time, self.get_cost_per_sec()))
                 print("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
 
                 index += num_jobs
@@ -194,13 +199,15 @@ class GridSearch:
             p = threading.Thread(target=custodian, args=(self.cirrus_objs, i, self.num_jobs))
             p.start()
 
-    def get_number_experiments(self):
+    def get_number_experiments(self, metric=None):
+        if metric == "CPS":
+            return 1
         return len(self.cirrus_objs)
 
     def set_threads(self, n):
         self.num_jobs = n
 
-        adjust_num_threads();
+        self.adjust_num_threads();
 
 
     # Start threads to maintain all experiments

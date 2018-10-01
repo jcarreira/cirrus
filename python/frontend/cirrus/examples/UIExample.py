@@ -1,12 +1,12 @@
 from context import cirrus
 
 urls = [
-        "ec2-18-237-213-139.us-west-2.compute.amazonaws.com", 
-        "ec2-34-211-54-228.us-west-2.compute.amazonaws.com"]
+        "ec2-34-212-6-172.us-west-2.compute.amazonaws.com", 
+        "ec2-34-210-144-212.us-west-2.compute.amazonaws.com"]
 ips = [
-       "172.31.14.190",
-       "172.31.9.94"]
-data_bucket = 'cirrus-criteo-kaggle-19b-random'
+       "172.31.5.74",
+       "172.31.10.106"]
+data_bucket = 'criteo-kaggle-19b'
 model = 'model_v1'
 
 basic_params = {
@@ -45,14 +45,14 @@ if __name__ == "__main__":
         
     machines = zip(urls, ips)
 
-    learning_rates = [1/(i * 10) for i in range(1, 20)]
+    learning_rates = [1/(i * 10 * 1.0) for i in range(1, 20)]
 
     gs = cirrus.GridSearch(task=cirrus.LogisticRegression,
                            param_base=basic_params,
                            hyper_vars=["learning_rate", "worker_size"],
                            hyper_params=[learning_rates, [128, 246, 512]],
                            machines=machines)
-    gs.set_threads(200)
+    gs.set_threads(10)
     gs.run(UI=True)
 
 

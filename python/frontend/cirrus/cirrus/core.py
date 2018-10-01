@@ -99,7 +99,10 @@ class BaseTask(object):
         
         elapsed = time.time() - self.start_time
         cps = self.cost_model.get_cost_per_second()
-        self.time_cps_lst.append((time.time() - self.start_time, cps))
+        if self.is_dead():
+            self.time_cps_lst.append((time.time() - self.start_time, 0))
+        else:
+            self.time_cps_lst.append((time.time() - self.start_time, cps))
         return self.time_cps_lst
 
     def get_num_lambdas(self, fetch=True):
