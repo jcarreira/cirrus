@@ -47,7 +47,7 @@ class GridSearch(MLJob):
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
-        self.num_jobs = min(self.num_jobs, len(self.cirrus_objs))
+        self.num_jobs = len(self.cirrus_objs)
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
@@ -66,6 +66,7 @@ class GridSearch(MLJob):
             modified_config['ps_ip_port'] = base_port
             modified_config['ps_ip_public'] = machines[index][0]
             modified_config['ps_ip_private'] = machines[index][1]
+            print(machines[index][0], machines[index][1])
             index = (index + 1) % num_machines
             base_port += 2
             c = task(**modified_config)
@@ -171,7 +172,8 @@ class GridSearch(MLJob):
             c.get_command(command_dict)
 
         # Write those commands into bash files
-        command_dict_to_file(command_dict)
+        if run:
+            command_dict_to_file(command_dict)
 
         # Number of threads
         copy_threads = min(len(self.machines), self.num_jobs)
@@ -181,7 +183,7 @@ class GridSearch(MLJob):
             while True:
                 if thread_id >= len(self.machines):
                     return
-
+                
                 sh_file = "machine_%d.sh" % thread_id
                 ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
 

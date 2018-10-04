@@ -1,11 +1,11 @@
 from context import cirrus
 
 urls = [
-        "ec2-18-237-213-139.us-west-2.compute.amazonaws.com", 
-        "ec2-18-237-31-107.us-west-2.compute.amazonaws.com"]
+        "ec2-34-210-144-212.us-west-2.compute.amazonaws.com", 
+        "ec2-34-212-6-172.us-west-2.compute.amazonaws.com"]
 ips = [
-       "172.31.14.190",
-       "172.31.6.212"]
+       "172.31.10.106",
+       "172.31.5.74"]
 data_bucket = 'criteo-kaggle-19b'
 model = 'model_v1'
 

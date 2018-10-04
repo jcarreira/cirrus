@@ -37,14 +37,16 @@ class CrossValidation(MLJob):
                        base_port = base_port,
                        config_num = i)
       self.cirrus_objs.append(task)
-      base_port += 2 * len(list(itertools.product(*hyper_params)))
-      self.infos.extend([{'color': get_random_color()} for i in range(2 * len(list(itertools.product(*hyper_params))))])
+      combos = len(list(itertools.product(*hyper_params)))
+      base_port += 2 * combos
+      self.infos.extend([{'color': get_random_color()} for i in range(2 * combos)])
       task_command_dicts.append(task.get_command_dict())
     for machine in self.machines:
         for c_dict in task_command_dicts:
             self.command_dict[machine[0]].extend(c_dict[machine[0]])
     self.loss_lst = [[] for _ in range(self.get_number_experiments())]
     self.num_threads = len(self.loss_lst)
+    print(self.machines)
   
   def run(self, UI=False):
     command_dict_to_file(self.command_dict)
@@ -99,9 +101,9 @@ class CrossValidation(MLJob):
         while True:
             if thread_id >= len(self.machines):
                 return
-            
             sh_file = "machine_%d.sh" % thread_id
             ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
+            print(thread_id, ubuntu_machine)
 
             cmd = "scp %s %s:~/python_files" % (sh_file, ubuntu_machine)
             print cmd
