@@ -10,9 +10,9 @@ data_bucket = 'criteo-kaggle-19b'
 model = 'model_v1'
 
 basic_params = {
-    'n_workers': 20,
+    'n_workers': 5,
     'n_ps': 1,
-    'worker_size': 128,
+    'lambda_size': 128,
     'dataset': data_bucket,
     'learning_rate': 0.01,
     'epsilon': 0.0001,
