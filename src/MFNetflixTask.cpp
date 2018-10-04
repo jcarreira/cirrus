@@ -73,6 +73,7 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
   this->config = config;
 
   psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+  psint->connect();
 
   mf_model_get = std::make_unique<MFModelGet>(ps_ip, ps_port);
 
@@ -113,12 +114,19 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     sample_index = sample_low;
 
   }
+<<<<<<< HEAD
   std::vector<std::pair<int, int>> train_range_vector;
   std::pair<int, int> train_range_pair = std::make_pair(l, r + 1);
   train_range_vector.push_back(train_range_pair);
   S3SparseIterator s3_iter(
       train_range_vector, config, config.get_s3_size(), config.get_minibatch_size(),
       false, worker, false);
+=======
+
+  S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
+                           config.get_minibatch_size(), false, worker, false,
+                           false);
+>>>>>>> upstream/master
 
   std::cout << "[WORKER] starting loop" << std::endl;
 

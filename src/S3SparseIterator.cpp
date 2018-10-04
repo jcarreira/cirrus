@@ -30,6 +30,7 @@ S3SparseIterator::S3SparseIterator(std::vector<std::pair<int, int>> ranges,  // 
       worker_id(worker_id),
       re(worker_id),
       random_access(random_access) {
+<<<<<<< HEAD
   std::cout << "S3SparseIterator::Creating S3SparseIterator" << std::endl;
   std::cout << "ranges: ";
   for (std::vector<std::pair<int, int>>::const_iterator i = ranges.begin();i != ranges.end(); ++i) {
@@ -38,6 +39,12 @@ S3SparseIterator::S3SparseIterator(std::vector<std::pair<int, int>> ranges,  // 
   std::cout << std::endl;  
   std::cout  << " use_label: " << use_label
     << std::endl;
+=======
+  std::cout << "S3SparseIterator::Creating S3SparseIterator"
+            << " left_id: " << left_id << " right_id: " << right_id
+            << " use_label: " << use_label << " has_labels: " << has_labels
+            << std::endl;
+>>>>>>> upstream/master
 
   // initialize s3
   s3_client = std::make_shared<S3Client>();

@@ -22,7 +22,6 @@ class BaseTask(object):
             n_workers,
             lambda_size,
             n_ps,
-            worker_size,
             dataset,
             learning_rate,
             epsilon,
@@ -48,7 +47,6 @@ class BaseTask(object):
         self.n_workers = n_workers
         self.lambda_size = lambda_size
         self.n_ps = n_ps
-        self.worker_size = worker_size
         self.dataset=dataset
         self.learning_rate = learning_rate
         self.epsilon = epsilon
@@ -83,7 +81,7 @@ class BaseTask(object):
                     self.n_ps,
                     0,
                     self.n_workers,
-                    self.worker_size)
+                    self.lambda_size)
 
         self.time_cps_lst = []
         self.time_ups_lst = []

@@ -69,6 +69,7 @@ class GridSearch(MLJob):
             print(machines[index][0], machines[index][1])
             index = (index + 1) % num_machines
             base_port += 2
+
             c = task(**modified_config)
             self.cirrus_objs.append(c)
             self.infos.append({'color': get_random_color()})
