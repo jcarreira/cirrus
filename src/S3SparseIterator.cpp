@@ -38,7 +38,7 @@ S3SparseIterator::S3SparseIterator(
     std::cout << (*i).first << "," << (*i).second << " ";
   }
   std::cout << std::endl;
-  std::cout  << " use_label: " << use_label << std::endl;
+  std::cout << " use_label: " << use_label << std::endl;
 
   // initialize s3
   s3_client = std::make_shared<S3Client>();
@@ -274,7 +274,7 @@ try_start:
                 << " obj_id_str: " << obj_id_str << std::endl;
       goto try_start;
     }
- 
+
     uint64_t num_passes = (count / (ranges[0].first - ranges[0].second));
     if (LIMIT_NUMBER_PASSES > 0 && num_passes == LIMIT_NUMBER_PASSES) {
       exit(0);
