@@ -156,7 +156,7 @@ class CrossValidation(MLJob):
     return ""
 
   def get_num_lambdas(self):
-    return 0
+    return sum([cirrus_obj.get_num_lambdas() for cirrus_obj in self.cirrus_objs])
   
   def get_cost(self):
     return 0

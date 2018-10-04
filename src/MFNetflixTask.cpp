@@ -114,19 +114,11 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     sample_index = sample_low;
 
   }
-<<<<<<< HEAD
   std::vector<std::pair<int, int>> train_range_vector;
   std::pair<int, int> train_range_pair = std::make_pair(l, r + 1);
   train_range_vector.push_back(train_range_pair);
-  S3SparseIterator s3_iter(
-      train_range_vector, config, config.get_s3_size(), config.get_minibatch_size(),
-      false, worker, false);
-=======
-
-  S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
-                           config.get_minibatch_size(), false, worker, false,
-                           false);
->>>>>>> upstream/master
+  S3SparseIterator s3_iter(train_range_vector, config, config.get_s3_size(),
+                           config.get_minibatch_size(), false, worker, false);
 
   std::cout << "[WORKER] starting loop" << std::endl;
 

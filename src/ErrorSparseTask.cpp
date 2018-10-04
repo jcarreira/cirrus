@@ -130,7 +130,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::pair<int, int> test_range_pair = std::make_pair(left, right);
   test_range_vector.push_back(test_range_pair);
   S3SparseIterator s3_iter(
-      test_range_vector, config, config.get_s3_size(), config.get_minibatch_size(),
+      test_range_vector, config, config.get_s3_size(),
+      config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION, 0, false,
       config.get_model_type() == Configuration::LOGISTICREGRESSION);
@@ -138,10 +139,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   // get data first
   // what we are going to use as a test set
   std::vector<std::shared_ptr<SparseDataset>> minibatches_vec;
-  std::cout << "[ERROR_TASK] getting minibatches from "
-    << left << " to "
-    << right
-    << std::endl;
+  std::cout << "[ERROR_TASK] getting minibatches from " << left << " to "
+            << right << std::endl;
 
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();

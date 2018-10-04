@@ -12,14 +12,15 @@
 namespace cirrus {
   
 // s3_cad_size nmber of samples times features per sample
-S3SparseIterator::S3SparseIterator(std::vector<std::pair<int, int>> ranges,  // right id is exclusive
-                                   const Configuration& c,
-                                   uint64_t s3_rows,
-                                   uint64_t minibatch_rows,
-                                   bool use_label,
-                                   int worker_id,
-                                   bool random_access,
-                                   bool has_labels)
+S3SparseIterator::S3SparseIterator(
+    std::vector<std::pair<int, int>> ranges,  // right id is exclusive
+    const Configuration& c,
+    uint64_t s3_rows,
+    uint64_t minibatch_rows,
+    bool use_label,
+    int worker_id,
+    bool random_access,
+    bool has_labels)
     : S3Iterator(c, has_labels),
       ranges(ranges),
       s3_rows(s3_rows),
@@ -30,21 +31,14 @@ S3SparseIterator::S3SparseIterator(std::vector<std::pair<int, int>> ranges,  // 
       worker_id(worker_id),
       re(worker_id),
       random_access(random_access) {
-<<<<<<< HEAD
   std::cout << "S3SparseIterator::Creating S3SparseIterator" << std::endl;
   std::cout << "ranges: ";
-  for (std::vector<std::pair<int, int>>::const_iterator i = ranges.begin();i != ranges.end(); ++i) {
-      std::cout << (*i).first << "," << (*i).second << " ";
+  for (std::vector<std::pair<int, int>>::const_iterator i = ranges.begin();
+       i != ranges.end(); ++i) {
+    std::cout << (*i).first << "," << (*i).second << " ";
   }
-  std::cout << std::endl;  
-  std::cout  << " use_label: " << use_label
-    << std::endl;
-=======
-  std::cout << "S3SparseIterator::Creating S3SparseIterator"
-            << " left_id: " << left_id << " right_id: " << right_id
-            << " use_label: " << use_label << " has_labels: " << has_labels
-            << std::endl;
->>>>>>> upstream/master
+  std::cout << std::endl;
+  std::cout  << " use_label: " << use_label << std::endl;
 
   // initialize s3
   s3_client = std::make_shared<S3Client>();
@@ -205,7 +199,7 @@ uint64_t S3SparseIterator::getObjId(std::vector<std::pair<int, int>> ranges) {
     if (current == ranges[current_range].second) {
       current_range++;
       if (current_range == ranges.size()) {
-          current_range = 0;
+        current_range = 0;
       }
       current = ranges[current_range].first;
     }
@@ -280,7 +274,7 @@ try_start:
                 << " obj_id_str: " << obj_id_str << std::endl;
       goto try_start;
     }
-    
+ 
     uint64_t num_passes = (count / (ranges[0].first - ranges[0].second));
     if (LIMIT_NUMBER_PASSES > 0 && num_passes == LIMIT_NUMBER_PASSES) {
       exit(0);
