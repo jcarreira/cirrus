@@ -223,10 +223,10 @@ def set_kill_button_text(child):
     [State('data-panel', 'children')]
 )
 def select_or_kill(selected_points, kill_button_ts, current_info):
-    if selected_points == None:
+    if selected_points is None:
         return "Nothing selected!"
 
-    if kill_button_ts == None:
+    if kill_button_ts is None:
         kill_button_ts = 0
     last_kill_time = (time.time() * 1000.0) - kill_button_ts
 

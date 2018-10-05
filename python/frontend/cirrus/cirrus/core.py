@@ -18,34 +18,34 @@ class BaseTask(object):
     __metaclass__ = ABCMeta
 
     def __init__(self,
-            n_workers,
-            lambda_size,
-            n_ps,
-            dataset,
-            learning_rate,
-            epsilon,
-            key_name, key_path, # aws key
-            ps_ip_public, # public parameter server ip
-            ps_ip_private, # private parameter server ip
-            ps_ip_port,
-            ps_username, # parameter server VM username
-            opt_method, # adagrad, sgd, nesterov, momentum
-            checkpoint_model, # checkpoint model every x seconds
-            train_set,
-            test_set,
-            minibatch_size,
-            model_bits,
-            use_grad_threshold,
-            grad_threshold,
-            timeout,
-            threshold_loss,
-            progress_callback
-            ):
+                 n_workers,
+                 lambda_size,
+                 n_ps,
+                 dataset,
+                 learning_rate,
+                 epsilon,
+                 key_name, key_path, # aws key
+                 ps_ip_public, # public parameter server ip
+                 ps_ip_private, # private parameter server ip
+                 ps_ip_port,
+                 ps_username, # parameter server VM username
+                 opt_method, # adagrad, sgd, nesterov, momentum
+                 checkpoint_model, # checkpoint model every x seconds
+                 train_set,
+                 test_set,
+                 minibatch_size,
+                 model_bits,
+                 use_grad_threshold,
+                 grad_threshold,
+                 timeout,
+                 threshold_loss,
+                 progress_callback
+                 ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
         self.lambda_size = lambda_size
         self.n_ps = n_ps
-        self.dataset=dataset
+        self.dataset = dataset
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.key_name = key_name
@@ -56,15 +56,15 @@ class BaseTask(object):
         self.ps_username = ps_username
         self.opt_method = opt_method
         self.checkpoint_model = checkpoint_model
-        self.train_set=train_set
-        self.test_set=test_set
-        self.minibatch_size=minibatch_size
-        self.model_bits=model_bits
-        self.use_grad_threshold=use_grad_threshold
-        self.grad_threshold=grad_threshold
-        self.timeout=timeout
-        self.threshold_loss=threshold_loss
-        self.progress_callback=progress_callback
+        self.train_set = train_set
+        self.test_set = test_set
+        self.minibatch_size = minibatch_size
+        self.model_bits = model_bits
+        self.use_grad_threshold = use_grad_threshold
+        self.grad_threshold = grad_threshold
+        self.timeout = timeout
+        self.threshold_loss = threshold_loss
+        self.progress_callback = progress_callback
         self.dead = False
         self.cost_model = None
         self.total_cost = 0
@@ -74,11 +74,11 @@ class BaseTask(object):
         self.kill_signal = threading.Event()
         self.num_lambdas = 0
         self.cost_model = CostModel(
-                    'm5.large',
-                    self.n_ps,
-                    0,
-                    self.n_workers,
-                    self.lambda_size)
+            'm5.large',
+            self.n_ps,
+            0,
+            self.n_workers,
+            self.lambda_size)
 
         self.time_cps_lst = []
         self.time_ups_lst = []
@@ -94,10 +94,9 @@ class BaseTask(object):
         return string
 
     def get_cost_per_second(self):
-        
         elapsed = time.time() - self.start_time
         cps = self.cost_model.get_cost_per_second()
-        self.time_cps_lst.append((time.time() - self.start_time, cps))
+        self.time_cps_lst.append((elapsed, cps))
         return self.time_cps_lst
 
     def get_num_lambdas(self, fetch=True):
@@ -131,7 +130,7 @@ class BaseTask(object):
         self.get_cost_per_second()
         num_task = 3
 
-        if num_lambdas == None:
+        if num_lambdas is None:
             return
 
         if num_lambdas < self.n_workers:
@@ -147,8 +146,8 @@ class BaseTask(object):
                         LogType='Tail',
                         Payload=payload)
                 except Exception as e:
-                    print "client.invoke exception caught"
-                    print str(e)
+                    print("client.invoke exception caught")
+                    print(str(e))
 
     def get_time_loss(self, rtl=False):
 
@@ -171,7 +170,7 @@ class BaseTask(object):
             else:
                 return self.time_loss_lst
 
-        if len(self.time_loss_lst) == 0 or not ((t, loss) == self.time_loss_lst[-1]):
+        if len(self.time_loss_lst) == 0 or not (t, loss) == self.time_loss_lst[-1]:
             self.time_loss_lst.append((t, loss))
         self.real_time_loss_lst.append((time.time() - self.start_time, real_time_loss))
         if rtl:
@@ -199,7 +198,7 @@ class BaseTask(object):
 
     def launch_error_task(self, command_dict=None):
         cmd = 'nohup ./parameter_server --config config_%d.txt --nworkers %d --rank 2 --ps_ip %s --ps_port %d &> error_out_%d &' % (
-        self.ps_ip_port, self.n_workers, self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
+            self.ps_ip_port, self.n_workers, self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
