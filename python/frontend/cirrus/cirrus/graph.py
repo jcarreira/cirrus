@@ -16,7 +16,7 @@ process = psutil.Process(os.getpid())
 
 app = dash.Dash(__name__)
 app.css.append_css({
-        "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
+    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
 })
 
 log = logging.getLogger('werkzeug')
@@ -86,7 +86,7 @@ app.layout = html.Div([
                 value='all'
             ),
             html.P(id='data-panel',
-                children='Click on a point and then press kill', style={"white-space": "pre-line"}),
+                   children='Click on a point and then press kill', style={"white-space": "pre-line"}),
             html.Button('Kill', id='kill-button'),
             html.Button('Kill All', id='kill-all-button')
 
@@ -94,8 +94,7 @@ app.layout = html.Div([
         ], style={'width':'20%', 'display': 'inline-block', 'vertical-align':'middle'})
 
     ],
-    className="container"
-    )
+             className="container")
 
 ])
 
@@ -128,8 +127,8 @@ def get_traces(num, metric="LOSS"):
                 y=get_ys_for(i, metric),
                 name=get_name_for(i),
                 mode='markers+lines',
-                line = dict(color = bundle.get_info(i, 'color')),
-                customdata =str(i) * lll
+                line=dict(color=bundle.get_info(i, 'color')),
+                customdata=str(i) * lll
             )
             trace_lst.append(trace)
     else:
@@ -146,10 +145,10 @@ def get_traces(num, metric="LOSS"):
                 y=ys,
                 name=get_name_for(i),
                 mode='markers+lines',
-                line = dict(color = (bundle.get_info(i, 'color'))),
-                customdata= str(i) * lll
+                line=dict(color=bundle.get_info(i, 'color')),
+                customdata=str(i) * lll
             )
-            if (len(ys) > 0):
+            if len(ys) > 0:
                 q.append((ys[-1], trace))
         q.sort(reverse=(num > 0))
         trace_lst = [item[1] for item in q[:abs(num)]]
@@ -194,7 +193,7 @@ def get_info_for(i):
     [Input('kill-all-button', 'n_clicks')]
 )
 def killall_clicked(n_clicks):
-    if (n_clicks > 0):
+    if n_clicks > 0:
         for i in range(get_num_experiments()):
             bundle.kill(i)
         return "Kill All"
@@ -223,17 +222,17 @@ def set_kill_button_text(child):
     [State('data-panel', 'children')]
 )
 def select_or_kill(selected_points, kill_button_ts, current_info):
-    if selected_points == None:
+    if selected_points is None:
         return "Nothing selected!"
 
-    if kill_button_ts == None:
+    if kill_button_ts is None:
         kill_button_ts = 0
     last_kill_time = (time.time() * 1000.0) - kill_button_ts
 
     if last_kill_time > 500:
         #print selected_points
         cnum = int(selected_points["points"][0]["customdata"])
-        string = 'Chose line: %d \n%s' % (cnum,  get_info_for(cnum))
+        string = 'Chose line: %d \n%s' % (cnum, get_info_for(cnum))
         return string
     else:
         cnum = int(current_info.split(" ")[2])
@@ -273,18 +272,18 @@ def gen_cost(interval):
 
 # FIXME: Need a more sophisticated way to zoom into the graph.
 @app.callback(Output('logloss', 'figure'),
-    [
-        Input('logloss-update', 'n_intervals'),
-        Input('showmenu', 'value'),
-        Input('graph-type', 'value')
-    ],
-    [
-        State('logloss', 'figure'),
-        State('logloss', 'relayoutData'),
-        State('mapControls', 'values')
-    ])
+              [
+                  Input('logloss-update', 'n_intervals'),
+                  Input('showmenu', 'value'),
+                  Input('graph-type', 'value')
+              ],
+              [
+                  State('logloss', 'figure'),
+                  State('logloss', 'relayoutData'),
+                  State('mapControls', 'values')
+              ])
 def gen_loss(interval, menu, graph_type, oldfig, relayoutData, lockCamera):
-    if menu=="top_ten":
+    if menu == "top_ten":
         how_many = -5
     elif menu == 'last_ten':
         how_many = 5

@@ -33,13 +33,13 @@ class GridSearch:
 
         # Setup
         self.set_task_parameters(
-                task,
-                param_base=param_base,
-                hyper_vars=hyper_vars,
-                hyper_params=hyper_params,
-                machines=machines)
+            task,
+            param_base=param_base,
+            hyper_vars=hyper_vars,
+            hyper_params=hyper_params,
+            machines=machines)
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -176,7 +176,7 @@ class GridSearch:
                 ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
 
                 cmd = "scp %s %s:~/" % (sh_file, ubuntu_machine)
-                print cmd
+                print(cmd)
                 os.system(cmd)
                 cmd = 'ssh %s "killall parameter_server; chmod +x %s; ./%s &"' % (ubuntu_machine, sh_file, sh_file)
                 os.system(cmd)
@@ -188,7 +188,8 @@ class GridSearch:
             p.start()
             p_lst.append(p)
 
-        [p.join() for p in p_lst]
+        for p in p_lst:
+            p.join()
 
         # Start custodian threads
         for i in range(self.num_jobs):
@@ -201,7 +202,7 @@ class GridSearch:
     def set_threads(self, n):
         self.num_jobs = n
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
 
     # Start threads to maintain all experiments
@@ -213,7 +214,7 @@ class GridSearch:
                 graph.bundle = self
                 graph.app.run_server()
 
-            self.ui_thread = threading.Thread(target=ui_func, args = (self, ))
+            self.ui_thread = threading.Thread(target=ui_func, args=(self,))
             self.ui_thread.start()
 
     # Stop all experiments
@@ -235,11 +236,11 @@ class GridSearch:
         lst = []
         for cirrus_obj in self.cirrus_objs:
             loss = cirrus_obj.get_time_loss()
-            if len(loss) == 0:
+            if not loss:
                 continue
             lst.append((index, loss[-1]))
             index += 1
-        lst.sort(key = lambda x: x[1][1])
+        lst.sort(key=lambda x: x[1][1])
         if n < 0:
             top = lst[n:]
         else:

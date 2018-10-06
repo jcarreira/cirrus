@@ -3,7 +3,8 @@ import random
 
 # Generates a random RGB color
 def get_random_color():
-    def rand_256(): return random.randint(0, 255)
+    def rand_256():
+        return random.randint(0, 255)
     return 'rgb(%d, %d, %d)' % (rand_256(), rand_256(), rand_256())
 
 

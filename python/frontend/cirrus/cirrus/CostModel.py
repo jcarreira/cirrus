@@ -1,24 +1,19 @@
-import threading
-import paramiko
-import time
-import os
-import boto3
 from threading import Thread
 
 class CostModel:
     def __init__(self,
-            vm_type,
-            num_vms,
-            s3_space_mb,
-            num_workers,
-            lambda_size):
+                 vm_type,
+                 num_vms,
+                 s3_space_mb,
+                 num_workers,
+                 lambda_size):
 
         self.vm_type = vm_type
         self.num_vms = num_vms
         self.s3_space_mb = s3_space_mb
         self.num_workers = num_workers
         self.lambda_size = lambda_size
-        
+
     def get_cost_per_second(self):
         # cost of smallest lambda (128MB) per hour
         lambda_cost_base_h = 0.007488
