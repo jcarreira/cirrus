@@ -1,6 +1,7 @@
 # Collaborative Filtering
 
 from core import BaseTask
+import ConfigGenerator
 
 
 class CollaborativeFilteringTask(BaseTask):
@@ -16,20 +17,17 @@ class CollaborativeFilteringTask(BaseTask):
             grad_t = 1
         else:
             grad_t = 0
-        config = "input_path: /home/ec2-user/cirrus/examples/ml/tests/test_mf/nf_parsed \n" + \
-                 "input_type: csv \n" + \
-                 "minibatch_size: %d \n" % self.minibatch_size + \
-                 "s3_size: 10000 \n" + \
-                 "model_type: CollaborativeFiltering \n" + \
-                 "learning_rate: %f \n" % self.learning_rate + \
-                 "epsilon: %lf \n" % self.epsilon + \
-                 "normalize: 1 \n" + \
-                 "limit_samples: 50000000 \n" + \
-                 "use_bias: 1 \n" + \
-                 "num_users: 480189 \n" + \
-                 "num_items: 17770 \n" + \
-                 "train_set: 0-5 \n" + \
-                 "s3_bucket: cirrus-netflix-not-normalized"
+        
+        config = ConfigGenerator.config_gen(
+                 minibatch_size = self.minibatch_size,
+                 s3_size = 10000,
+                 model_type = "CollaborativeFiltering",
+                 learning_rate = self.learning_rate,
+                 epsilon = self.epsilon,
+                 num_users = 480189,
+                 num_items = 17770,
+                 train_set = "0-5",
+                 s3_bucket = "cirrus-netflix-not-normalized")
 
         return config
 

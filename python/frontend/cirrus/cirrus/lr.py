@@ -1,11 +1,11 @@
 # Logistic Regression
 
 from core import BaseTask
+import ConfigGenerator
 
 
 class LogisticRegressionTask(BaseTask):
     def __init__(self, *args, **kwargs):
-        # pass all arguments of init to parent class
         super(LogisticRegressionTask, self).__init__(*args, **kwargs)
 
     def __del__(self):
@@ -18,25 +18,18 @@ class LogisticRegressionTask(BaseTask):
         else:
             grad_t = 0
 
-        config = "input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
-                 "input_type: csv\n" + \
-                 "num_classes: 2 \n" + \
-                 "num_features: 13 \n" + \
-                 "limit_cols: 14 \n" + \
-                 "normalize: 1 \n" + \
-                 "limit_samples: 50000000 \n" + \
-                 "s3_size: 50000 \n" + \
-                 "use_bias: 1 \n" + \
-                 "model_type: LogisticRegression \n" + \
-                 "minibatch_size: %d \n" % self.minibatch_size + \
-                 "learning_rate: %f \n" % self.learning_rate + \
-                 "epsilon: %lf \n" % self.epsilon + \
-                 "model_bits: %d \n" % self.model_bits + \
-                 "s3_bucket: %s \n" % self.dataset + \
-                 "use_grad_threshold: %d \n" % grad_t + \
-                 "grad_threshold: %lf \n" % self.grad_threshold + \
-                 "train_set: %d-%d \n" % self.train_set + \
-                 "test_set: %d-%d" % self.test_set
+        config = ConfigGenerator.config_gen(
+                s3_size = 50000,
+                model_type = "LogisticRegression",
+                minibatch_size = self.minibatch_size,
+                learning_rate = self.learning_rate,
+                epsilon = self.epsilon,
+                model_bits = self.model_bits,
+                s3_bucket = self.dataset,
+                use_grad_threshold = grad_t,
+                grad_threshold = self.grad_threshold,
+                train_set = "%d-%d" % self.train_set,
+                test_set = "%d-%d" % self.test_set)
         return config
 
 
@@ -90,5 +83,4 @@ def LogisticRegression(
             threshold_loss=threshold_loss,
             progress_callback=progress_callback
            )
-
 
