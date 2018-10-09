@@ -82,8 +82,8 @@ void Dataset::check(const Configuration& config) const {
   for (uint64_t i = 0; i < num_samples(); ++i) {
     if (config.get_model_type() != Configuration::SOFTMAX) {
       if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0)) {
-        throw std::runtime_error(
-            "Dataset::check_values wrong label value: " + std::to_string(l[i]));
+        throw std::runtime_error("Dataset::check_values wrong label value: " +
+                                 std::to_string(l[i]));
       }
     } else {
       if (l[i] >= config.get_num_classes() or l[i] < 0 or floor(l[i]) != l[i]) {
