@@ -14,6 +14,7 @@
 using namespace cirrus;
 
 Configuration config = Configuration("configs/test_config.cfg");
+FEATURE_TYPE avg_loss = 0;
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
                                        const std::string& ps_ip,
@@ -29,7 +30,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
 }
 
 void signal_callback_handler(int signum) {
-  if (avg_loss < 0.6) {
+  if (avg_loss < 0.66) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
@@ -49,7 +50,6 @@ int main() {
 
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
-  FEATURE_TYPE avg_loss = 0;
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
