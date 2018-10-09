@@ -186,7 +186,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
       // first user matches the model in user_models[0]
       uint64_t itemId = dataset.data_[user_from_0][j].first;
       FEATURE_TYPE rating = dataset.data_[user_from_0][j].second;
-      
 
       FEATURE_TYPE pred = predict(user_from_0, itemId);
       FEATURE_TYPE error = rating - pred;

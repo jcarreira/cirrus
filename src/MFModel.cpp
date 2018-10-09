@@ -401,12 +401,12 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
     }
   }
 
-//#ifdef DEBUG
-//  std::cout
-//    << "error: " << error
-//    << " count: " << count
-//    << std::endl;
-//#endif
+  //#ifdef DEBUG
+  //  std::cout
+  //    << "error: " << error
+  //    << " count: " << count
+  //    << std::endl;
+  //#endif
 
   //error = error / count;
   //error = std::sqrt(error);
