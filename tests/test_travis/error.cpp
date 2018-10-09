@@ -1,12 +1,12 @@
 #include <Tasks.h>
-
-#include "Serializers.h"
-#include "config.h"
-#include "Utils.h"
-#include "SparseLRModel.h"
-#include "PSSparseServerInterface.h"
+#include <signal.h>
 #include "Configuration.h"
 #include "InputReader.h"
+#include "PSSparseServerInterface.h"
+#include "Serializers.h"
+#include "SparseLRModel.h"
+#include "Utils.h"
+#include "config.h"
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
@@ -28,7 +28,16 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   return psi->get_full_model(false);
 }
 
+void signal_callback_handler(int signum) {
+  if (avg_loss < 0.6) {
+    exit(EXIT_SUCCESS);
+  } else {
+    exit(EXIT_FAILURE);
+  }
+}
+
 int main() {
+  signal(SIGPIPE, signal_callback_handler);
   // get data first
   // what we are going to use as a test set
   InputReader input;
