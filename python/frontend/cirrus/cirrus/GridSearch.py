@@ -62,7 +62,6 @@ class GridSearch:
                 machines=self.machines)
 
 
-
         self.adjust_num_threads();
 
     def adjust_num_threads(self):
@@ -131,15 +130,8 @@ class GridSearch:
         return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
 
     # Gets x-axis values of specified metric from experiment i 
-    def get_xs_for(self, i, metric="LOSS"):
-        if metric == "LOSS":
-            lst = self.loss_lst[i]
-        elif metric == "UPS":
-            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
-        elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
-        else:
-            raise Exception('Metric not available')
+    def get_xs_for(self, i, metric):
+        lst = self.cirrus_objs[i].fetch_metric(metric)
         return [item[0] for item in lst]
 
     # Helper method that collapses a list of commands into a single one
@@ -150,15 +142,8 @@ class GridSearch:
         return ' '.join(cmd_lst)
 
     # TODO: Fix duplicate methods
-    def get_ys_for(self, i, metric="LOSS"):
-        if metric == "LOSS":
-            lst = self.loss_lst[i]
-        elif metric == "UPS":
-            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
-        elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
-        else:
-            raise Exception('Metric not available')
+    def get_ys_for(self, i, metric):
+        lst = self.cirrus_objs[i].fetch_metric(metric)
         return [item[1] for item in lst]
 
     def start_queue_threads(self):
@@ -176,6 +161,8 @@ class GridSearch:
                 cirrus_obj.relaunch_lambdas()
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
+
+                logging.info("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
 
 
                 round_loss_lst = [(round(a, 3), round(float(b), 4))

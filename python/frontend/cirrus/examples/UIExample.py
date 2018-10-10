@@ -1,11 +1,10 @@
 from context import cirrus
 
 urls = [
-        "ec2-18-237-213-139.us-west-2.compute.amazonaws.com", 
-        "ec2-34-211-54-228.us-west-2.compute.amazonaws.com"]
+        "ec2-18-237-213-139.us-west-2.compute.amazonaws.com"
+        ]
 ips = [
-       "172.31.14.190",
-       "172.31.9.94"]
+       "172.31.14.190"]
 data_bucket = 'cirrus-criteo-kaggle-19b-random'
 model = 'model_v1'
 
@@ -44,6 +43,7 @@ if __name__ == "__main__":
 
         
     machines = zip(urls, ips)
+
 
     learning_rates = [0.5/i for i in range(1, 20)]
 
