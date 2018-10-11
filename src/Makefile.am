@@ -32,7 +32,7 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 	   -I$(TOP_DIR)/third_party/flatbuffers/include/ \
 	   -ggdb -frecord-gcc-switches -O3
 
-CPP_SOURCES = InputReader.cpp \
+CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
 	      OptimizationMethod.cpp AdaGrad.cpp \
 	      Momentum.cpp SGD.cpp Nesterov.cpp\
@@ -48,7 +48,7 @@ CPP_SOURCES = InputReader.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3SparseIterator.cpp S3Iterator.cpp S3IteratorLibsvm.cpp \
 	      S3.cpp SparseDataset.cpp \
-	      PSSparseServerTask.cpp PSSparseServerInterface.cpp Utils.cpp
+	      PSSparseServerTask.cpp PSSparseServerInterface.cpp
 
 parameter_server_SOURCES  = parameter_server.cpp $(CPP_SOURCES)
 
