@@ -151,7 +151,7 @@ ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
 
-void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb);
+void send_flatbuffer(int sock, const flatbuffers::FlatBufferBuilder* fbb);
 
 } // namespace cirrus
 

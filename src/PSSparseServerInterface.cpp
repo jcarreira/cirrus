@@ -9,7 +9,7 @@
 
 //#define DEBUG
 
-#define MAX_MSG_SIZE (1024 * 1024)
+#define MAX_MSG_SIZE (MB)
 
 namespace cirrus {
 
@@ -68,11 +68,14 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 
   // Make the index vector
   // We don't know the number of weights to start with
-  unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
+  std::shared_ptr<unsigned char> data = std::shared_ptr<unsigned char>(
+      new unsigned char[MAX_MSG_SIZE], std::default_delete<unsigned char[]>());
+  unsigned char* msg = data.get();
   unsigned char* msg_start = msg;
   uint32_t num_bytes = 0;
   int num_entries = 0;
 
+  // write indices to message
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       num_bytes += sizeof(w.first);
@@ -82,8 +85,6 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   }
 
   assert(num_bytes < MAX_MSG_SIZE);
-
-  // std::cout << "Sending indices: " << num_entries << std::endl;
 
   auto index_vec = builder.CreateVector(msg_start, num_bytes);
 
@@ -102,8 +103,10 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #endif
   send_flatbuffer(sock, &builder);
 
-  // std::cout << "Successfully sent request... Receiving sparse model response"
-  //           << std::endl;
+#ifdef DEBUG
+  std::cout << "Successfully sent request... Receiving sparse model response"
+            << std::endl;
+#endif
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
@@ -124,12 +127,12 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
-  // std::cout << "Calling load serialized sparse" << std::endl;
   // build a truly sparse model and return
   // TODO: Can this copy be avoided?
-  lr_model.loadSerializedSparse((FEATURE_TYPE*) sparse_model->model()->data(),
-                                (uint32_t*) msg_start,
-                                sparse_model->model()->size(), config);
+  lr_model.loadSerializedSparse(
+      reinterpret_cast<const FEATURE_TYPE*>(sparse_model->model()->data()),
+      reinterpret_cast<uint32_t*>(msg_start),
+      sparse_model->model()->size(), config);
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(
@@ -167,7 +170,6 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
 
   builder.Finish(worker_msg);
   send_flatbuffer(sock, &builder);
-  // std::cout << "Sent FlatBuffer\n";
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
@@ -288,8 +290,12 @@ void PSSparseServerInterface::send_gradient(
     message::WorkerMessage::ModelType mt) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   int grad_size = gradient.getSerializedSize();
+
+  assert(grad_size < 1 * MB);  // make sure it fits in stack
   unsigned char buf[grad_size];
+
   gradient.serialize(buf);
+
   auto grad_vec = builder.CreateVector(buf, grad_size);
   auto grad_msg =
       message::WorkerMessage::CreateGradientMessage(builder, grad_vec, mt);

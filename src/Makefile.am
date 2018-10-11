@@ -29,10 +29,10 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
-       -I$(TOP_DIR)/third_party/flatbuffers/include/ \
+	   -I$(TOP_DIR)/third_party/flatbuffers/include/ \
 	   -ggdb -frecord-gcc-switches -O3
 
-CPP_SOURCES = InputReader.cpp Utils.cpp \
+CPP_SOURCES = InputReader.cpp \
               Dataset.cpp Matrix.cpp \
 	      OptimizationMethod.cpp AdaGrad.cpp \
 	      Momentum.cpp SGD.cpp Nesterov.cpp\
@@ -48,7 +48,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3SparseIterator.cpp S3Iterator.cpp S3IteratorLibsvm.cpp \
 	      S3.cpp SparseDataset.cpp \
-	      PSSparseServerTask.cpp PSSparseServerInterface.cpp
+	      PSSparseServerTask.cpp PSSparseServerInterface.cpp Utils.cpp
 
 parameter_server_SOURCES  = parameter_server.cpp $(CPP_SOURCES)
 

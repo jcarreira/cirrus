@@ -16,7 +16,7 @@
 #undef DEBUG
 
 #define MAX_CONNECTIONS (nworkers * 2 + 1)  // (2 x # workers + 1)
-#define MAX_MSG_SIZE (1024 * 1024)
+#define MAX_MSG_SIZE (MB)
 #define THREAD_MSG_BUFFER_SIZE 1000000
 
 namespace cirrus {
@@ -170,7 +170,7 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   // to send back to the client
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
-  assert(to_send_size < 1024 * 1024);  // 1 MB
+  assert(to_send_size < MB);  // 1 MB
   unsigned char data_to_send[to_send_size];
   unsigned char* data_to_send_ptr = data_to_send;
   //#ifdef DEBUG
@@ -284,7 +284,7 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
 
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
-  thread_buffer.resize(120 * 1024 * 1024);  // 120 MB
+  thread_buffer.resize(120 * MB);  // 120 MB
   struct timespec ts;
   int thread_number = thread_count++;
   while (!kill_signal) {
@@ -341,7 +341,6 @@ void PSSparseServerTask::gradient_f() {
 
     switch (msg->payload_type()) {
     case message::WorkerMessage::Request_GradientMessage: {
-      // std::cout << "Gradient message received\n";
       auto gradient_msg = msg->payload_as_GradientMessage();
       const unsigned char* gradient_buf = gradient_msg->gradient()->data();
       if (gradient_msg->model_type() ==
@@ -388,7 +387,6 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_TaskRequest: {
-    // std::cout << "TaskRequest received\n";
 #ifdef DEBUG
       std::cout << "Get status task id: " << task_id << std::endl;
 #endif
@@ -421,7 +419,6 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_RegisterTaskMessage: {
-      // std::cout << "Register task received\n";
       // check if this task has already been registered
       int task_id = msg->payload_as_RegisterTaskMessage()->task_id();
       uint32_t task_reg =
@@ -594,7 +591,7 @@ void PSSparseServerTask::loop(int poll_id) {
   struct sockaddr_in cli_addr;
   socklen_t clilen = sizeof(cli_addr);
 
-  buffer.resize(10 * 1024 * 1024);  // reserve 10MB upfront
+  buffer.resize(10 * MB);  // reserve 10MB upfront
 
   std::cout << "Starting loop for id: " << poll_id << std::endl;
   while (!kill_signal) {

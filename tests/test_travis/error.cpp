@@ -11,6 +11,8 @@
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
 
+static const float LOSS_THRESHOLD = 0.66;
+
 using namespace cirrus;
 
 Configuration config = Configuration("configs/test_config.cfg");
@@ -81,7 +83,7 @@ int main() {
       throw std::runtime_error("Error");
     }
   }
-  if (avg_loss < 0.66) {
+  if (avg_loss < LOSS_THRESHOLD) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
