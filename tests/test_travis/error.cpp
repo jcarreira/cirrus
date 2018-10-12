@@ -10,7 +10,7 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
-#define ACC_CUTOFF (0.7) // when to register test as passing
+#define ACC_CUTOFF (0.7)              // when to register test as passing
 
 using namespace cirrus;
 
