@@ -45,9 +45,6 @@ SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labe
     int num_sample_values = load_value<int>(data);
 
 #ifdef DEBUG
-    if (has_labels) {
-    }
-    //std::cout << "num_sample_values: " << num_sample_values <<  std::endl;
     assert(num_sample_values >= 0 && num_sample_values < 1000000);
 #endif
 
