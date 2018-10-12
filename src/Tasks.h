@@ -3,13 +3,15 @@
 
 #include <Configuration.h>
 
-#include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SparseLRModel.h"
-#include "PSSparseServerInterface.h"
-#include "S3SparseIterator.h"
 #include "OptimizationMethod.h"
+#include "PSSparseServerInterface.h"
+#include "S3.h"
+#include "S3SparseIterator.h"
+#include "SoftmaxModel.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
 #include <string>
 #include <vector>
@@ -56,6 +58,39 @@ class MLTask {
     std::string ps_ip;
     uint64_t ps_port;
     Configuration config;
+};
+
+class SoftmaxTask : public MLTask {
+ public:
+  SoftmaxTask(uint64_t model_size,
+              uint64_t batch_size,
+              uint64_t samples_per_batch,
+              uint64_t features_per_sample,
+              uint64_t nworkers,
+              uint64_t worker_id,
+              const std::string& ps_ip,
+              uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port),
+        psint(nullptr) {}
+
+  /**
+   * Worker here is a value 0..nworkers - 1
+   */
+  void run(const Configuration& config, int worker);
+
+ private:
+  void push_gradient(SoftmaxGradient*);
+  bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                             S3SparseIterator& s3_iter);
+  std::mutex redis_lock;
+  PSSparseServerInterface* psint;
 };
 
 class LogisticSparseTaskS3 : public MLTask {
@@ -155,7 +190,7 @@ class ErrorSparseTask : public MLTask {
                    const std::string& ps_ip,
                    uint64_t ps_port);
 
-   void run(const Configuration& config);
+   void run(const Configuration& config, bool testing);
    void error_response();
 
   private:
@@ -202,9 +237,9 @@ class LoadingSparseTaskS3 : public MLTask {
     SparseDataset read_dataset(const Configuration& config);
     void check_loading(const Configuration&,
                        std::unique_ptr<S3Client>& s3_client);
-    void check_label(FEATURE_TYPE label);
+    void check_label(FEATURE_TYPE label, const Configuration& config);
 
-  private:
+   private:
 };
 
 class LoadingNetflixTask : public MLTask {
@@ -296,6 +331,9 @@ class PSSparseServerTask : public MLTask {
                                 std::vector<char>& thread_buffer);
   bool process_get_mf_full_model(const Request& req,
                                  std::vector<char>& thread_buffer);
+  bool process_get_sm_full_model(const Request& req,
+                                 std::vector<char>& thread_buffer);
+  bool process_send_sm_gradient(const Request& req, std::vector<char>&);
 
   void kill_server();
 
@@ -342,6 +380,7 @@ class PSSparseServerTask : public MLTask {
 
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
+  std::unique_ptr<SoftmaxModel> sm_model;   //< last computed model
   Configuration task_config;                //< config for parameter server
   uint32_t num_connections = 0;             //< number of current connections
 

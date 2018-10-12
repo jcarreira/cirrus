@@ -8,8 +8,8 @@ import boto3
 import messenger
 from CostModel import CostModel
 
-lambda_client = boto3.client('lambda', 'us-west-2')
-lambda_name = "testfunc1"
+lambda_client = boto3.client('lambda')
+lambda_name = "testfunc1_128"
 
 
 # Code shared by all Cirrus experiments
@@ -124,8 +124,8 @@ class BaseTask(object):
 
     def relaunch_lambdas(self):
         if self.is_dead():
+            print "Experiments are terminated"
             return
-
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
         self.get_cost_per_second()
@@ -141,7 +141,7 @@ class BaseTask(object):
                         % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
-                    response = lambda_client.invoke(
+                     response = lambda_client.invoke(
                         FunctionName=lambda_name,
                         InvocationType='Event',
                         LogType='Tail',

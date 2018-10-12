@@ -52,7 +52,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
 #ifdef DEBUG
   std::cout << "Sending gradient" << std::endl;
 #endif
-  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  int ret = send_all(sock, &operation, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending operation");
   }
@@ -61,11 +61,39 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
 #ifdef DEBUG
   std::cout << "Sending gradient with size: " << size << std::endl;
 #endif
-  ret = send(sock, &size, sizeof(uint32_t), 0);
+  ret = send_all(sock, &size, sizeof(uint32_t));
   if (ret == -1) {
     throw std::runtime_error("Error sending grad size");
   }
   
+  char data[size];
+  gradient.serialize(data);
+  ret = send_all(sock, data, size);
+  if (ret == 0) {
+    throw std::runtime_error("Error sending grad");
+  }
+}
+
+void PSSparseServerInterface::send_sm_gradient(
+    const SoftmaxGradient& gradient) {
+  uint32_t operation = SEND_SM_GRADIENT;
+#ifdef DEBUG
+  std::cout << "Sending gradient" << std::endl;
+#endif
+  int ret = send_all(sock, &operation, sizeof(uint32_t));
+  if (ret == -1) {
+    throw std::runtime_error("Error sending operation");
+  }
+
+  uint32_t size = gradient.getSerializedSize();
+#ifdef DEBUG
+  std::cout << "Sending gradient with size: " << size << std::endl;
+#endif
+  ret = send_all(sock, &size, sizeof(uint32_t));
+  if (ret == -1) {
+    throw std::runtime_error("Error sending grad size");
+  }
+
   char data[size];
   gradient.serialize(data);
   ret = send_all(sock, data, size);
@@ -115,6 +143,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
   if (send_all(sock, msg_begin, msg_size) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
+
   uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
 
 #ifdef DEBUG
@@ -151,6 +180,8 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     send_all(sock, &operation, sizeof(uint32_t));
     uint32_t to_receive_size;
     read_all(sock, &to_receive_size, sizeof(uint32_t));
+    std::cout << "Request sent. Receiving: " << to_receive_size << " bytes"
+              << std::endl;
 
     char* buffer = new char[to_receive_size];
     read_all(sock, buffer, to_receive_size);
@@ -184,6 +215,30 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     delete[] model_data;
     return model;
   }
+}
+
+std::unique_ptr<SoftmaxModel> PSSparseServerInterface::get_sm_full_model(
+    const Configuration& config) {
+  // 1. Send operation
+  uint32_t operation = GET_SM_FULL_MODEL;
+  send_all(sock, &operation, sizeof(uint32_t));
+
+  uint32_t to_receive_size;
+  read_all(sock, &to_receive_size, sizeof(uint32_t));
+  // std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" <<
+  // std::endl;
+
+  std::shared_ptr<char[]> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(), to_receive_size);
+  // std::cout
+  //<< " buffer checksum: " << crc32(buffer, to_receive_size)
+  //<< std::endl;
+
+  // build a sparse model and return
+  std::unique_ptr<SoftmaxModel> model = std::make_unique<SoftmaxModel>(
+      (FEATURE_TYPE*) (buffer.get()), std::move(config.get_num_classes()),
+      std::move(config.get_num_features()));  // XXX fix this
+  return model;
 }
 
 // Collaborative filtering

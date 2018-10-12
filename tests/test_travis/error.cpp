@@ -41,6 +41,7 @@ int main() {
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
   FEATURE_TYPE avg_loss = 0;
+  FEATURE_TYPE total_accuracy;
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
@@ -48,7 +49,7 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1337);
+      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1341);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -58,7 +59,7 @@ int main() {
       std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
           model->calc_loss(test_data, 0);  // XXX fix second param
       FEATURE_TYPE total_loss = ret.first;
-      FEATURE_TYPE total_accuracy = ret.second;
+      total_accuracy = ret.second;
       uint64_t total_num_samples = test_data.num_samples();
       uint64_t total_num_features = test_data.num_features();
 
@@ -72,7 +73,7 @@ int main() {
       throw std::runtime_error("Error");
     }
   }
-  if (avg_loss < 0.66) {
+  if (total_accuracy > 0.7) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);

@@ -353,28 +353,21 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
   double error = 0;
   uint64_t count = 0;
 
-//#ifdef DEBUG
-//  std::cout
-//    << "calc_loss() starting"
-//    << std::endl;
-//#endif
+#ifdef DEBUG
+  std::cout << "calc_loss() starting" << std::endl;
+#endif
 
   for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
     uint64_t off_userId = userId + start_index;
-//#ifdef DEBUG
-//      std::cout
-//        << "off_userId: " << off_userId
-//        << " userId: " << userId
-//        << " dataset.data_.size(): " << dataset.data_.size()
-//        << std::endl;
-//#endif
+#ifdef DEBUG
+    std::cout << "off_userId: " << off_userId << " userId: " << userId
+              << " dataset.data_.size(): " << dataset.data_.size() << std::endl;
+#endif
     for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
       uint64_t movieId = dataset.data_.at(userId).at(j).first;
-//#ifdef DEBUG
-//      std::cout
-//        << " movieId: " << movieId
-//        << std::endl;
-//#endif
+#ifdef DEBUG
+      std::cout << " movieId: " << movieId << std::endl;
+#endif
       FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
 
       FEATURE_TYPE prediction = predict(off_userId, movieId);
@@ -382,16 +375,11 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
 
       FEATURE_TYPE e_pow_2 = pow(e, 2);
       error += e_pow_2;
-//#ifdef DEBUG
-//      std::cout
-//        << "prediction: " << prediction
-//        << " rating: " << rating
-//        << " e: " << e
-//        << " e_pow_2: " << pow(e, 2)
-//        << " error: " << error
-//        << " count: " << count
-//        << std::endl;
-//#endif
+#ifdef DEBUG
+      std::cout << "prediction: " << prediction << " rating: " << rating
+                << " e: " << e << " e_pow_2: " << pow(e, 2)
+                << " error: " << error << " count: " << count << std::endl;
+#endif
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
           " prediction: " + std::to_string(prediction);

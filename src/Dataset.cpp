@@ -3,10 +3,11 @@
   * where each sample is a vector of type FEATURE_TYPE
   */
 
-#include <Dataset.h>
-#include <algorithm>
-#include <Utils.h>
 #include <Checksum.h>
+#include <Dataset.h>
+#include <Utils.h>
+#include <math.h>
+#include <algorithm>
 
 #include <cassert>
 
@@ -76,12 +77,19 @@ uint64_t Dataset::num_samples() const {
     return samples_.rows;
 }
 
-void Dataset::check() const {
+void Dataset::check(const Configuration& config) const {
   const FEATURE_TYPE* l = labels_.get();
   for (uint64_t i = 0; i < num_samples(); ++i) {
-    if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0)) {
-      throw std::runtime_error(
-          "Dataset::check_values wrong label value: " + std::to_string(l[i]));
+    if (config.get_model_type() != Configuration::SOFTMAX) {
+      if (!FLOAT_EQ(l[i], 1.0) && !FLOAT_EQ(l[i], 0.0)) {
+        throw std::runtime_error("Dataset::check_values wrong label value: " +
+                                 std::to_string(l[i]));
+      }
+    } else {
+      if (l[i] >= config.get_num_classes() or l[i] < 0 or floor(l[i]) != l[i]) {
+        throw std::runtime_error("Dataset::check_values wrong label value: " +
+                                 std::to_string(l[i]));
+      }
     }
     if (std::isnan(l[i]) || std::isinf(l[i])) {
       throw std::runtime_error(
@@ -133,10 +141,18 @@ Dataset::build_s3_obj(uint64_t l, uint64_t r) {
   return s3_obj;
 }
 
-Dataset Dataset::Dataset::random_sample(uint64_t n_samples) const {
+Matrix Dataset::get_samples() const {
+  return samples_;
+}
+
+std::shared_ptr<const FEATURE_TYPE> Dataset::get_labels() const {
+  return labels_;
+}
+
+Dataset Dataset::random_sample(uint64_t n_samples) const {
   std::random_device rd;
   std::default_random_engine re(rd());
-  std::uniform_int_distribution<int> sampler(0, num_samples());
+  std::uniform_int_distribution<int> sampler(0, num_samples() - 1);
 
   std::vector<std::vector<FEATURE_TYPE>> samples;
   std::vector<FEATURE_TYPE> labels;

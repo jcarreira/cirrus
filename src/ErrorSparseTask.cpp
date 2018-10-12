@@ -1,14 +1,15 @@
 #include <Tasks.h>
 #include <thread>
 
-#include "Serializers.h"
-#include "config.h"
-#include "S3SparseIterator.h"
-#include "Utils.h"
-#include "SparseLRModel.h"
-#include "PSSparseServerInterface.h"
 #include "Configuration.h"
 #include "Constants.h"
+#include "DatasetConversion.h"
+#include "PSSparseServerInterface.h"
+#include "S3SparseIterator.h"
+#include "Serializers.h"
+#include "SparseLRModel.h"
+#include "Utils.h"
+#include "config.h"
 
 #include <atomic>
 
@@ -54,10 +55,14 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
       }
     }
   }
-
+  bool use_softmax = config.get_model_type() == Configuration::SOFTMAX;
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
-  return psi->get_full_model(use_col_filtering);
+  if (use_softmax) {
+    return psi->get_sm_full_model(config);
+  } else {
+    return psi->get_full_model(use_col_filtering);
+  }
 }
 
 void ErrorSparseTask::error_response() {
@@ -107,7 +112,7 @@ void ErrorSparseTask::error_response() {
   }
 }
 
-void ErrorSparseTask::run(const Configuration& config) {
+void ErrorSparseTask::run(const Configuration& config, bool testing) {
   std::cout << "Creating error response thread" << std::endl;
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
@@ -116,7 +121,8 @@ void ErrorSparseTask::run(const Configuration& config) {
   std::cout << "Creating sequential S3Iterator" << std::endl;
 
   uint32_t left, right;
-  if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+  if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+      config.get_model_type() == Configuration::SOFTMAX) {
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
@@ -129,8 +135,9 @@ void ErrorSparseTask::run(const Configuration& config) {
   S3SparseIterator s3_iter(
       left, right, config, config.get_s3_size(), config.get_minibatch_size(),
       // use_label true for LR
-      config.get_model_type() == Configuration::LOGISTICREGRESSION, 0, false,
-      config.get_model_type() == Configuration::LOGISTICREGRESSION);
+      config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+          config.get_model_type() == Configuration::SOFTMAX,
+      0, false);
 
   // get data first
   // what we are going to use as a test set
@@ -158,10 +165,16 @@ void ErrorSparseTask::run(const Configuration& config) {
 
   std::cout << "[ERROR_TASK] Computing accuracies"
     << "\n";
-
+  int iterations = 0;
+  FEATURE_TYPE total_accuracy = 0;
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
-
+    if (iterations >= 100 && testing) {
+      exit(EXIT_FAILURE);
+    }
+    if ((total_accuracy / minibatches_vec.size()) >= 0.7 && testing) {
+      exit(EXIT_SUCCESS);
+    }
     try {
       // first we get the model
 #ifdef DEBUG
@@ -178,21 +191,27 @@ void ErrorSparseTask::run(const Configuration& config) {
         << "[ERROR_TASK] computing loss."
         << std::endl;
       FEATURE_TYPE total_loss = 0;
-      FEATURE_TYPE total_accuracy = 0;
+      total_accuracy = 0;
       uint64_t total_num_samples = 0;
       uint64_t total_num_features = 0;
       uint64_t start_index = 0;
 
       for (auto& ds : minibatches_vec) {
-        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
-            model->calc_loss(*ds, start_index);
+        std::pair<FEATURE_TYPE, FEATURE_TYPE> ret;
+        if (config.get_model_type() == Configuration::SOFTMAX) {
+          Dataset intermediate = to_dataset(*ds, config);
+          ret = model->calc_loss(intermediate);
+        } else {
+          ret = model->calc_loss(*ds, start_index);
+        }
         total_loss += ret.first;
         total_accuracy += ret.second;
         total_num_samples += ds->num_samples();
         total_num_features += ds->num_features();
         start_index += config.get_minibatch_size();
-        if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
-          curr_error = (total_loss / total_num_samples);
+        if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+            config.get_model_type() == Configuration::SOFTMAX) {
+          curr_error = (total_loss / total_num_features);
         } else if (config.get_model_type() ==
                    Configuration::COLLABORATIVE_FILTERING) {
           curr_error = std::sqrt(total_loss / total_num_features);
@@ -200,7 +219,8 @@ void ErrorSparseTask::run(const Configuration& config) {
       }
 
       last_time = (get_time_us() - start_time) / 1000000.0;
-      if (config.get_model_type() == Configuration::LOGISTICREGRESSION) {
+      if (config.get_model_type() == Configuration::LOGISTICREGRESSION ||
+          config.get_model_type() == Configuration::SOFTMAX) {
         last_error = (total_loss / total_num_samples);
         std::cout << "[ERROR_TASK] Loss (Total/Avg): " << total_loss << "/"
                   << last_error
@@ -213,11 +233,11 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-    } catch(...) {
+    } catch (...) {
       std::cout << "run_compute_error_task unknown id" << std::endl;
     }
+    iterations++;
   }
 }
 
 } // namespace cirrus
-

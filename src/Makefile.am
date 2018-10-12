@@ -32,6 +32,7 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
+	      DatasetConversion.cpp \
 	      OptimizationMethod.cpp AdaGrad.cpp \
 	      Momentum.cpp SGD.cpp Nesterov.cpp\
 	      Model.cpp LRModel.cpp SoftmaxModel.cpp SparseLRModel.cpp \
@@ -41,7 +42,7 @@ CPP_SOURCES = InputReader.cpp Utils.cpp \
               Checksum.cpp \
               ErrorSparseTask.cpp \
 	      LogisticSparseTaskS3.cpp \
-	      MFNetflixTask.cpp \
+	      MFNetflixTask.cpp SoftmaxTask.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
 	      S3SparseIterator.cpp S3Iterator.cpp S3IteratorLibsvm.cpp \
