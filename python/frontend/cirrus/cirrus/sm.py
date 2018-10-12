@@ -60,7 +60,7 @@ def Softmax(
         grad_threshold=0.001,
         timeout=60,
         threshold_loss=0
-        ):
+    ):
     return SoftmaxTask(
         n_workers=n_workers,
         lambda_size=lambda_size,
