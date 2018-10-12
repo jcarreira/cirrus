@@ -40,7 +40,7 @@ class SoftmaxTask(BaseTask):
 def Softmax(
             n_workers,
             n_ps,
-            worker_size,
+            lambda_size,
             dataset,
             learning_rate, epsilon,
             progress_callback,
@@ -64,9 +64,8 @@ def Softmax(
             ):
     return SoftmaxTask(
             n_workers=n_workers,
-            lambda_size=10,
+            lambda_size=lambda_size,
             n_ps=n_ps,
-            worker_size=worker_size,
             dataset=dataset,
             learning_rate=learning_rate,
             epsilon=epsilon,
