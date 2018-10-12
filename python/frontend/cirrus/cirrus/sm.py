@@ -4,14 +4,10 @@ from core import BaseTask
 
 
 class SoftmaxTask(BaseTask):
-    def __init__(self, *args, **kwargs):
-        # pass all arguments of init to parent class
-        super(SoftmaxTask, self).__init__(*args, **kwargs)
-
     def __del__(self):
       print("Softmax Task with config: \n" + self.define_config() + "deleted")
 
-    def define_config(self):
+    def define_config(self, fetch=False):
         
         if self.use_grad_threshold:
             grad_t = 1
