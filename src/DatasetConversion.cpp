@@ -4,7 +4,8 @@ namespace cirrus {
 SparseDataset to_sparse(const Dataset& d) {
   const FEATURE_TYPE* m_data =
       reinterpret_cast<const FEATURE_TYPE*>(d.samples_.data.get());
-  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data(d.samples_.rows);
+  std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> sparse_data(
+      d.samples_.rows);
   for (int i = 0; i < d.samples_.rows; i++) {
     std::vector<std::pair<int, FEATURE_TYPE>> row(d.samples_.cols);
     for (int j = 0; j < d.samples_.cols; j++) {
@@ -24,7 +25,7 @@ Dataset to_dataset(const SparseDataset& sd, const Configuration& config) {
   for (int i = 0; i < sd.data_.size(); i++) {
     std::vector<FEATURE_TYPE> row(config.get_num_features());
     for (int j = 0; j < config.get_num_features(); j++) {
-      //Adds zeroes into the places that aren't specified by SparseDataset
+      // Adds zeroes into the places that aren't specified by SparseDataset
       if (j == sd.data_[i][j].first) {
         row[j] = sd.data_[i][j].second;
       } else {
