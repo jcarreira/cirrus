@@ -28,7 +28,9 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
 
   // READ the kaggle criteo dataset
   if (config.get_model_type() == Configuration::SOFTMAX) {
-    return to_sparse(input.read_input_csv(config.get_load_input_path(), ",", config.get_num_classes(), config.get_limit_samples(), config.get_limit_cols(), true));
+    return to_sparse(input.read_input_csv(
+        config.get_load_input_path(), ",", config.get_num_classes(),
+        config.get_limit_samples(), config.get_limit_cols(), true));
   } else {
     return input.read_input_criteo_kaggle_sparse(config.get_load_input_path(),
                                                  delimiter, config);
