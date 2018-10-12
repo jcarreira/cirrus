@@ -90,7 +90,7 @@ class SoftmaxTask : public MLTask {
   bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                              S3SparseIterator& s3_iter);
   std::mutex redis_lock;
-  PSSparseServerInterface* psint;
+  std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class LogisticSparseTaskS3 : public MLTask {
@@ -144,7 +144,7 @@ class LogisticSparseTaskS3 : public MLTask {
     std::mutex redis_lock;
   
     std::unique_ptr<SparseModelGet> sparse_model_get;
-    PSSparseServerInterface* psint;
+    std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class PSSparseTask : public MLTask {

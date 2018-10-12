@@ -67,7 +67,7 @@ void SoftmaxTask::run(const Configuration& config, int worker) {
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
-  psint = new PSSparseServerInterface(ps_ip, ps_port);
+  psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
   psint->connect();
   std::cout << "[WORKER] "
             << "num s3 batches: " << num_s3_batches << std::endl;

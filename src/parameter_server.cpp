@@ -16,7 +16,7 @@ DEFINE_int64(rank, -1, "rank");
 DEFINE_string(config, "", "config");
 DEFINE_string(ps_ip, PS_IP, "parameter server ip");
 DEFINE_int64(ps_port, PS_PORT, "parameter server port");
-DEFINE_bool(testing, false, "testing");
+DEFINE_bool(testing, false, "testing mode");
 
 static const uint64_t GB = (1024*1024*1024);
 static const uint32_t SIZE = 1;

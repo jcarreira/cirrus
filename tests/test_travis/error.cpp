@@ -10,6 +10,7 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
+#define ACC_CUTOFF (0.7) // when to register test as passing
 
 using namespace cirrus;
 
@@ -49,7 +50,7 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1341);
+      std::unique_ptr<CirrusModel> model = get_model(config, PS_IP, PS_PORT);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -73,7 +74,7 @@ int main() {
       throw std::runtime_error("Error");
     }
   }
-  if (total_accuracy > 0.7) {
+  if (total_accuracy > ACC_CUTOFF) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
