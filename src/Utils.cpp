@@ -121,7 +121,7 @@ int64_t send_all(int sock, void* data, size_t len) {
   return bytes_sent;
 }
 
-void send_flatbuffer(int sock, flatbuffers::FlatBufferBuilder* fbb) {
+void send_flatbuffer(int sock, const flatbuffers::FlatBufferBuilder* fbb) {
   // std::cout << "Attempting to get buffer pointer and size...\n";
   uint8_t* msg_buf = (*fbb).GetBufferPointer();
   int size = (*fbb).GetSize();
@@ -172,7 +172,6 @@ uint64_t hash_f(const char* s) {
   uint64_t hash_otpt[2] = {0};
   MurmurHash3_x64_128(s, strlen(s), seed, hash_otpt);
 
-  // std::cout << "MurmurHash3_x64_128 hash: " << hash_otpt[0] << std::endl;
   return hash_otpt[0];
 }
 }
