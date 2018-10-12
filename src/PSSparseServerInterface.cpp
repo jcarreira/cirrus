@@ -225,14 +225,9 @@ std::unique_ptr<SoftmaxModel> PSSparseServerInterface::get_sm_full_model(
 
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
-  // std::cout << "Request sent. Receiving: " << to_receive_size << " bytes" <<
-  // std::endl;
 
   std::shared_ptr<char[]> buffer(new char[to_receive_size]);
   read_all(sock, buffer.get(), to_receive_size);
-  // std::cout
-  //<< " buffer checksum: " << crc32(buffer, to_receive_size)
-  //<< std::endl;
 
   // build a sparse model and return
   std::unique_ptr<SoftmaxModel> model = std::make_unique<SoftmaxModel>(
