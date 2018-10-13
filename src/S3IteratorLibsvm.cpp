@@ -1,6 +1,6 @@
+#include <Constants.h>
 #include <S3IteratorLibsvm.h>
 #include <Utils.h>
-#include <Constants.h>
 
 #include <unistd.h>
 #include <iostream>

@@ -131,8 +131,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   // TODO: Can this copy be avoided?
   lr_model.loadSerializedSparse(
       reinterpret_cast<const FEATURE_TYPE*>(sparse_model->model()->data()),
-      reinterpret_cast<uint32_t*>(msg_start),
-      sparse_model->model()->size(), config);
+      reinterpret_cast<uint32_t*>(msg_start), sparse_model->model()->size(),
+      config);
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(

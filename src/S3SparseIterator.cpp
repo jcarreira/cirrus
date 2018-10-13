@@ -1,6 +1,6 @@
 #include "S3SparseIterator.h"
-#include "Utils.h"
 #include "Constants.h"
+#include "Utils.h"
 
 #include <unistd.h>
 #include <vector>
@@ -214,10 +214,9 @@ void S3SparseIterator::printProgress(const std::string& s3_obj) {
   count++;
 
   double elapsed_sec = (get_time_us() - start_time) / 1000.0 / 1000.0;
-  std::cout
-    << "Getting object count: " << count
-    << " s3 e2e bw (MB/s): " << total_received / elapsed_sec / MB
-    << std::endl;
+  std::cout << "Getting object count: " << count
+            << " s3 e2e bw (MB/s): " << total_received / elapsed_sec / MB
+            << std::endl;
 }
 
 static int sstreamSize(std::ostringstream& ss) {
@@ -244,8 +243,7 @@ try_start:
       uint64_t start = get_time_us();
       s3_obj = s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
       uint64_t elapsed_us = (get_time_us() - start);
-      double mb_s =
-          sstreamSize(*s3_obj) / elapsed_us * 1000.0 * 1000 / MB;
+      double mb_s = sstreamSize(*s3_obj) / elapsed_us * 1000.0 * 1000 / MB;
       std::cout << "received s3 obj"
                 << " elapsed: " << elapsed_us
                 << " size: " << sstreamSize(*s3_obj) << " BW (MB/s): " << mb_s
@@ -255,9 +253,8 @@ try_start:
 #ifdef DEBUG
       double MBps = (1.0 * (32812.5 * 1024.0) / elapsed_us) / MB * 1000 * 1000;
       std::cout << "Get s3 obj took (us): " << (elapsed_us)
-        << " size (KB): " << 32812.5
-        << " bandwidth (MB/s): " << MBps
-        << std::endl;
+                << " size (KB): " << 32812.5 << " bandwidth (MB/s): " << MBps
+                << std::endl;
 #endif
     } catch(...) {
       std::cout << "S3SparseIterator: error in s3GetObject"
