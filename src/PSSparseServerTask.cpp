@@ -170,6 +170,8 @@ bool PSSparseServerTask::process_send_lda_update(
     throw std::runtime_error("Uhandled error");
   }
 
+  receive_size += ((double) incoming_size) / 1000000.;
+
   const char* data = thread_buffer.data();
   // //
   // std::shared_ptr<LDAUpdates> gradient_ptr;
@@ -182,7 +184,9 @@ bool PSSparseServerTask::process_send_lda_update(
   // model_lock.lock();
   // std::this_thread::sleep_for (std::chrono::milliseconds(10));
   // int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
+
   int update_bucket = lda_global_vars->update(data);
+
   // update_nvt_nt(vocabs_to_update);
   // model_lock.unlock();
 
@@ -319,6 +323,7 @@ bool PSSparseServerTask::process_get_lda_model(
 
   int id_to_send, slice_id_to_send;
   if (unused_slice_id.size() == 0) {
+    // std::cout << "not good\n";
     slice_id_to_send = previous_slice_id;
   } else {
     id_to_send = std::rand() % (rand_max);
@@ -329,6 +334,8 @@ bool PSSparseServerTask::process_get_lda_model(
       unused_slice_id.push_back(previous_slice_id);
     }
   }
+
+  // std::cout << local_model_id << " " << slice_id_to_send << std::endl;
 
   sock_lookup[req.poll_fd.fd] = slice_id_to_send;
 
@@ -391,6 +398,8 @@ bool PSSparseServerTask::process_get_lda_model(
   time_send_partial += (get_time_ms() - start_time_temp) / 1000.0;
 
   time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
+
+  send_size += ((double) to_send_size) / 1000000.;
 
   delete data_to_send;
   return true;
@@ -1336,6 +1345,8 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "word ll: " << ll_word << std::endl;
   std::cout << "doc ll" << ll << std::endl;
   std::cout << "**tokens/sec: " << (double) tokens_sampled / ((get_time_ms() - start_time_tokens) / 1000.0) << std::endl;
+  std::cout << "**send(mbs)/sec: " << (double) send_size / ((get_time_ms() - start_time_tokens) / 1000.0) << std::endl;
+  std::cout << "**receive(mbs)/sec: " << (double) receive_size / ((get_time_ms() - start_time_tokens) / 1000.0) << std::endl;
   std::cout << "time: " << current_time << std::endl;
   std::cout << "----------------------------------------------------------\n";
   std::cout << "Avg Time (get_lda_model) function: " << time_whole / num_to_find_partial << std::endl;
@@ -1348,6 +1359,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "compress speed: " << lda_global_vars->get_compress_rate() << std::endl;
   std::cout << "compress effect: " << lda_global_vars->get_compress_effect() << std::endl;
   std::cout << "----------------------------------------------------------\n";
+  std::cout << "global model count: " << lda_global_vars->counts << std::endl;
   std::cout << "Avg Time (find_partial) function: " << lda_global_vars->time_whole / lda_global_vars->counts << std::endl;
   std::cout << "\tAvg Time of actual finding: " << lda_global_vars->time_find_partial / lda_global_vars->counts << std::endl;
   std::cout << "\tAvg Time of compression: " << lda_global_vars->time_compress / lda_global_vars->counts << std::endl;
@@ -1359,6 +1371,8 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "\tAvg Time of compressing: " << lda_global_vars->time_compress / lda_global_vars->counts << std::endl;
 
   tokens_sampled = 0;
+  send_size = 0;
+  receive_size = 0;
   start_time_tokens = get_time_ms();
 }
 void PSSparseServerTask::pre_assign_slices(int slice_size) {

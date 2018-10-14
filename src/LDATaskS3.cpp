@@ -256,6 +256,11 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   load_serialized_indices(slice_indices_mem);
   delete slice_indices_mem;
 
+  uint32_t to_receive_size, uncompressed_size;
+  // char* partial_model = psint->get_lda_model(cur_train_idx, to_receive_size, uncompressed_size);
+  // model->update_model(partial_model, update_bucket, to_receive_size, uncompressed_size, psint->slice_id);
+
+
   int cur = 0, num_runs = s3_local_vars->get_slice_size() / config.get_slice_size() + 1;
   // std::cout << cur << "  " << num_runs << " ***\n";
   while (1) {
@@ -280,7 +285,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
               std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
                         std::placeholders::_1, std::placeholders::_2,
                         std::placeholders::_3),
-              s3_local_vars, std::ref(upload_lock_indicators[cur_train_idx - start]), update_bucket)
+              s3_local_vars, std::ref(upload_lock_indicators[update_bucket - start]), update_bucket)
         );
       }
 
@@ -299,7 +304,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         auto elapsed_ms = get_time_ms() - start_time;
         float elapsed_sec = elapsed_ms / 1000.0;
         // 20 seconds before lambda times out
-        if (elapsed_sec > (lambda_time_out - 20.0)) {
+        if (elapsed_sec > (lambda_time_out - 160.0)) {
 
           // If there's a bucket that gets updated,
           // send an empty LDAUpdates with only the bucket id
@@ -318,7 +323,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start], update_bucket);
           }
 
-          std::cout << "early--------------------------\n";
+          std::cout << start << " early--------------------------\n";
           std::cout << "Time to download from S3: " << time_download << std::endl;
           std::cout << "Time to send update to server: " << time_update << std::endl;
           std::cout << "Time to get model from server (whole): " << time_get_model << std::endl;
@@ -411,7 +416,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     // we get the model subset with just the right amount of weights
     start_time_benchmark = get_time_ms();
-    uint32_t to_receive_size, uncompressed_size;
+    //XXX
+    // uint32_t to_receive_size, uncompressed_size;
     char* partial_model = psint->get_lda_model(cur_train_idx, to_receive_size, uncompressed_size);
     time_get_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
@@ -424,7 +430,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // model.reset(new LDAModel(s3_local_vars_mem));
 
     // std::cout << "here?\n";
+    //XXX
     model->update_model(partial_model, update_bucket, to_receive_size, uncompressed_size, psint->slice_id);
+
     // std::cout << "pass!\n";
     // delete partial_model;
 

@@ -919,13 +919,13 @@ int LDAUpdates::update(const char* mem) {
     // }
   }
 
-  update_lock.lock();
+  // update_lock.lock();
   for (int i = 0; i < K; ++i) {
     // change_nt[i] += gradient.change_nt[i];
     int temp = load_value<int>(mem);
     change_nt_ptr->operator[](i) += temp;
   }
-  update_lock.unlock();
+  // update_lock.unlock();
 
   // for (int i = 0; i < change_nt_ptr->size(); ++i) {
   //   // change_nt[i] += gradient.change_nt[i];
@@ -1012,6 +1012,8 @@ void LDAUpdates::get_partial_sparse_nvt_ptr(
 
 char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, bool check_sparse, int local_model_id) {
 
+  auto temp_tt = get_time_ms();
+
   auto ttt = get_time_ms();
 
   int N = 0, S = 0, word_idx;
@@ -1062,7 +1064,7 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
     int n = 0;
 
     // auto s_time = get_time_ms();
-    if (sparse_records[word_idx] == -1) {
+    if ((int)counts % 50 == 0 && sparse_records[word_idx] == -1) {
       for (int j = 0; j < K; ++j) {
         // int entry = change_nvt_ptr->operator[](slice_map[word_idx] * K + j);
         // if (entry > 0) {
@@ -1095,7 +1097,7 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
     //
     // if sparse_records[word_idx] != -1, n would always be 0
     // so that sparse data structure would be used
-    if (2 * n < K || sparse_records[word_idx] != -1) {
+    if ((2 * n < K || sparse_records[word_idx] != -1) && !(n == 0 && sparse_records[word_idx] == -1)) {
       // 1 -> sparse structure
 
       start_time_ttemp = get_time_ms();
@@ -1132,8 +1134,9 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
 
         model_lock.lock();
         sparse_records[word_idx] = n;
-
         sparse_nvt_indices.push_back(sparse_nt_vi);
+
+        // model_lock.lock();
         temp_look_up[word_idx] = temp_counter;
         temp_counter += 1;
         model_lock.unlock();
@@ -1267,6 +1270,8 @@ char* LDAUpdates::get_partial_model(int slice_id, uint32_t& to_send_size, uint32
 
   time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
   // std::cout << "exit this funtion\n";
+
+  time_getting_partial += (get_time_ms() - temp_tt) / 1000.0;
   return compressed_mem;
 
 }

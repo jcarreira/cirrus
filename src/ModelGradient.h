@@ -11,6 +11,7 @@
 #include <memory>
 #include <map>
 #include <set>
+#include <unordered_set>
 #include <mutex>
 // #include <codecfactory.h>
 
@@ -285,6 +286,8 @@ class LDAUpdates {
   uint64_t version = 0;
   int update_bucket = 0, temp_counter = 0;
   int global_v = 0;
+
+  double time_getting_partial = 0;
 
 
   double total_to_compress_size = 0., total_compressed_size = 0., total_time_to_compress = 0.;

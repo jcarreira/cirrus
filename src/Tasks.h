@@ -399,6 +399,7 @@ class PSSparseServerTask : public MLTask {
   std::array<int, 100000> task_id_lookup;
   std::array<int, 1000> bucket_in_update;
   int tokens_sampled = 0;
+  double receive_size = 0, send_size = 0;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections

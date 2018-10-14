@@ -82,8 +82,12 @@ protected:
   std::vector<std::vector<int>> ndt, nvt;
   std::vector<int> nt;
 
-  std::vector<std::set<int>> nz_ndt_indices, nz_nvt_indices;
-  std::set<int> nz_nt_indices;
+  std::vector<std::vector<int>> nz_ndt_indices, nz_nvt_indices;
+  std::vector<int> nz_nt_indices;
+
+  std::vector<std::array<int, 10000>> nz_ndt_indices_check, nz_nvt_indices_check;
+  std::array<int, 10000> nz_nt_indices_check;
+  std::vector<int> nz_ndt_indices_counter, nz_nvt_indices_counter;
   /**
     * vocabulary slice containing word indices
     * that are being considered currently
@@ -94,7 +98,6 @@ protected:
   int cur_slice_id = -1, counter_slice = 0;
   std::vector<std::vector<int>> slices_indices;
   std::array<int, 100> slice_look_up;
-
 
 };
 }
