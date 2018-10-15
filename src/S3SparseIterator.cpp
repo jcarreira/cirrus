@@ -57,11 +57,6 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
   } else {
     current = left_id;
   }
-
-  // global variables are stored at SAMPLE_BASE
-  if (conf.get_s3_bucket() == "nytimes-lda") {
-    assert(left_id > 0);
-  }
 }
 
 std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
@@ -239,13 +234,12 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
     // in the ring
     std::cout << "Waiting for pref_sem" << std::endl;
     pref_sem.wait();
-    
+
     std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
 
     std::ostringstream* s3_obj;
 try_start:
     try {
-      std::cout << obj_id << std::endl;
       std::cout << "S3SparseIterator: getting object " << obj_id_str << std::endl;
       uint64_t start = get_time_us();
       s3_obj = s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());

@@ -21,7 +21,7 @@
 #define THREAD_MSG_BUFFER_SIZE 1000000
 
 namespace cirrus {
-  
+
 PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
                                        uint64_t batch_size,
                                        uint64_t samples_per_batch,
@@ -551,11 +551,11 @@ void PSSparseServerTask::gradient_f() {
       if (!process_send_mf_gradient(req, thread_buffer)) {
         break;
       }
-    } else if (req.req_id == SEND_LDA_UPDATE) {
+    } else if (operation == SEND_LDA_UPDATE) {
       if (!process_send_lda_update(req, thread_buffer)) {
         break;
       }
-    } else if (req.req_id == GET_LR_SPARSE_MODEL) {
+    } else if (operation == GET_LR_SPARSE_MODEL) {
 #ifdef DEBUG
       std::cout << "process_get_lr_sparse_model" << std::endl;
       auto before = get_time_us();
@@ -577,16 +577,16 @@ void PSSparseServerTask::gradient_f() {
     } else if (operation == GET_MF_FULL_MODEL) {
       if (!process_get_mf_full_model(req, thread_buffer))
         break;
-    } else if (req.req_id == GET_LDA_MODEL) {
+    } else if (operation == GET_LDA_MODEL) {
       if (!process_get_lda_model(req, thread_buffer))
         break;
-    } else if (req.req_id == GET_LDA_SLICES_IDX) {
+    } else if (operation == GET_LDA_SLICES_IDX) {
       if (!process_get_slices_indices(req, thread_buffer))
         break;
-    } else if (req.req_id == SEND_LL_NDT) {
+    } else if (operation == SEND_LL_NDT) {
       if (!process_send_ll_update(req, thread_buffer))
         break;
-    } else if (req.req_id == GET_TASK_STATUS) {
+    } else if (operation == GET_TASK_STATUS) {
       uint32_t task_id;
       if (read_all(sock, &task_id, sizeof (uint32_t)) == 0) {
         break;
@@ -681,7 +681,7 @@ void PSSparseServerTask::start_server() {
   if (task_config.get_model_type() == cirrus::Configuration::LDA) {
     std::cout << "Getting initial LDAUpdate from S3\n";
     // Get the global stats from S3
-    s3_initialize_aws();
+    // s3_initialize_aws();
     std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
     std::string obj_id_str =
         std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
@@ -690,7 +690,7 @@ void PSSparseServerTask::start_server() {
     const std::string tmp = s3_obj->str();
     const char* s3_data = tmp.c_str();
 
-    s3_shutdown_aws();
+    // s3_shutdown_aws();
 
     lda_global_vars.reset(new LDAUpdates());
     lda_global_vars->loadSerialized(s3_data);
@@ -1042,7 +1042,7 @@ void PSSparseServerTask::init_loglikelihood(){
   ll_base += K * lda_lgamma(eta * V);
 
 
-  s3_initialize_aws();
+  // s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   auto train_range = task_config.get_train_range();

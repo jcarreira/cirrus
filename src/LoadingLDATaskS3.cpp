@@ -93,7 +93,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   lookup_map.fill(-1);
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
-  s3_initialize_aws();
+  // s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   int K = config.get_k();
@@ -192,7 +192,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                            std::string(s3_obj.get(), len));
 
-  s3_shutdown_aws();
+  // s3_shutdown_aws();
 
   std::cout << "LOADER-LDA terminated successfully" << std::endl;
 }

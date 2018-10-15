@@ -92,7 +92,8 @@ void Configuration::check() const {
     throw std::runtime_error("S3 bucket name missing from config file");
   }
   if (!(dataset_format == "csv" || dataset_format == "libsvm" ||
-        dataset_format == "svmlight" || dataset_format == "binary")) {
+        dataset_format == "svmlight" || dataset_format == "binary" ||
+        dataset_format == "lda")) {
     throw std::runtime_error("Unknown dataset format");
   }
   if (test_set_range.first && model_type == COLLABORATIVE_FILTERING) {

@@ -5,6 +5,7 @@
 #include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
 #include "S3Client.h"
+// #include "S3.h"
 
 #include <pthread.h>
 #include <thread>
@@ -129,7 +130,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   // Load the first LDAStatistics from S3
   auto start_time_benchmark = get_time_ms();
-  s3_initialize_aws();
+  // s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
@@ -353,7 +354,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       benchmark_time += 5;
     }
   }
-  s3_shutdown_aws();
+  // s3_shutdown_aws();
 }
 
 }  // namespace cirrus
