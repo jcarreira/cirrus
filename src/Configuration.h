@@ -51,7 +51,7 @@ class Configuration {
     /**
       * Get path to the input file
       */
-    std::string get_input_path() const;
+    std::string get_load_input_path() const;
 
     /**
       * Get maximum value of features used by the system
@@ -73,7 +73,7 @@ class Configuration {
     /**
       * Get the type of input file used
       */
-    std::string get_input_type() const;
+    std::string get_load_input_type() const;
 
     /**
       * Get the path to the file with vocabularies for lda
@@ -118,6 +118,8 @@ class Configuration {
       */
     uint64_t get_num_features() const;
 
+    std::string get_dataset_format() const;
+    std::string get_s3_dataset_key() const;
     std::string get_s3_bucket() const;
 
     void check() const;
@@ -180,8 +182,8 @@ class Configuration {
 
     uint64_t num_classes = 0;  //< number of sample classes
 
-    std::string input_path;  //< path to dataset input
-    std::string input_type;  //< dataset input format
+    std::string load_input_path;  //< path to dataset input
+    std::string load_input_type;  //< dataset input format
 
     std::string samples_path;  //< path to dataset samples
     std::string labels_path;   //< path to dataset labels
@@ -198,7 +200,9 @@ class Configuration {
     uint64_t limit_samples = 0;  //< max number of training input samples
     uint64_t num_features = 0;   //< number of features in each sample
 
-    std::string s3_bucket_name; //< bucket used for training dataset
+    std::string dataset_format;  //< format of the dataset in S3
+    std::string s3_dataset_key;  //< key name in the s3 bucket
+    std::string s3_bucket_name;  //< bucket used for training dataset
 
     std::pair<int, int> train_set_range; // range of S3 ids for training
     std::pair<int, int> test_set_range;  // range of S3 ids for testing

@@ -17,28 +17,20 @@ namespace cirrus {
 SparseDataset::SparseDataset() {
 }
 
-void SparseDataset::build_max_features() {
-  max_features_ = std::max_element(data_.begin(), data_.end(),
-      [](const std::vector<std::pair<int, FEATURE_TYPE>>& a,
-        const std::vector<std::pair<int, FEATURE_TYPE>>& b) { return a.size() < b.size(); })->size();
-}
+SparseDataset::SparseDataset(
+    std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>& samples)
+    : data_(samples) {}
 
-SparseDataset::SparseDataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>& samples) :
-    data_(samples), max_features_(0) {
-}
+SparseDataset::SparseDataset(
+    std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples)
+    : data_(std::move(samples)) {}
 
-SparseDataset::SparseDataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples) :
-    data_(std::move(samples)), max_features_(0) {
-}
-
-SparseDataset::SparseDataset(std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples,
-    std::vector<FEATURE_TYPE>&& labels) :
-    data_(std::move(samples)), labels_(std::move(labels)), max_features_(0) {
-}
-
+SparseDataset::SparseDataset(
+    std::vector<std::vector<std::pair<int, FEATURE_TYPE>>>&& samples,
+    std::vector<FEATURE_TYPE>&& labels)
+    : data_(std::move(samples)), labels_(std::move(labels)) {}
 
 SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labels) {
-  //throw std::runtime_error("Is this used");
   const char* data_begin = data;
 
   data_.reserve(n_samples);
@@ -170,11 +162,6 @@ void SparseDataset::check_labels() const {
   }
 }
 
-double SparseDataset::checksum() const {
-  throw std::runtime_error("Not implemented");
-  return 0;
-}
-
 void SparseDataset::print() const {
   std::cout << "SparseDataset" << std::endl;
   for (const auto& w : data_) {
@@ -189,7 +176,6 @@ void SparseDataset::print() const {
 void SparseDataset::print_info() const {
   std::cout << "SparseDataset #samples: " << data_.size() << std::endl;
   std::cout << "SparseDataset #labels: " << labels_.size() << std::endl;
-  //std::cout << "SparseDataset max features: " << max_features_ << std::endl;
 
   //double avg = 0;
   //uint64_t count = 0;
@@ -292,11 +278,6 @@ SparseDataset SparseDataset::sample_from(uint64_t start, uint64_t n_samples) con
   return std::move(SparseDataset(samples));
 }
 
-uint64_t SparseDataset::max_features() const {
-  throw std::runtime_error("Not supported");
-  return max_features_;
-}
-
 void SparseDataset::normalize(uint64_t hash_size) {
   std::vector<FEATURE_TYPE> max_val_feature(hash_size);
   std::vector<FEATURE_TYPE> min_val_feature(hash_size,
@@ -320,15 +301,12 @@ void SparseDataset::normalize(uint64_t hash_size) {
     for (auto& v : w) {
       int index = v.first;
 
-      if (max_val_feature[index] == min_val_feature[index]) {
-        // this happens if feature has always the same value
-        // in the dataset
-        // In this case don't normalize this feature
-        continue;
+      // only normalize if there are different values
+      // in the same column
+      if (max_val_feature[index] != min_val_feature[index]) {
+        v.second = (v.second - min_val_feature[index]) /
+                   (max_val_feature[index] - min_val_feature[index]);
       }
-
-      v.second = (v.second - min_val_feature[index]) / 
-        (max_val_feature[index] - min_val_feature[index]);
     }
   }
 }

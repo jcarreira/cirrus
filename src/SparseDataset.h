@@ -13,7 +13,7 @@ namespace cirrus {
   * Each sample is a variable size list of pairs <int, FEATURE_TYPE>
   */
 class SparseDataset {
-  public:
+ public:
   /**
    * Construct empty dataset
    */
@@ -55,12 +55,6 @@ class SparseDataset {
   uint64_t num_features() const;
 
   /**
-   * Get the max number of features of any single user
-   * @return Max number of features of any single user
-   */
-  uint64_t max_features() const;
-
-  /**
    * Returns pointer to specific sample in this dataset
    * @param sample Sample index
    * @returns Pointer to dataset sample
@@ -81,12 +75,6 @@ class SparseDataset {
   void check_labels() const;
 
   /**
-   * Compute checksum of values in the dataset
-   * @return crc32 checksum
-   */
-  double checksum() const;
-
-  /**
    * Print this dataset
    */
   void print() const;
@@ -100,7 +88,10 @@ class SparseDataset {
    * from feature and label data from samples in range [l,r)
    * output size of object in the uint64_t*
    */
-  std::shared_ptr<char> build_serialized_s3_obj(uint64_t, uint64_t, uint64_t*, bool store_labels = true);
+  std::shared_ptr<char> build_serialized_s3_obj(uint64_t,
+                                                uint64_t,
+                                                uint64_t*,
+                                                bool store_labels = true);
 
   /**
    * Return random subset of samples
@@ -121,12 +112,8 @@ class SparseDataset {
   std::pair<SparseDataset, SparseDataset> split(double fraction) const;
 
   public:
-  void build_max_features();
-
   std::vector<std::vector<std::pair<int, FEATURE_TYPE>>> data_;
   std::vector<FEATURE_TYPE> labels_;
-
-  uint64_t max_features_ = 0; // largest number of features of any single user
 
   uint64_t size_bytes = 0; // size of data when read from serialized format
 };

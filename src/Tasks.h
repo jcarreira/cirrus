@@ -19,11 +19,12 @@
 #include <map>
 #include <deque>
 
-#include <poll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <poll.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace cirrus {
@@ -86,6 +87,7 @@ class LogisticSparseTaskS3 : public MLTask {
         SparseModelGet(const std::string& ps_ip, int ps_port) :
           ps_ip(ps_ip), ps_port(ps_port) {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+            psi->connect();
         }
 
         SparseLRModel get_new_model(const SparseDataset& ds,
@@ -104,9 +106,8 @@ class LogisticSparseTaskS3 : public MLTask {
         int ps_port;
     };
 
-    bool get_dataset_minibatch(
-        std::unique_ptr<SparseDataset>& dataset,
-        S3SparseIterator& s3_iter);
+    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                               S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
 
     std::mutex redis_lock;
@@ -156,17 +157,8 @@ class ErrorSparseTask : public MLTask {
                    uint64_t nworkers,
                    uint64_t worker_id,
                    const std::string& ps_ip,
-                   uint64_t ps_port)
-       : MLTask(model_size,
-                batch_size,
-                samples_per_batch,
-                features_per_sample,
-                nworkers,
-                worker_id,
-                ps_ip,
-                ps_port) {
-     this->ps_port = ps_port;
-   }
+                   uint64_t ps_port);
+
    void run(const Configuration& config);
    void error_response();
 
@@ -175,6 +167,7 @@ class ErrorSparseTask : public MLTask {
    double last_time = 0.0;
    double last_error = 0.0;
    std::atomic<double> curr_error;
+   std::atomic<double> total_loss;
 };
 
 class PerformanceLambdaTask : public MLTask {
@@ -260,18 +253,9 @@ class PSSparseServerTask : public MLTask {
 
   struct Request {
    public:
-    Request(int req_id,
-            int sock,
-            int id,
-            uint32_t incoming_size,
-            struct pollfd& poll_fd)
-        : req_id(req_id),
-          sock(sock),
-          id(id),
-          incoming_size(incoming_size),
-          poll_fd(poll_fd) {}
+    Request(int sock, int id, uint32_t incoming_size, struct pollfd& poll_fd)
+        : sock(sock), id(id), incoming_size(incoming_size), poll_fd(poll_fd) {}
 
-    int req_id;
     int sock;
     int id;
     uint32_t incoming_size;
@@ -327,6 +311,8 @@ class PSSparseServerTask : public MLTask {
                              std::vector<char>& thread_buffer);
   void kill_server();
 
+  static void destroy_pthread_barrier(pthread_barrier_t*);
+
   /**
     * Compute the initial loglikelihood;
     * only one document is downloaded from S3
@@ -369,7 +355,7 @@ class PSSparseServerTask : public MLTask {
   int pipefds[NUM_POLL_THREADS][2] = {{0}};
 
   int server_sock_ = 0;           //< server used to receive connections
-  const uint64_t max_fds = 1000;  //< max number of connections supported
+  const uint64_t max_fds = 2000;  //< max number of connections supported
   int timeout = 1;                //< 1 ms
 
   // file descriptors for connections
@@ -408,13 +394,18 @@ class PSSparseServerTask : public MLTask {
   std::map<int, bool> task_to_status;            //< keep track of task status
   std::map<int, std::string> operation_to_name;  //< request id to name
 
-  char* thread_msg_buffer[NUM_PS_WORK_THREADS];  // per-thread buffer
+  // per-thread buffer
+  std::shared_ptr<char[]> thread_msg_buffer[NUM_PS_WORK_THREADS];
   std::atomic<int> thread_count;  //< keep track of each thread's id
 
-  uint32_t num_updates = 0;       // Last measured num updates
-  std::atomic<bool> kill_signal;  // Used to coordinate thread kills
-
   uint64_t start_time, start_time_tokens;
+
+  uint32_t num_updates = 0;       //< Last measured num updates
+  std::atomic<bool> kill_signal;  //< Used to coordinate thread kills
+
+  // barrier to synchronize threads init
+  std::unique_ptr<pthread_barrier_t, void (*)(pthread_barrier_t*)>
+      threads_barrier;
 };
 
 class MFNetflixTask : public MLTask {
@@ -441,6 +432,7 @@ class MFNetflixTask : public MLTask {
         MFModelGet(const std::string& ps_ip, int ps_port) :
           ps_ip(ps_ip), ps_port(ps_port) {
             psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+            psi->connect();
         }
 
         SparseMFModel get_new_model(const SparseDataset& ds,
@@ -456,13 +448,12 @@ class MFNetflixTask : public MLTask {
     };
 
   private:
-    bool get_dataset_minibatch(
-        std::unique_ptr<SparseDataset>& dataset,
-        S3SparseIterator& s3_iter);
-    void push_gradient(MFSparseGradient&);
+   bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                              S3SparseIterator& s3_iter);
+   void push_gradient(MFSparseGradient&);
 
-    std::unique_ptr<MFModelGet> mf_model_get;
-    std::unique_ptr<PSSparseServerInterface> psint;
+   std::unique_ptr<MFModelGet> mf_model_get;
+   std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class LDATaskS3 : public MLTask {

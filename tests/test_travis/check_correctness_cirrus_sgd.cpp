@@ -19,7 +19,7 @@ void print_info(const auto& samples) {
   std::cout << "Number of cols: " << samples[0].size() << std::endl;
 }
 
-double check_error(auto model, auto dataset) {
+double check_error(SparseLRModel* model, SparseDataset& dataset) {
   auto ret = model->calc_loss(dataset, 0);
   auto loss = ret.first;
   auto avg_loss = loss / dataset.num_samples();
@@ -30,7 +30,6 @@ double check_error(auto model, auto dataset) {
 cirrus::Configuration config = cirrus::Configuration("configs/test_config.cfg");
 std::mutex model_lock;
 std::unique_ptr<SparseLRModel> model;
-double epsilon = 0.00001;
 double learning_rate = 0.00001;
 std::unique_ptr<OptimizationMethod> opt_method =
     std::make_unique<SGD>(learning_rate);
@@ -39,7 +38,7 @@ void learning_function(const SparseDataset& dataset) {
   for (uint64_t i = 0; 20; ++i) {
     SparseDataset ds = dataset.random_sample(20);
 
-    auto gradient = model->minibatch_grad(ds, epsilon);
+    auto gradient = model->minibatch_grad(ds, config);
 
     model_lock.lock();
     opt_method->sgd_update(model, gradient.release());

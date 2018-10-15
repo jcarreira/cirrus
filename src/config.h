@@ -14,7 +14,6 @@
 #endif
 
 #define LOADING_TASK_RANK -100000
-#define PERFORMANCE_LAMBDA_RANK (-100000)
 
 #define PS_LDA_TASK_RANK (5)
 #define LOADING_LDA_TASK_RANK (4)
@@ -39,7 +38,7 @@ using FEATURE_TYPE = float;
 #define NUM_FACTORS 10
 
 // define the number of poll threads
-#define NUM_POLL_THREADS 2
+#define NUM_POLL_THREADS 3
 
 // define number of parameter server working threads
 # define NUM_PS_WORK_THREADS 4
