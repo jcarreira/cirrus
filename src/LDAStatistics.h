@@ -66,10 +66,6 @@ class LDAStatistics {
     */
   void set_slice_size(int s) { slice_size = s; }
   /**
-    * Return partial LDAStatistics covering only slice_size number of words
-    */
-  int pop_partial_slice(std::unique_ptr<LDAStatistics>& partial_stat);
-  /**
     * Copied the updated local variables from LDAModel
     */
   void store_new_stats(LDAModel& model);
@@ -77,8 +73,6 @@ class LDAStatistics {
   void get_ndt(std::vector<std::vector<int> >& ndt) { ndt = ndt_; }
   void get_slice(std::vector<int>& slice) { slice = slice_; }
   int get_slice_size() { return slice_.size(); }
-  void reset_current() { current = 0; }
-  void incre_current() { current += slice_size; }
 
   int current = 0;
 
@@ -87,11 +81,11 @@ class LDAStatistics {
      *
      * @variable K_: # of potential topics
      * @variable ndt_: the statistics of word counts over documents and topics
-     *           size: D * K where D is the size of local corpus
+     *             - size: D * K where D is the size of local corpus
      * @variable t_: the current assigned latent topics for each words in the corpus
      *           d_: the document id for each words in the corpus
      *           w_: the global word id for each words in the corpus
-     *           size: # of words in the local corpus
+     *             - size: # of words in the local corpus
      * @variable slice_: the local vocabulary space
      */
   int K_, slice_size = 1000;

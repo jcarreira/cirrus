@@ -44,15 +44,6 @@ LDAStatistics::LDAStatistics(const char* msg) {
     w_.push_back(w);
   }
 
-  int32_t s = load_value<int32_t>(msg);
-  slice_.clear();
-  slice_.reserve(s);
-
-  for (int i = 0; i < s; ++i) {
-    int slice_i = load_value<int>(msg);
-    slice_.push_back(slice_i);
-  }
-
   int32_t num_docs = load_value<int32_t>(msg);
   ndt_.clear();
   ndt_.reserve(num_docs);
@@ -91,25 +82,17 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   store_value<int16_t>(msg, K_);
 
   store_value<int32_t>(msg, t_.size());
-  // std::cout << "t_size: " << t_.size() << std::endl;
   for (int32_t i = 0; i < t_.size(); ++i) {
     store_value<int16_t>(msg, t_[i]);
     store_value<int32_t>(msg, d_[i]);
     store_value<int32_t>(msg, w_[i]);
   }
 
-  store_value<int32_t>(msg, slice_.size());
-  for (const auto& v : slice_) {
-    store_value<int32_t>(msg, v);
-  }
-
   int nz, N = 0, S = 0, sparse_type = 1, dense_type = 2;
 
-  // std::cout << "ndt size: " << ndt_.size() << std::endl;
   store_value<int32_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
 
-    // sparse_nt_di.clear();
     std::vector<std::pair<int, int>> sparse_nt_di;
     sparse_nt_di.reserve(K_);
     nz = 0;
@@ -150,19 +133,14 @@ char* LDAStatistics::serialize_slice() {
   char* msg = new char[get_serialize_slice_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
-  // issue is here
   store_value<int32_t>(msg, slice_.size());
   for (const auto& v : slice_) {
     store_value<int32_t>(msg, v);
   }
-  // std::copy(slice_.begin(), slice_.end(), msg);
 
   return msg_begin;
 }
 
-// 1. store the total number of words and the current topic assignments
-// 2. store the size of corpus and word counts for each (doc_id, topic) entries
-// 3. store the length of local slice and word_idx for each vocabularies
 int LDAStatistics::get_serialize_size() {
   return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int32_t);
 }
@@ -172,42 +150,17 @@ int LDAStatistics::get_serialize_slice_size() {
 }
 
 int LDAStatistics::get_receive_size() {
-  // std::cout << "computing receive size " << slice_.size() << " " << K_ << std::endl;
   return sizeof(uint32_t) * (1 + (slice_.size() + 1) * K_);
 }
 
-int LDAStatistics::pop_partial_slice(
-    std::unique_ptr<LDAStatistics>& partial_stat) {
-  std::vector<int> slice;
-
-  if (current >= slice_.size() && current != 0) {
-    return -1;
-  }
-
-  if (current + slice_size < int(slice_.size()))
-    slice = std::vector<int>(slice_.begin() + current,
-                             slice_.begin() + current + slice_size);
-  else {
-    slice = std::vector<int>(slice_.begin() + current, slice_.end());
-  }
-
-  // incre_current();
-
-  partial_stat.reset(new LDAStatistics(K_, ndt_, slice, t_, d_, w_));
-  return 1;
-}
-
 void LDAStatistics::store_new_stats(LDAModel& model) {
-// void LDAStatistics::store_new_stats() {
 
   ndt_.clear();
   t_.clear();
 
-  // TODO: use smart pointer / std::move
   model.get_ndt(ndt_);
   model.get_t(t_);
 
-  incre_current();
 }
 
 }

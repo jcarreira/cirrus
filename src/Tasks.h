@@ -278,15 +278,6 @@ class PSSparseServerTask : public MLTask {
     struct pollfd& poll_fd;
   };
 
-  double compute_loglikelihood();
-  void compute_loglikelihood_orig();
-
-  void init_loglikelihood();
-  void update_ndt(int bucket_id);
-  void update_nvt_nt(const std::vector<int>& vocabs_to_update);
-
-  void pre_assign_slices(int slice_size);
-
  private:
   /**
     * Handle the situation when a socket read fails within worker threads
@@ -336,7 +327,19 @@ class PSSparseServerTask : public MLTask {
                              std::vector<char>& thread_buffer);
   void kill_server();
 
+  /**
+    * Compute the initial loglikelihood;
+    * only one document is downloaded from S3
+    */
+  void init_loglikelihood();
+
+  double compute_loglikelihood();
   void update_ll_word_thread(double ll);
+
+  /**
+    * Pre-cache the token indices for each word slices
+    */
+  void pre_assign_slices(int slice_size);
 
   /**
     * Attributes
@@ -381,17 +384,11 @@ class PSSparseServerTask : public MLTask {
   std::unique_ptr<MFModel> mf_model;        //< last computed model
   std::unique_ptr<LDAUpdates> lda_global_vars;
 
-  // std::vector<double> ll_nvt, ll_ndt, ll_nt;
   std::vector<double> ll_ndt;
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
-  int init_ll_flag = 0;
-  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
-  double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
   std::mutex ll_lock, slice_lock;
-  std::vector<std::unique_ptr<std::thread>> compute_ll_threads, send_global_slices_threads, update_ndt_threads;
-  double num_to_find_partial = 0.;
-  int when_to_check = 5;
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
   std::vector<std::vector<int>> fixed_slices;
   std::vector<int> unused_slice_id;
   int num_slices;
@@ -399,7 +396,11 @@ class PSSparseServerTask : public MLTask {
   std::array<int, 100000> task_id_lookup;
   std::array<int, 1000> bucket_in_update;
   int tokens_sampled = 0;
+
+  double num_to_find_partial = 0.;
   double receive_size = 0, send_size = 0;
+  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
+  double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
@@ -489,33 +490,25 @@ class LDATaskS3 : public MLTask {
   void run(const Configuration& config, int worker);
 
  private:
-  bool get_dataset_minibatch(std::unique_ptr<LDAStatistics>& local_vars,
-                             S3SparseIterator& s3_iter);
+  /**
+   * Helper function to push the doc-topic statistics to S3
+   */
   void upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
                                int& upload_lock,
                                int bucket_id);
-  // void pre_fetch_model_fn(std::unique_ptr<LDAModel>& model,
-  //                         std::unique_ptr<LDAStatistics>& local_vars,
-  //                         int update_bucket,
-  //                         bool& done);
-  // void push_gradient(LDAUpdates*, int total_sampled_tokens);
+  /**
+   * Helper function to push the update to S3
+   */
   void push_gradient(char* gradient_mem, int total_sampled_tokens, uint32_t to_send_size);
-  // void create_lda_model(LDAStatistics& info, int update_bucket, char* buffer,
-  //                                  std::unique_ptr<LDAModel>& model,
-  //                                  uint32_t to_receive_size,
-  //                                  uint32_t uncompressed_size,
-  //                                  double& time_decompress, double& time_local, double& time_model);
-  void create_lda_model(LDAStatistics& info, int update_bucket, char* buffer,
-                                   std::unique_ptr<LDAModel>& model,
-                                   uint32_t to_receive_size,
-                                   uint32_t uncompressed_size);
+  /**
+   * Load the pre-cached token indices (for the current slice)
+   * from the server
+   */
   void load_serialized_indices(char* mem_begin);
-  // std::shared_ptr<LDAStatistics> pre_fetch_vars;
-  std::vector<std::unique_ptr<std::thread>> help_upload_threads, pre_fetch_model_threads;
-  std::mutex redis_lock, pre_fetch_lock;
+
+  std::vector<std::unique_ptr<std::thread>> help_upload_threads;
   std::vector<int> upload_lock_indicators;
   std::vector<std::vector<int>> slice_indices;
-  bool pre_fetch_done = false;
   PSSparseServerInterface* psint;
 };
 

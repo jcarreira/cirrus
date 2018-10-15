@@ -146,7 +146,6 @@ bool PSSparseServerTask::process_send_lda_update(
     const Request& req,
     std::vector<char>& thread_buffer) {
 
-  // std::cout << "Enter send lda update\n";
   uint32_t incoming_size = req.incoming_size;
 #ifdef DEBUG
   std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
@@ -160,8 +159,6 @@ bool PSSparseServerTask::process_send_lda_update(
   read_all(req.sock, &tokens, sizeof(int));
   tokens_sampled += tokens;
 
-  // buffer.resize(incoming_size);
-  // std::cout  << "1111111\n";
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size - sizeof(int)) == 0) {
       return false;
@@ -173,39 +170,8 @@ bool PSSparseServerTask::process_send_lda_update(
   receive_size += ((double) incoming_size) / 1000000.;
 
   const char* data = thread_buffer.data();
-  // //
-  // std::shared_ptr<LDAUpdates> gradient_ptr;
-  // gradient_ptr.reset(new LDAUpdates());
-  // gradient_ptr->loadSparseSerialized(data);
-  // std::vector<int> vocabs_to_update;
-
-  // std::cout << "tokens: " << tokens << std::endl;
-
-  // model_lock.lock();
-  // std::this_thread::sleep_for (std::chrono::milliseconds(10));
-  // int update_bucket = lda_global_vars->update(*gradient_ptr, vocabs_to_update);
 
   int update_bucket = lda_global_vars->update(data);
-
-  // update_nvt_nt(vocabs_to_update);
-  // model_lock.unlock();
-
-  // std::cout << "finish update\n";
-
-  // if (update_bucket != 0) {
-  //   if (bucket_in_update[update_bucket] == -1) {
-  //     bucket_in_update[update_bucket] = 1;
-  //     update_ndt_threads.push_back(std::make_unique<std::thread>(
-  //           std::bind(&PSSparseServerTask::update_ndt, this,
-  //                     std::placeholders::_1), update_bucket)
-  //     );
-  //   }
-  //
-  //   // update_ndt(update_bucket);
-  // }
-
-  // std::cout << "Exit\n";
-
   gradientUpdatesCount++;
   return true;
 }
@@ -321,54 +287,30 @@ bool PSSparseServerTask::process_get_lda_model(
 
   int rand_max = unused_slice_id.size();
 
+  // determine the next word slice to send
   int id_to_send, slice_id_to_send;
   if (unused_slice_id.size() == 0) {
-    // std::cout << "not good\n";
     slice_id_to_send = previous_slice_id;
   } else {
     id_to_send = std::rand() % (rand_max);
     slice_id_to_send = unused_slice_id[id_to_send];
     unused_slice_id.erase(unused_slice_id.begin() + id_to_send);
-
     if (previous_slice_id != -1) {
       unused_slice_id.push_back(previous_slice_id);
     }
   }
-
-  // std::cout << local_model_id << " " << slice_id_to_send << std::endl;
-
   sock_lookup[req.poll_fd.fd] = slice_id_to_send;
-
-  // int id_to_send = 0;
-  time_assign_slice_id_wo_waiting += (get_time_ms() - start_time_temp) / 1000.0;
   slice_lock.unlock();
 
-  time_assign_slice_id += (get_time_ms() - start_time_benchmark) / 1000.0;
-
-  // const char* data = thread_buffer.data();
+  // serialize the word slice
   uint32_t to_send_size, uncompressed_size;
-
   start_time_temp = get_time_ms();
-
-  // model_lock.lock();
-
   auto pure_partial_benchmark = get_time_ms();
   char* data_to_send;
-  if ((get_time_ms() - start_time) / 1000.0 > when_to_check) {
-    when_to_check += 5;
-    data_to_send = lda_global_vars->get_partial_model(slice_id_to_send, to_send_size, uncompressed_size, true, local_model_id);
-  } else {
-    data_to_send = lda_global_vars->get_partial_model(slice_id_to_send, to_send_size, uncompressed_size, false, local_model_id);
-  }
-  // auto data_to_send = lda_global_vars->get_partial_model(data, to_send_size, uncompressed_size);
-  time_pure_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
-
-  // std::cout << "pass after b?\n";
-  // model_lock.unlock();
+  data_to_send = lda_global_vars->get_partial_model(slice_id_to_send, to_send_size, uncompressed_size, local_model_id);
 
   time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
   num_to_find_partial += 1.;
-
   start_time_temp = get_time_ms();
 
   // send the size of compressed partial model
@@ -414,10 +356,7 @@ bool PSSparseServerTask::process_get_slices_indices(
 
   uint32_t to_send_size;
   auto train_range = task_config.get_train_range();
-
-  // model_lock.lock();
   char* data_to_send = lda_global_vars->get_slices_indices(local_model_id - train_range.first, to_send_size);
-  // model_lock.unlock();
 
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
     return false;
@@ -435,8 +374,6 @@ bool PSSparseServerTask::process_send_ll_update(
     const Request& req,
     std::vector<char>& thread_buffer) {
 
-  // std::this_thread::sleep_for (std::chrono::milliseconds(10));
-  // std::cout << "Enter sending ll update\n";
   int bucket_id;
   if (read_all(req.sock, &bucket_id, sizeof(int)) == -1) {
     return false;
@@ -766,9 +703,6 @@ void PSSparseServerTask::start_server() {
     sock_lookup.fill(-1);
     bucket_in_update.fill(-1);
     task_id_lookup.fill(-1);
-
-    // compute_loglikelihood();
-    // s3_shutdown_aws();
   }
 
   sem_init(&sem_new_req, 0, 0);
@@ -1020,21 +954,7 @@ void PSSparseServerTask::run(const Configuration& config) {
       gradientUpdatesCount = 0;
 
       if ((int) since_start_sec % 10 == 0) {
-
-        // auto compute_ll_thread = std::make_unique<std::thread>(
-        //       std::bind(&PSSparseServerTask::compute_loglikelihood, this));
-        // compute_ll_thread->join();
-
-        // model_lock.lock();
-        // ll_lock.lock();
         compute_loglikelihood();
-        // model_lock.unlock();
-        // ll_lock.unlock();
-
-        // std::cout << "Time to find partial model: " << time_find_partial << std::endl;
-        // std::cout << "Time to find partial model (excluding waiting): " << time_pure_find_partial << std::endl;
-        // std::cout << "Time to send: " << time_send << std::endl;
-        // std::cout << "XXX: " << time_temp << std::endl;
       }
     }
     sleep(1);
@@ -1080,88 +1000,19 @@ void PSSparseServerTask::checkpoint_model_file(
 double PSSparseServerTask::compute_loglikelihood() {
 
   double ll = ll_base;
-  // for(int i=0; i<ll_nvt.size(); ++i){
-  //   ll += ll_nvt[i];
-  // }
   ll_lock.lock();
   for(int i=0; i<ll_ndt.size(); ++i){
     ll += ll_ndt[i];
   }
   ll_lock.unlock();
-  // for(int i=0; i<ll_nt.size(); ++i){
-  //   ll += ll_nt[i];
-  // }
-
   compute_ll_threads.push_back(std::make_unique<std::thread>(
         std::bind(&PSSparseServerTask::update_ll_word_thread, this,
                   std::placeholders::_1), ll)
   );
-
-  // std::cout << "loglikelihood: " << ll << std::endl;
   return ll;
 }
 
-// void PSSparseServerTask::compute_loglikelihood_orig() {
-//   std::vector<int> nvt, nt;
-//
-//   lda_global_vars->get_nvt(nvt);
-//   lda_global_vars->get_nt(nt);
-//
-//   double alpha = 0.1, eta = .01;
-//   int K = nt.size();
-//   int V = nvt.size() / K;
-//   double lgamma_eta = lda_lgamma(eta), lgamma_alpha = lda_lgamma(alpha);
-//   double ll = K * lda_lgamma(eta * V);
-//
-//   for (int i = 0; i < K; ++i) {
-//     int nti = 0;
-//     ll -= lda_lgamma(eta * V + nt[i]);
-//     for (int v = 0; v < V; ++v) {
-//       if (nvt[v * K + i] > 0) {
-//         ll += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-//         nti += nvt[v * K + i];
-//       }
-//     }
-//   }
-//
-//   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
-//
-//   auto train_range = task_config.get_train_range();
-//   for (int i = train_range.first; i < train_range.second; ++i) {
-//     std::string obj_id_str =
-//         std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
-//     std::ostringstream* s3_obj =
-//         s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
-//
-//     const std::string tmp = s3_obj->str();
-//     const char* s3_data = tmp.c_str();
-//     LDAStatistics ndt_partial(s3_data);
-//
-//     std::vector<std::vector<int>> ndt;
-//     std::vector<int> slice;
-//     ndt_partial.get_ndt(ndt);
-//     ndt_partial.get_slice(slice);
-//
-//     for (int j = 0; j < ndt.size(); ++j) {
-//       int ndj = 0;
-//       for (int k = 0; k < K; ++k) {
-//         ndj += ndt[j][k];
-//         if (ndt[j][k] > 0) {
-//           ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
-//         }
-//       }
-//       ll += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
-//     }
-//   }
-//
-//   std::cout << "loglikelihood orig: " << ll << std::endl;
-// }
-
 void PSSparseServerTask::init_loglikelihood(){
-
-  // std::vector<int> nvt, nt;
-  // lda_global_vars->get_nvt(nvt);
-  // lda_global_vars->get_nt(nt);
 
   std::shared_ptr<std::vector<int>> nvt_ptr, nt_ptr;
   lda_global_vars->get_nvt_pointer(nvt_ptr);
@@ -1176,26 +1027,6 @@ void PSSparseServerTask::init_loglikelihood(){
 
   ll_base += K * lda_lgamma(eta * V);
 
-  // ll_nvt.clear();
-  // ll_nt.clear();
-  // ll_nvt.resize(V);
-  // ll_nt.resize(K);
-  // auto start_time_benchmark = get_time_ms();
-  //
-  // ll_word = 0.0;
-  //
-  // for (int i = 0; i < K; ++i) {
-  //   // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
-  //   ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
-  //   for (int v = 0; v < V; ++v) {
-  //     // if (nvt[v * K + i] > 0) {
-  //     if (nvt_ptr->operator[](v * K + i) > 0) {
-  //       // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
-  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
-  //     }
-  //   }
-  // }
-  // time_temp += (get_time_ms() - start_time_benchmark) / 1000.0;
 
   s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
@@ -1206,7 +1037,6 @@ void PSSparseServerTask::init_loglikelihood(){
 
   int i = train_range.first;
   double ll_temp = 0.0;
-  // for (int i = train_range.first; i < train_range.second; ++i) {
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
   std::ostringstream* s3_obj =
@@ -1226,16 +1056,11 @@ void PSSparseServerTask::init_loglikelihood(){
     for (int k = 0; k < K; ++k) {
       ndj += ndt[j][k];
       if (ndt[j][k] > 0) {
-        // ll_ndt[i - train_range.first] += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
         ll_temp += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
       }
     }
-    // ll_ndt[i - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
     ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
   }
-  // }
-  // s3_shutdown_aws();
-
   ll_ndt.clear();
   ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
 
@@ -1245,73 +1070,12 @@ void PSSparseServerTask::init_loglikelihood(){
 
 }
 
-void PSSparseServerTask::update_ndt(int bucket_id){
-
-  double alpha = 0.1, eta = .01;
-
-  // s3_initialize_aws();
-  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
-  auto train_range = task_config.get_train_range();
-
-  std::string obj_id_str =
-      std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
-  std::ostringstream* s3_obj =
-      s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
-
-  const std::string tmp = s3_obj->str();
-  const char* s3_data = tmp.c_str();
-
-
-  // LDAStatistics ndt_partial(s3_data);
-  std::unique_ptr<LDAStatistics> ndt_partial;
-  ndt_partial.reset(new LDAStatistics(s3_data));
-  delete s3_obj;
-
-  std::vector<std::vector<int>> ndt;
-  ndt_partial->get_ndt(ndt);
-
-  // model_lock.lock();
-  ll_lock.lock();
-
-  // std::cout << "updating ll for ndt: \n";
-  // std::cout << "pre: " << ll_ndt[bucket_id - train_range.first] << std::endl;
-
-  ll_ndt[bucket_id - train_range.first] = 0.0;
-  for (int j = 0; j < ndt.size(); ++j) {
-    int ndj = 0;
-    for (int k = 0; k < K; ++k) {
-      ndj += ndt[j][k];
-      if (ndt[j][k] > 0) {
-        ll_ndt[bucket_id - train_range.first] += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
-      }
-    }
-    ll_ndt[bucket_id - train_range.first] += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
-  }
-
-  // std::cout << "after: " << ll_ndt[bucket_id - train_range.first] << std::endl;
-
-
-  // model_lock.unlock();
-  ll_lock.unlock();
-
-  ndt.clear();
-  ndt_partial.reset();
-  s3_client.reset();
-
-  bucket_in_update[bucket_id] = -1;
-
-  // s3_shutdown_aws();
-
-}
-
 void PSSparseServerTask::update_ll_word_thread(double ll) {
 
   std::shared_ptr<std::vector<int>> nvt_ptr, nt_ptr;
 
-  // model_lock.lock();
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
-  // model_lock.unlock();
 
   double current_time = (get_time_ms() - start_time) / 1000.0;
   double alpha = 0.1, eta = .01;
@@ -1323,22 +1087,14 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
 
   double ll_word = 0.0;
 
-  // auto temp_start = get_time_ms();
-
   for (int i = 0; i < K; ++i) {
-    // ll_nt[i] -= lda_lgamma(eta * V + nt[i]);
     ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
     for (int v = 0; v < V; ++v) {
-      // if (nvt[v * K + i] > 0) {
       if (nvt_ptr->operator[](v * K + i) != 0) {
-        // ll_nvt[v] += lda_lgamma(eta + nvt[v * K + i]) - lgamma_eta;
         ll_word += lda_lgamma(eta + nvt_ptr->operator[](v * K + i)) - lgamma_eta;
       }
     }
   }
-
-  // auto temp_time = (get_time_ms() - temp_start) / 1000.0;
-  // std::cout << temp_time << " **\n";
 
   std::cout << "----------------------------------------------------------\n";
   std::cout << "**log-likelihood: " << ll + ll_word << " " <<  (get_time_ms() - start_time) / 1000.0 << std::endl;
@@ -1355,9 +1111,6 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "Avg Time to send the sizes: " << time_send_sizes / num_to_find_partial << std::endl;
   std::cout << "Avg Time to send the partial model: " << time_send_partial / num_to_find_partial << std::endl;
   std::cout << "Avg Time to assign slice id: " << time_assign_slice_id / num_to_find_partial << std::endl;
-
-  std::cout << "compress speed: " << lda_global_vars->get_compress_rate() << std::endl;
-  std::cout << "compress effect: " << lda_global_vars->get_compress_effect() << std::endl;
   std::cout << "----------------------------------------------------------\n";
   std::cout << "global model count: " << lda_global_vars->counts << std::endl;
   std::cout << "Avg Time (find_partial) function: " << lda_global_vars->time_whole / lda_global_vars->counts << std::endl;
