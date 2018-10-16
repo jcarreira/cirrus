@@ -123,7 +123,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
 
   to_send_size = sizeof(int8_t) * ndt_.size() +
                  sizeof(int16_t) * (1 + t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
-                 sizeof(int32_t) * (3 + 2 * t_.size() + slice_.size());
+                 sizeof(int32_t) * (2 + 2 * t_.size());
 
   return msg_begin;
 

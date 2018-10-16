@@ -28,7 +28,6 @@ LDAModel::LDAModel(const char* info) {
   d.clear();
   w.clear();
   int32_t N = load_value<int32_t>(info);
-  std::cout << "LDAModel t_size: " << N << std::endl;
   t.reserve(N);
   d.reserve(N);
   w.reserve(N);
@@ -48,7 +47,7 @@ LDAModel::LDAModel(const char* info) {
   nz_ndt_indices_check.clear();
   nz_ndt_indices_check.reserve(D);
   for (int i = 0; i < D; ++i) {
-    std::array<int, 10000> temp;
+    std::array<int, 1000> temp;
     temp.fill(-1);
     nz_ndt_indices_check.push_back(temp);
   }
@@ -56,7 +55,6 @@ LDAModel::LDAModel(const char* info) {
   nz_ndt_indices_counter.clear();
   nz_ndt_indices_counter.resize(D, 0);
 
-  std::cout << "Model ndt: " << D << std::endl;
   ndt.reserve(D);
   nz_ndt_indices.reserve(D);
 
@@ -125,7 +123,7 @@ void LDAModel::update_model(const char* buffer_to_decompress, int compressed_siz
     nz_nvt_indices_check.clear();
     nz_nvt_indices_check.reserve(local_V);
     for (int i = 0; i < local_V; ++i) {
-      std::array<int, 10000> temp;
+      std::array<int, 1000> temp;
       temp.fill(-1);
       nz_nvt_indices_check.push_back(temp);
     }
@@ -204,6 +202,47 @@ void LDAModel::update_model(const char* buffer_to_decompress, int compressed_siz
   }
 
   delete buffer_decompressed;
+}
+
+char* LDAModel::serialize_to_S3(uint64_t& to_send_size) {
+  uint64_t temp_size = (3 + 3 * t.size() + ndt.size() * K_ ) * sizeof(int32_t);
+  char* msg = new char[temp_size];
+  char* msg_begin = msg;
+
+  store_value<int16_t>(msg, K_);
+
+  store_value<int32_t>(msg, t.size());
+  for (int i = 0; i < t.size(); ++i) {
+    store_value<int16_t>(msg, t[i]);
+    store_value<int32_t>(msg, d[i]);
+    store_value<int32_t>(msg, w[i]);
+  }
+
+  int N = 0, S = 0;
+  store_value<int32_t>(msg, ndt.size());
+  for (int i = 0; i < ndt.size(); ++i) {
+    if (2 * nz_ndt_indices[i].size() < K_) {
+      store_value<int8_t>(msg, 1);
+      store_value<int16_t>(msg, nz_ndt_indices[i].size());
+      for (auto& a: nz_ndt_indices[i]) {
+        store_value<int16_t>(msg, a);
+        store_value<int16_t>(msg, ndt[i][a]);
+      }
+      N += nz_ndt_indices[i].size();
+      S += 1;
+    } else {
+      store_value<int8_t>(msg, 2); // dense type
+      int16_t* data = reinterpret_cast<int16_t*>(msg);
+      std::copy(ndt[i].begin(), ndt[i].end(), data);
+      msg = reinterpret_cast<char*>((reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
+    }
+  }
+
+  to_send_size = sizeof(int8_t) * ndt.size() +
+                 sizeof(int16_t) * (1 + t.size() + S + 2 * N + (ndt.size() - S) * K_) +
+                 sizeof(int32_t) * (2 + 2 * t.size());
+
+  return msg_begin;
 }
 
 LDAModel& LDAModel::operator=(LDAModel& model) {

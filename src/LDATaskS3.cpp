@@ -39,7 +39,8 @@ void LDATaskS3::push_gradient(char* gradient_mem, int total_sampled_tokens, uint
 #endif
 }
 
-void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
+void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
+                             uint64_t to_send_size,
                              int& upload_lock,
                              int bucket_id){
 
@@ -51,19 +52,19 @@ void LDATaskS3::upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
     }
   }
 
-  uint64_t to_send_size;
-  char* mem = to_save->serialize(to_send_size);
+  // uint64_t to_send_size;
+  // char* mem = to_save->serialize(to_send_size);
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
        std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
   s3_client->s3_put_object(
        obj_id_str, this->config.get_s3_bucket(),
-       std::string(mem, to_send_size));
+       std::string(mem_to_send, to_send_size));
 
-  to_save.reset();
+  // to_save.reset();
 
   upload_lock = -1;
-  delete[] mem;
+  // delete[] mem_to_send;
 
 }
 
@@ -119,7 +120,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  std::shared_ptr<LDAStatistics> s3_local_vars;
+  // std::shared_ptr<LDAStatistics> s3_local_vars;
 
   int update_bucket = 0;
   int benchmark_time = 5, full_iteration = 0;
@@ -136,24 +137,22 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       std::to_string(hash_f(std::to_string(cur_train_idx).c_str())) + "-LDA";
   std::ostringstream* s3_obj =
       s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
-  s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
-  s3_local_vars->set_slice_size(config.get_slice_size());
-  delete s3_obj;
   time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
 
   // create a LDAModel object with local statistics from S3
   std::unique_ptr<LDAModel> model;
   uint64_t to_send_size;
-  char* s3_local_vars_mem = s3_local_vars->serialize(to_send_size);
-  model.reset(new LDAModel(s3_local_vars_mem));
-  delete s3_local_vars_mem;
+  model.reset(new LDAModel(s3_obj->str().c_str()));
+  delete s3_obj;
+
+  std::cout << "boom\n";
 
   // load the pre-cached indices from server
   char* slice_indices_mem = psint->get_slices_indices(cur_train_idx);
   load_serialized_indices(slice_indices_mem);
   delete slice_indices_mem;
 
-  int cur = 0, num_runs = s3_local_vars->get_slice_size() / config.get_slice_size() + 1;
+  int cur = 0, num_runs = 100000 / config.get_slice_size() + 1;
   std::cout << "[WORKER] starting loop" << std::endl;
 
   while (1) {
@@ -164,21 +163,24 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // more than (num_runs) number of word slices
     if (cur >= num_runs) {
 
-      update_bucket = cur_train_idx;
-      total_sampled_doc += s3_local_vars->get_num_docs();
+      // update_bucket = cur_train_idx;
+      total_sampled_doc += model->get_ndt_size();
 
-      // store the updated doc-topics statistics to the LDAStatistics
-      // which will be sent to S3
-      s3_local_vars->store_new_stats(*model.get());
-
-      // only send to S3 if the next LDAStatistics is not the current one
+      // // only send to S3 if the next LDAStatistics is not the current one
       if (end != start + 1) {
-        help_upload_threads.push_back(std::make_unique<std::thread>(
-              std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
-                        std::placeholders::_1, std::placeholders::_2,
-                        std::placeholders::_3),
-              s3_local_vars, std::ref(upload_lock_indicators[update_bucket - start]), update_bucket)
-        );
+
+        uint64_t size_temp;
+        char* mem_to_send = model->serialize_to_S3(size_temp);
+        upload_wih_bucket_id_fn(mem_to_send, size_temp, upload_lock_indicators[0], cur_train_idx);
+
+        // s3_local_vars->store_new_stats(*model.get());
+        //
+        // help_upload_threads.push_back(std::make_unique<std::thread>(
+        //       std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
+        //                 std::placeholders::_1, std::placeholders::_2,
+        //                 std::placeholders::_3, std::placeholders::_4),
+        //       s3_local_vars, std::ref(upload_lock_indicators[update_bucket - start]), cur_train_idx)
+        // );
       }
 
       // compute the loglikelihood for current LDAStatistics and
@@ -188,9 +190,12 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       // Get the next LDAStatistics from S3
       cur_train_idx += 1;
+
       if (cur_train_idx == end) {
         cur_train_idx = start;
         full_iteration += 1;
+
+        // std::cout << "******\n";
 
         // The early exit is added in case that
         // worker expires even if it hasn't stored the
@@ -201,13 +206,28 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         // estimate average time to sample for one iteration
         float est_time_one_iter = ((get_time_ms() - start_time) / 1000.) / full_iteration;
 
-        if (elapsed_sec > (lambda_time_out - est_time_one_iter * 2)) {
+        // std::cout << "est avg time for one iter: " << est_time_one_iter << std::endl;
+
+        // if (elapsed_sec > (lambda_time_out - est_time_one_iter * 2)) {
+        // std::cout << elapsed_sec << std::endl;
+        if (elapsed_sec > (lambda_time_out - est_time_one_iter * 2 - 15)) {
+
+          // std::cout << "aaa\n";
 
           // true only if the current LDAStatistics has not been
           // pushed to S3 yet
-          if (end == start + 1) {
-            upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start], update_bucket);
-          }
+          // if (end == start + 1) {
+          //   auto temp_check_upload = get_time_ms();
+          //   upload_wih_bucket_id_fn(s3_local_vars, upload_lock_indicators[cur_train_idx - start], start);
+          //   float uploading_time = (get_time_ms() - temp_check_upload) / 1000.0;
+          //   std::cout << "uploading time: " << uploading_time << std::endl;
+          // }
+
+          uint64_t size_temp;
+          char* mem_to_send = model->serialize_to_S3(size_temp);
+          upload_wih_bucket_id_fn(mem_to_send, size_temp, upload_lock_indicators[0], cur_train_idx);
+
+          delete mem_to_send;
 
           std::cout << "--------------------------\n";
           std::cout << "Time to download from S3: " << time_download << std::endl;
@@ -262,24 +282,19 @@ void LDATaskS3::run(const Configuration& config, int worker) {
           s3_client->s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
 
       upload_lock_indicators[cur_train_idx - start] = -1;
-
-      s3_local_vars.reset(new LDAStatistics(s3_obj->str().c_str()));
-      s3_local_vars->set_slice_size(config.get_slice_size());
       time_download += (get_time_ms() - start_time_benchmark) / 1000.0;
 
       // create the LDAModel
-      s3_local_vars_mem = s3_local_vars->serialize(to_send_size);
-      model.reset(new LDAModel(s3_local_vars_mem));
+      model.reset(new LDAModel(s3_obj->str().c_str()));
 
       delete s3_obj;
-      delete s3_local_vars_mem;
 
       // load the pre-cached token indices from server
       slice_indices_mem = psint->get_slices_indices(cur_train_idx - start);
       load_serialized_indices(slice_indices_mem);
       delete slice_indices_mem;
 
-      num_runs = s3_local_vars->get_slice_size() / config.get_slice_size() + 1;
+      num_runs = 100000 / config.get_slice_size() + 1;
       cur = 0;
 
       continue;

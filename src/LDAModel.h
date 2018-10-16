@@ -50,9 +50,13 @@ class LDAModel {
    */
   double compute_ll_ndt();
 
+  char* serialize_to_S3(uint64_t& to_send_size);
+
   void get_ndt(std::vector<std::vector<int>>& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
   void get_t(std::vector<int>& t_) { t_ = t; }
+
+  int get_ndt_size() { return ndt.size(); }
 
   LDAModel& operator=(LDAModel& model);
 
@@ -70,7 +74,7 @@ protected:
   /**
     * K_: number of topics
     * V_: global word space dimension
-    * local_V: local word space dimension 
+    * local_V: local word space dimension
     */
   int K_, V_, update_bucket, local_V;
   /**
@@ -96,8 +100,8 @@ protected:
     * helpers tracking the order of nonzero indices to
     * speed up the later delete operations
     */
-  std::vector<std::array<int, 10000>> nz_ndt_indices_check, nz_nvt_indices_check;
-  std::array<int, 10000> nz_nt_indices_check;
+  std::vector<std::array<int, 1000>> nz_ndt_indices_check, nz_nvt_indices_check;
+  std::array<int, 1000> nz_nt_indices_check;
   std::vector<int> nz_ndt_indices_counter, nz_nvt_indices_counter;
   /**
     * vocabulary slice containing word indices

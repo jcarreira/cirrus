@@ -484,7 +484,8 @@ class LDATaskS3 : public MLTask {
   /**
    * Helper function to push the doc-topic statistics to S3
    */
-  void upload_wih_bucket_id_fn(std::shared_ptr<LDAStatistics> to_save,
+  void upload_wih_bucket_id_fn(char* mem_to_send,
+                               uint64_t to_send_size,
                                int& upload_lock,
                                int bucket_id);
   /**

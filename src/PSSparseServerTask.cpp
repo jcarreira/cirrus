@@ -394,6 +394,9 @@ bool PSSparseServerTask::process_send_ll_update(
 
   auto train_range = task_config.get_train_range();
   ll_lock.lock();
+  // if (ll < ll_ndt[bucket_id - train_range.first]) {
+  //   std::cout << bucket_id << " " << ll << " " << ll_ndt[bucket_id - train_range.first] << std::endl;
+  // }
   ll_ndt[bucket_id - train_range.first] = ll;
   ll_lock.unlock();
 
