@@ -305,9 +305,6 @@ void PSSparseServerInterface::send_gradient(
       grad_msg.Union());
 
   builder.Finish(worker_msg);
-#ifdef DEBUG
-  std::cout << "Sending gradient" << std::endl;
-#endif
   send_flatbuffer(sock, &builder);
 }
 

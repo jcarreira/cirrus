@@ -385,7 +385,7 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
   if (std::isnan(error)) {
     throw std::runtime_error("error isnan");
   }
-  return std::make_pair(error, 0);
+  return std::make_pair(error, count);
 }
 
 uint64_t MFModel::getSerializedGradientSize() const {

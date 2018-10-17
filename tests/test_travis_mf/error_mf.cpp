@@ -9,7 +9,7 @@
 #include "config.h"
 
 //#define DEBUG
-#define ERROR_INTERVAL_USEC (100000)  // time between error checks
+#define ERROR_INTERVAL_USEC (1000000)  // time between error checks
 
 using namespace cirrus;
 
@@ -51,7 +51,7 @@ int main() {
 
   uint64_t start_time = get_time_us();
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 60; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
 #ifdef DEBUG
@@ -82,6 +82,7 @@ int main() {
                 << " time from start (sec): "
                 << (get_time_us() - start_time) / 1000000.0 << std::endl;
       if (avg_loss < 0.6) {
+        std::cout << "avg_loss fell below threshold" << std::endl;
         break;
       }
     } catch (...) {
@@ -90,8 +91,10 @@ int main() {
     }
   }
   if (avg_loss < 0.6) {
+    std::cout << "[ERROR_TASK] Exiting with success" << std::endl;
     exit(EXIT_SUCCESS);
   } else {
+    std::cout << "[ERROR_TASK] Exiting with failure" << std::endl;
     exit(EXIT_FAILURE);
   }
 }
