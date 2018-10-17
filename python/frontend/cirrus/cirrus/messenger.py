@@ -20,8 +20,8 @@ def get_num_lambdas(ip="127.0.0.1", port=1337):
 #        print("Amount of lambdas received:")
 #        print(a)
 #        print("--------------------------")
-        return a - 1   # Subtract 1, as we don't count the clientsocket as a connection
-    except Exception, e:
+        return a - 1 # Subtract 1, don't count clientsocket as a connection
+    except Exception:
         clientsocket.close()
         return None
 
@@ -31,9 +31,10 @@ def get_last_time_error(ip="127.0.0.1", port=1338):
         clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         clientsocket.sendto(GET_LAST_TIME_ERROR, (ip, port))
         clientsocket.settimeout(10)
-        s = clientsocket.recv(256)      # Receives a packet of 4 floats or 256 bytes
+        # Receives a packet of 4 floats or 256 bytes
+        s = clientsocket.recv(256)
         return struct.unpack("dddd", s) # Unpack 4 floats
-    except Exception, e:
+    except Exception:
         return None
 
 
@@ -45,7 +46,7 @@ def get_num_updates(ip="127.0.0.1", port=1337):
         clientsocket.settimeout(3)
         s = clientsocket.recv(32)
         return struct.unpack("I", s)[0]
-    except Exception, e:
+    except Exception:
         clientsocket.close()
         return None
 
@@ -56,7 +57,7 @@ def send_kill_signal(ip="127.0.0.1", port=1337):
         clientsocket.connect((ip, port))
         clientsocket.send(KILL_SIGNAL)
         return True
-    except Exception, e:
+    except Exception:
         clientsocket.close()
         return False
 
