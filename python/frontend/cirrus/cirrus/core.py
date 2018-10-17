@@ -5,11 +5,12 @@ from abc import ABCMeta, abstractmethod
 
 import boto3
 
+
 import messenger
 from CostModel import CostModel
 
 lambda_client = boto3.client('lambda', 'us-west-2')
-lambda_name = "testfunc1"
+LAMBDA_NAME = "testfunc1"
 
 
 # Code shared by all Cirrus experiments
@@ -40,7 +41,7 @@ class BaseTask(object):
                  timeout,
                  threshold_loss,
                  progress_callback
-                 ):
+                ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
         self.lambda_size = lambda_size
@@ -136,12 +137,14 @@ class BaseTask(object):
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
-            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+            payload = ('{"num_task": %d, "num_workers": %d, '
+                       '"ps_ip": \"%s\", "ps_port": %d}') \
+                        % (num_task, self.n_workers,
+                           self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
                     response = lambda_client.invoke(
-                        FunctionName=lambda_name,
+                        FunctionName=LAMBDA_NAME,
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)
@@ -156,8 +159,9 @@ class BaseTask(object):
                 return self.real_time_loss_lst
             else:
                 return self.time_loss_lst
-        out = messenger.get_last_time_error(self.ps_ip_public, self.ps_ip_port + 1)
-        if out == None:
+        out = messenger.get_last_time_error(
+            self.ps_ip_public, self.ps_ip_port + 1)
+        if out is None:
             if rtl:
                 return self.real_time_loss_lst
             else:
@@ -170,9 +174,10 @@ class BaseTask(object):
             else:
                 return self.time_loss_lst
 
-        if len(self.time_loss_lst) == 0 or not (t, loss) == self.time_loss_lst[-1]:
+        if not self.time_loss_lst or not ((t, loss) == self.time_loss_lst[-1]):
             self.time_loss_lst.append((t, loss))
-        self.real_time_loss_lst.append((time.time() - self.start_time, real_time_loss))
+        self.real_time_loss_lst.append((time.time() - self.start_time,
+                                        real_time_loss))
         if rtl:
             return self.real_time_loss_lst
         else:
@@ -197,16 +202,20 @@ class BaseTask(object):
         self.launch_error_task(command_dict)
 
     def launch_error_task(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config config_%d.txt --nworkers %d --rank 2 --ps_ip %s --ps_port %d &> error_out_%d &' % (
-            self.ps_ip_port, self.n_workers, self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
+        cmd = ('nohup ./parameter_server --config config_%d.txt --nworkers %d '
+               '--rank 2 --ps_ip %s --ps_port %d &> error_out_%d &') % \
+              (self.ps_ip_port, self.n_workers, self.ps_ip_private,
+               self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
             raise ValueError('SSH Error Task not implemented')
 
     def launch_ps(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config config_%d.txt --nworkers %d --rank 1 --ps_port %d &> ps_out_%d & ' % (
-            self.ps_ip_port, self.n_workers * 2, self.ps_ip_port, self.ps_ip_port)
+        cmd = ('nohup ./parameter_server --config config_%d.txt --nworkers %d '
+               '--rank 1 --ps_port %d &> ps_out_%d & ') % \
+              (self.ps_ip_port, self.n_workers * 2,
+               self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
@@ -215,7 +224,8 @@ class BaseTask(object):
     def copy_config(self, command_dict=None):
         config = self.define_config()
         if command_dict is not None:
-            command_dict[self.ps_ip_public].append('echo "%s" > config_%d.txt' % (config, self.ps_ip_port))
+            command_dict[self.ps_ip_public].append('echo "%s" > config_%d.txt' \
+            % (config, self.ps_ip_port))
         else:
             raise ValueError('SSH Copy config not implemented')
 

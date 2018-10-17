@@ -52,7 +52,6 @@ def LogisticRegression(
         test_set,
         minibatch_size,
         model_bits,
-        resume_model=0,
         ps_ip_public="",
         ps_ip_private="",
         ps_ip_port=1337,
