@@ -53,6 +53,7 @@ class SparseLRModel : public CirrusModel {
                               int server_id = 0,
                               int num_ps = 1);
 
+
     /**
       * serializes this model into memory
       * @return pair of memory pointer and size of serialized model
