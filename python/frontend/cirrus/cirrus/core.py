@@ -201,7 +201,7 @@ class BaseTask(object):
         self.launch_error_task(command_dict)
 
     def launch_error_task(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config config_%d.txt --nworkers %d --rank 2 --ps_ip %s --ps_port %d &> error_out_%d &' % (
+        cmd = 'nohup ./parameter_server --config ~/tmp/config_%d.txt --nworkers %d --rank 2 --ps_ip %s --ps_port %d &> error_out_%d &' % (
         self.ps_ip_port, self.n_workers, self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
@@ -209,7 +209,7 @@ class BaseTask(object):
             raise ValueError('SSH Error Task not implemented')
 
     def launch_ps(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config config_%d.txt --nworkers %d --rank 1 --ps_port %d &> ps_out_%d & ' % (
+        cmd = 'nohup ./parameter_server --config ~/tmp/config_%d.txt --nworkers %d --rank 1 --ps_port %d &> ps_out_%d & ' % (
             self.ps_ip_port, self.n_workers * 2, self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
@@ -219,7 +219,7 @@ class BaseTask(object):
     def copy_config(self, command_dict=None):
         config = self.define_config()
         if command_dict is not None:
-            command_dict[self.ps_ip_public].append('echo "%s" > config_%d.txt' % (config, self.ps_ip_port))
+            command_dict[self.ps_ip_public].append('echo "%s" > ~/tmp/config_%d.txt' % (config, self.ps_ip_port))
         else:
             raise ValueError('SSH Copy config not implemented')
 

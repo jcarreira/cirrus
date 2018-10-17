@@ -180,10 +180,10 @@ class GridSearch:
                 sh_file = "machine_%d.sh" % thread_id
                 ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
 
-                cmd = "scp %s %s:~/" % (sh_file, ubuntu_machine)
+                cmd = "scp %s %s:~/tmp" % (sh_file, ubuntu_machine)
                 print cmd
                 os.system(cmd)
-                cmd = 'ssh %s "killall parameter_server; chmod +x %s; ./%s &"' % (ubuntu_machine, sh_file, sh_file)
+                cmd = 'ssh %s "killall parameter_server; chmod +x ~/tmp/%s; ./tmp/%s &"' % (ubuntu_machine, sh_file, sh_file)
                 os.system(cmd)
                 thread_id += copy_threads
 
