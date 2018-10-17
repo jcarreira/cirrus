@@ -2,8 +2,8 @@ import hashlib
 import random
 import boto3
 
-ec2c = boto3.client('ec2')
-lc = boto3.client('lambda')
+ec2c = boto3.client('ec2', region_name='us-west-2')
+lc = boto3.client('lambda', region_name='us-west-2')
 iam_client = boto3.client('iam')
 
 # Generates a random RGB color
@@ -12,12 +12,14 @@ def get_random_color():
     return 'rgb(%d, %d, %d)' % (rand_256(), rand_256(), rand_256())
 
 def get_all_lambdas():
-    return lc.list_functions()['Functions']
+    return [each['FunctionName'] for each in lc.list_functions()['Functions']]
 
-def public_dns_to_private_ip(public_dns):
-    filters = [{'Name': 'dns-name', 'Values': [public_dns]}]
+def public_dns_to_private_ip(instances): #public_dns):
+    # filters = [{'Name': 'dns-name', 'Values': [public_dns]}]
 
-    response = ec2c.describe_instances(Filters=filters)
+    # response = ec2c.describe_instances(Filters=filters)
+
+    response = ec2c.describe_instances(InstanceIds=[instances])
 
     instances = response['Reservations'][0]['Instances']
 
@@ -37,13 +39,7 @@ def lambda_exists(existing, name, size, zip_location):
     #    zipped_code = f.read()
     #bundle_sha = hashlib.sha256(zipped_code).hexdigest()
 
-    def check(lambda_):
-        return lambda_['FunctionName'] == name
-       
-    for lambda_ in existing:
-        if (check(lambda_)):
-            return True
-    return False
+    return name in existing
 
 def create_lambda(fname, size=128):
     with open(fname, 'rb') as f:

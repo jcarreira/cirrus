@@ -18,8 +18,8 @@ class LogisticRegressionTask(BaseTask):
         else:
             grad_t = 0
 
-        config = "input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
-                 "input_type: csv\n" + \
+        config = "load_input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
+                 "dataset_format: csv\n" + \
                  "num_classes: 2 \n" + \
                  "num_features: 13 \n" + \
                  "limit_cols: 14 \n" + \
@@ -68,7 +68,6 @@ def LogisticRegression(
             ):
     return LogisticRegressionTask(
             n_workers=n_workers,
-            n_ps=1,
             lambda_size=lambda_size,
             n_ps=n_ps,
             dataset=dataset,

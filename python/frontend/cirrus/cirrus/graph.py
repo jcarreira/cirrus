@@ -112,6 +112,7 @@ def get_cost():
     return bundle.get_cost()
 
 def get_num_lambdas():
+    print(bundle)
     return bundle.get_num_lambdas()
 
 def get_mem_usage():

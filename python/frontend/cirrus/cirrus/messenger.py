@@ -16,7 +16,11 @@ def get_num_lambdas(ip="127.0.0.1", port=1337):
         clientsocket.send(GET_NUM_CONNS)
         clientsocket.settimeout(3)
         s = clientsocket.recv(32)
-        return struct.unpack("I", s)[0] - 1   # Subtract 1, as we don't count the clientsocket as a connection
+        a = struct.unpack("I", s)[0]
+#        print("Amount of lambdas received:")
+#        print(a)
+#        print("--------------------------")
+        return a - 1   # Subtract 1, as we don't count the clientsocket as a connection
     except Exception, e:
         clientsocket.close()
         return None

@@ -5,7 +5,6 @@ import threading
 import time
 import boto3
 import math
-
 import graph
 from utils import *
 
@@ -14,7 +13,9 @@ logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
 # NOTE: This is a temporary measure. Ideally this zip would be on the cloud.
 # Due to constant updates to bundle.zip, its more convienient to have it local
 
-bundle_zip_location="/home/camus/code/cirrus-1/python/frontend/cirrus/cirrus/bundle.zip"
+bundle_zip_location="/home/rnithin/joao/python/frontend/cirrus/cirrus/bundle.zip"
+
+ec2 = boto3.client('ec2', 'us-west-2') 
 
 class GridSearch:
 
@@ -44,14 +45,23 @@ class GridSearch:
         self.set_timeout = timeout # Timeout. -1 means never timeout
         self.num_jobs = num_jobs     # Number of threads checking check_queue
         self.hyper_vars = hyper_vars
+ 
+#        ips = []
+#        for public_dns in machines:
+#            private_ip = public_dns_to_private_ip(public_dns)
+#            ips.append(private_ip)
+#        print ips
 
-        ips = []
-        for public_dns in machines:
-            private_ip = public_dns_to_private_ip(public_dns)
-            ips.append(private_ip)
-        print ips
+        machine_values = []
 
-        self.machines = zip(machines, ips)
+        for machine in machines:
+            response = ec2.describe_instances(InstanceIds=[machine])
+            response = response['Reservations'][0]['Instances'][0]
+            ip = response['PrivateIpAddress']
+            uri = response['PublicDnsName']
+            machine_values.append((uri, ip))
+
+        self.machines = machine_values
 
         # Setup
         self.set_task_parameters(
@@ -62,7 +72,7 @@ class GridSearch:
                 machines=self.machines)
 
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -77,6 +87,7 @@ class GridSearch:
         num_machines = len(machines)
 
         lambdas = get_all_lambdas()
+        print(lambdas)
 
         for p in possibilities:
             configuration = zip(hyper_vars, p)
@@ -95,11 +106,11 @@ class GridSearch:
             self.infos.append({'color': get_random_color()})
             self.loss_lst.append({})
             self.param_lst.append(modified_config)
-            lambda_name = "testfunc1_%d" % c.worker_size
-            if not lambda_exists(lambdas, lambda_name, c.worker_size, bundle_zip_location):
+            lambda_name = "testfunc1_%d" % c.lambda_size
+            if not lambda_exists(lambdas, lambda_name, c.lambda_size, bundle_zip_location):
                 print lambda_name + " Does not exist"
                 lambdas.append({'FunctionName': lambda_name})
-                create_lambda(bundle_zip_location, size=c.worker_size)
+                create_lambda(bundle_zip_location, size=c.lambda_size)
 
     # Fetches custom metadata from experiment i
     def get_info_for(self, i):
@@ -123,6 +134,7 @@ class GridSearch:
         return sum([c.cost_model.get_cost_per_second() for c in self.cirrus_objs])
 
     def get_num_lambdas(self):
+        # return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
         return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
 
     # Gets x-axis values of specified metric from experiment i 
@@ -196,7 +208,6 @@ class GridSearch:
 
                 sh_file = "machine_%d.sh" % thread_id
                 ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
-
                 cmd = "scp %s %s:~/" % (sh_file, ubuntu_machine)
                 os.system(cmd)
                 cmd = 'ssh %s "killall parameter_server; chmod +x %s; ./%s &"' % (ubuntu_machine, sh_file, sh_file)
@@ -220,12 +231,8 @@ class GridSearch:
         return len(self.cirrus_objs)
 
     def set_threads(self, n):
-        
-
-
         self.num_jobs = min(n, self.get_number_experiments())
-
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
 
     # Start threads to maintain all experiments
@@ -235,7 +242,7 @@ class GridSearch:
         if UI:
             def ui_func(self):
                 graph.bundle = self
-                graph.app.run_server()
+                graph.app.run_server(port=1337)
 
             self.ui_thread = threading.Thread(target=ui_func, args = (self, ))
             self.ui_thread.start()
@@ -244,6 +251,8 @@ class GridSearch:
     def kill_all(self):
         for cirrus_ob in self.cirrus_objs:
             cirrus_ob.kill()
+        cmd = 'ssh %s "rm ~/logfiles/*' % (ubuntu_machine)
+        os.system(cmd)
 
     # Get data regarding experiment i.
     def get_info(self, i, param=None):
