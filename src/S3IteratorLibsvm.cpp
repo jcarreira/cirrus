@@ -117,14 +117,12 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
 
     uint64_t index_fw = index;
     // if float or double also accept dots
-    if
-      constexpr(std::is_same<T, double>::value ||
-                std::is_same<T, float>::value) {
-        while (isdigit(data[index_fw]) || data[index_fw] == '.') {
-          index_fw++;
-        }
+    if constexpr (std::is_same<T, double>::value ||
+                  std::is_same<T, float>::value) {
+      while (isdigit(data[index_fw]) || data[index_fw] == '.') {
+        index_fw++;
       }
-    else {
+    } else {
       while (isdigit(data[index_fw])) {
         index_fw++;
       }
@@ -136,23 +134,15 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
 
     T result;
     int sscanf_ret = 0;
-    if
-      constexpr(std::is_same<T, int>::value) {
-        sscanf_ret = sscanf(&data[index], "%d", &result);
-      }
-    else if
-      constexpr(std::is_same<T, double>::value) {
-        sscanf_ret = sscanf(&data[index], "%lf", &result);
-      }
-    else if
-      constexpr(std::is_same<T, float>::value) {
-        sscanf_ret = sscanf(&data[index], "%f", &result);
-      }
-    else if
-      constexpr(std::is_same<T, uint64_t>::value) {
-        sscanf_ret = sscanf(&data[index], "%lu", &result);
-      }
-    else {
+    if constexpr (std::is_same<T, int>::value) {
+      sscanf_ret = sscanf(&data[index], "%d", &result);
+    } else if constexpr (std::is_same<T, double>::value) {
+      sscanf_ret = sscanf(&data[index], "%lf", &result);
+    } else if constexpr (std::is_same<T, float>::value) {
+      sscanf_ret = sscanf(&data[index], "%f", &result);
+    } else if constexpr (std::is_same<T, uint64_t>::value) {
+      sscanf_ret = sscanf(&data[index], "%lu", &result);
+    } else {
       throw std::runtime_error("Data type not supported");
     }
 
@@ -245,7 +235,7 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
           }
           uint64_t ind = readNum<uint64_t>(index, data);
 #ifdef DEBUG
-  // std::cout << "index: " << index << " ind: " << ind << std::endl;
+          // std::cout << "index: " << index << " ind: " << ind << std::endl;
 #endif
           if (data[index] != ':') {
             return false;
@@ -254,13 +244,13 @@ std::shared_ptr<SparseDataset> S3IteratorLibsvm::getNext() {
 
 #ifdef DEBUG
           std::string num_data = data.substr(index, 10);
-  // std::cout << "reading value: " << num_data << std::endl;
+          // std::cout << "reading value: " << num_data << std::endl;
 #endif
 
           FEATURE_TYPE value = readNum<FEATURE_TYPE>(index, data);
 #ifdef DEBUG
-  // std::cout << "index: " << index << " value: " << value <<
-  // std::endl;
+          // std::cout << "index: " << index << " value: " << value <<
+          // std::endl;
 #endif
 
           samples[sample].push_back(std::make_pair(ind, value));
