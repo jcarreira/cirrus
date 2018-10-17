@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <ModelGradient.h>
 
-#define DEBUG
+// #define DEBUG
 
 namespace cirrus {
 
