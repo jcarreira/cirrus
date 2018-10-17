@@ -20,20 +20,20 @@ int idx = 0;
 
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
   InputReader input;
-  return input.read_lda_input(config.get_doc_path(), config.get_vocab_path(),
-                              ",", config);
+  return input.read_lda_input(
+      config.get_doc_path(), config.get_vocab_path(), ",", config);
 }
 
 LDAStatistics LoadingLDATaskS3::count_dataset(
-    const std::vector<std::vector<std::pair<int, int>>>& docs,
+    const std::vector<std::vector<std::pair<int, int> > >& docs,
     std::vector<int>& nvt,
     std::vector<int>& nt,
     std::vector<int>& w,
     int K,
     std::vector<int>& global_vocab,
-    std::vector<std::vector<int>>& topic_scope) {
+    std::vector<std::vector<int> >& topic_scope) {
   std::vector<int> d, t;
-  std::vector<std::vector<int>> ndt;
+  std::vector<std::vector<int> > ndt;
   std::vector<int> local_vocab;
 
   lindex_map.fill(-1);
@@ -48,7 +48,7 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         local_vocab.push_back(gindex);
         lindex_map[gindex] = 1;
       }
-      if (lookup_map[gindex] == -1){
+      if (lookup_map[gindex] == -1) {
         // global_vocab.insert(global_vocab.end(), gindex);
         global_vocab.push_back(gindex);
         lookup_map[gindex] = idx;
@@ -112,23 +112,24 @@ void LoadingLDATaskS3::run(const Configuration& config) {
             << " bucket: " << config.get_s3_bucket() << std::endl;
 
   std::vector<int> nvt, nt;
-  std::vector<std::vector<int>> ws;
+  std::vector<std::vector<int> > ws;
 
   nvt.resize(dataset.num_vocabs() * K);
   nt.resize(K);
   ws.reserve(num_s3_objs);
 
-  std::vector<std::vector<int>> nvt_init_rnd_scope;
+  std::vector<std::vector<int> > nvt_init_rnd_scope;
   std::vector<int> temp_global_vocab;
   temp_global_vocab.reserve(K);
-  for(int i = 0; i < K; ++i) {
+  for (int i = 0; i < K; ++i) {
     temp_global_vocab.push_back(i);
   }
   int length = K;
   nvt_init_rnd_scope.reserve(dataset.num_vocabs());
   for (int i = 0; i < dataset.num_vocabs(); ++i) {
     std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());
-    std::vector<int> vi_init_scope(temp_global_vocab.begin(), temp_global_vocab.begin() + length);
+    std::vector<int> vi_init_scope(temp_global_vocab.begin(),
+                                   temp_global_vocab.begin() + length);
     // for (int j = 0; j < length; ++j) {
     //   std::cout << vi_init_scope[j] << " ";
     // }
@@ -147,11 +148,11 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
     // Only get corpus of size s3_obj_num_samples
-    std::vector<std::vector<std::pair<int, int>>> partial_docs;
+    std::vector<std::vector<std::pair<int, int> > > partial_docs;
     dataset.get_some_docs(partial_docs);
 
-    LDAStatistics to_save =
-        count_dataset(partial_docs, nvt, nt, w, K, global_vocab, nvt_init_rnd_scope);
+    LDAStatistics to_save = count_dataset(
+        partial_docs, nvt, nt, w, K, global_vocab, nvt_init_rnd_scope);
     std::cout << i << " : " << w.size() << std::endl;
     ws.push_back(w);
 
@@ -163,22 +164,22 @@ void LoadingLDATaskS3::run(const Configuration& config) {
         std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
         "-LDA";
     s3_client->s3_put_object(
-        obj_id, config.get_s3_bucket(),
-        std::string(msg, to_send_size));
+        obj_id, config.get_s3_bucket(), std::string(msg, to_send_size));
     delete msg;
   }
 
   // check_loading(config, s3_client);
   //
   // Storing global variables
-  // std::vector<int> global_vocab_vec(global_vocab.begin(), global_vocab.end());
+  // std::vector<int> global_vocab_vec(global_vocab.begin(),
+  // global_vocab.end());
 
   std::shared_ptr<LDAUpdates> initial_global_var;
   initial_global_var.reset(new LDAUpdates());
   initial_global_var->slice = global_vocab;
   initial_global_var->change_nvt_ptr.reset(new std::vector<int>(nvt));
   initial_global_var->change_nt_ptr.reset(new std::vector<int>(nt));
-  initial_global_var->ws_ptr.reset(new std::vector<std::vector<int>>(ws));
+  initial_global_var->ws_ptr.reset(new std::vector<std::vector<int> >(ws));
 
   // LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
   std::cout << "Putting object(initial global var) in S3 with size: "
@@ -189,8 +190,8 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   uint32_t len;
   std::shared_ptr<char> s3_obj = initial_global_var->serialize(&len);
 
-  s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
-                           std::string(s3_obj.get(), len));
+  s3_client->s3_put_object(
+      obj_id, config.get_s3_bucket(), std::string(s3_obj.get(), len));
 
   // s3_shutdown_aws();
 

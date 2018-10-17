@@ -70,7 +70,7 @@ static double lda_gamma(double x) {
     if (arg_was_less_than_one)
       y += 1.0;
     else {
-      n = (int) floor(y) - 1;
+      n = (int)floor(y) - 1;
       y -= n;
     }
     num = 0.0;

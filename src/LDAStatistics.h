@@ -76,18 +76,19 @@ class LDAStatistics {
 
   int current = 0;
 
- // private:
-   /**
-     *
-     * @variable K_: # of potential topics
-     * @variable ndt_: the statistics of word counts over documents and topics
-     *             - size: D * K where D is the size of local corpus
-     * @variable t_: the current assigned latent topics for each words in the corpus
-     *           d_: the document id for each words in the corpus
-     *           w_: the global word id for each words in the corpus
-     *             - size: # of words in the local corpus
-     * @variable slice_: the local vocabulary space
-     */
+  // private:
+  /**
+    *
+    * @variable K_: # of potential topics
+    * @variable ndt_: the statistics of word counts over documents and topics
+    *             - size: D * K where D is the size of local corpus
+    * @variable t_: the current assigned latent topics for each words in the
+    *corpus
+    *           d_: the document id for each words in the corpus
+    *           w_: the global word id for each words in the corpus
+    *             - size: # of words in the local corpus
+    * @variable slice_: the local vocabulary space
+    */
   int K_, slice_size = 1000;
   std::vector<std::vector<int> > ndt_;
   std::vector<int> slice_, t_, d_, w_;

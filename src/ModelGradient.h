@@ -233,7 +233,10 @@ class LDAUpdates {
   /**
     * serialize the word slice
     */
-  char* get_partial_model(int slice_id, uint32_t& to_send_size, uint32_t& uncompressed_size, int local_model_id);
+  char* get_partial_model(int slice_id,
+                          uint32_t& to_send_size,
+                          uint32_t& uncompressed_size,
+                          int local_model_id);
   /**
     * serialize the pre-cached token indices given worker id
     */
@@ -244,33 +247,37 @@ class LDAUpdates {
   int pre_assign_slices(int slice_size);
 
   void get_slice(std::vector<int>& s) { s = slice; }
-  void get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr);
-  void get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr);
+  void get_nvt_pointer(std::shared_ptr<std::vector<int> >& nvt_ptr);
+  void get_nt_pointer(std::shared_ptr<std::vector<int> >& nt_ptr);
   int get_nvt_size() { return change_nvt_ptr->size(); }
   int get_nt_size() { return change_nt_ptr->size(); }
   int get_slice_size() { return slice.size(); }
 
   std::array<int, 1000000> slice_map, sparse_records;
-  double time_whole = 0.0, time_find_partial = 0.0, time_compress = 0.0, counts = 0.0, time_temp=0.0, time_ttemp=0.0, time_nvt_find = 0.0, time_check_sparse = 0.0, time_serial_sparse = 0.0, time_check = 0.0;
+  double time_whole = 0.0, time_find_partial = 0.0, time_compress = 0.0,
+         counts = 0.0, time_temp = 0.0, time_ttemp = 0.0, time_nvt_find = 0.0,
+         time_check_sparse = 0.0, time_serial_sparse = 0.0, time_check = 0.0;
 
   // void check_values() const;
- // protected:
- /**
-   *
-   * @variable change_nvt: the statistics of word counts over vocabularies and topics
-   *            - size: V * K where V is the size of vocabulary space
-   * @variable change_nt: the statistics of word counts over topics
-   *            - size: K
-   * @variable slice: the local vocabulary space
-   */
-  std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
+  // protected:
+  /**
+    *
+    * @variable change_nvt: the statistics of word counts over vocabularies and
+    *topics
+    *            - size: V * K where V is the size of vocabulary space
+    * @variable change_nt: the statistics of word counts over topics
+    *            - size: K
+    * @variable slice: the local vocabulary space
+    */
+  std::shared_ptr<std::vector<int> > change_nvt_ptr, change_nt_ptr;
   std::vector<int> slice;
-  std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>> sparse_change_nvt_ptr;
-  std::shared_ptr<std::vector<std::vector<int>>> ws_ptr;
-  std::vector<std::vector<std::vector<int>>> w_slices;
-  std::vector<std::vector<int>> change_nvt_indices;
-  std::vector<std::set<int>> sparse_nvt_indices;
-  std::vector<std::vector<int>> fixed_slices;
+  std::shared_ptr<std::vector<std::vector<std::pair<int, int> > > >
+      sparse_change_nvt_ptr;
+  std::shared_ptr<std::vector<std::vector<int> > > ws_ptr;
+  std::vector<std::vector<std::vector<int> > > w_slices;
+  std::vector<std::vector<int> > change_nvt_indices;
+  std::vector<std::set<int> > sparse_nvt_indices;
+  std::vector<std::vector<int> > fixed_slices;
   // helper array to track the order of words stored in
   // the sparse_change_nvt_ptr
   std::array<int, 1000000> temp_look_up;

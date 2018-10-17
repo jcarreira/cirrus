@@ -47,13 +47,9 @@ LDADataset::LDADataset(const char* msg_begin) {
   sample_size = (docs_.size()) / 100;
 }
 
-uint64_t LDADataset::num_docs() const {
-  return docs_.size();
-}
+uint64_t LDADataset::num_docs() const { return docs_.size(); }
 
-uint64_t LDADataset::num_vocabs() const {
-  return vocabs_.size();
-}
+uint64_t LDADataset::num_vocabs() const { return vocabs_.size(); }
 
 void LDADataset::check() const {
   for (const auto& w : docs_) {
@@ -76,9 +72,9 @@ void LDADataset::get_some_docs(
       docs_.begin(),
       docs_.size() > sample_size ? docs_.begin() + sample_size : docs_.end(),
       docs.begin());
-  docs_.erase(docs_.begin(), docs_.size() > sample_size
-                                 ? docs_.begin() + sample_size
-                                 : docs_.end());
+  docs_.erase(
+      docs_.begin(),
+      docs_.size() > sample_size ? docs_.begin() + sample_size : docs_.end());
 }
 
 char* LDADataset::serialize() {
@@ -108,9 +104,13 @@ char* LDADataset::serialize() {
     V_letter += strlen(a);
   }
 
-  serialize_size = (2 * N + D + 1) * sizeof(int) + // size of the corpus -> 1, size for each documents -> D, (word_idx, count) pairs for each entries -> 2 * N
-                  (V_word + 1) * sizeof(int) +  // vocab space dimension -> 1, length for each string -> V_word
-                  V_letter * sizeof(char); // total length for all words -> V_letter
+  serialize_size =
+      (2 * N + D + 1) * sizeof(int) +  // size of the corpus -> 1, size for each
+                                       // documents -> D, (word_idx, count)
+                                       // pairs for each entries -> 2 * N
+      (V_word + 1) * sizeof(int) +     // vocab space dimension -> 1, length for
+      // each string -> V_word
+      V_letter * sizeof(char);  // total length for all words -> V_letter
   return msg_begin;
 }
 
@@ -129,8 +129,7 @@ int LDADataset::get_serialize_size() {
   for (const auto& vocab : vocabs_) {
     V_letter += vocab.size();
   }
-  serialize_size = (2 * N + D + V + 2) * sizeof(int) +
-                      V_letter * sizeof(char);
+  serialize_size = (2 * N + D + V + 2) * sizeof(int) + V_letter * sizeof(char);
   return serialize_size;
 }
 }

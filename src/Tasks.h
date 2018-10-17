@@ -306,9 +306,9 @@ class PSSparseServerTask : public MLTask {
   bool process_get_lda_model(const Request& req,
                              std::vector<char>& thread_buffer);
   bool process_get_slices_indices(const Request& req,
-                              std::vector<char>& thread_buffer);
+                                  std::vector<char>& thread_buffer);
   bool process_send_ll_update(const Request& req,
-                             std::vector<char>& thread_buffer);
+                              std::vector<char>& thread_buffer);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
@@ -374,8 +374,8 @@ class PSSparseServerTask : public MLTask {
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
   std::mutex ll_lock, slice_lock;
-  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
-  std::vector<std::vector<int>> fixed_slices;
+  std::vector<std::unique_ptr<std::thread> > compute_ll_threads;
+  std::vector<std::vector<int> > fixed_slices;
   std::vector<int> unused_slice_id;
   int num_slices;
   std::array<int, 100000> sock_lookup;
@@ -385,7 +385,8 @@ class PSSparseServerTask : public MLTask {
 
   double num_to_find_partial = 0.;
   double receive_size = 0, send_size = 0;
-  double time_pure_find_partial = 0.0, time_find_partial = 0.0, time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
+  double time_pure_find_partial = 0.0, time_find_partial = 0.0,
+         time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
   double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
 
   Configuration task_config;     //< config for parameter server
@@ -491,16 +492,18 @@ class LDATaskS3 : public MLTask {
   /**
    * Helper function to push the update to S3
    */
-  void push_gradient(char* gradient_mem, int total_sampled_tokens, uint32_t to_send_size);
+  void push_gradient(char* gradient_mem,
+                     int total_sampled_tokens,
+                     uint32_t to_send_size);
   /**
    * Load the pre-cached token indices (for the current slice)
    * from the server
    */
   void load_serialized_indices(char* mem_begin);
 
-  std::vector<std::unique_ptr<std::thread>> help_upload_threads;
+  std::vector<std::unique_ptr<std::thread> > help_upload_threads;
   std::vector<int> upload_lock_indicators;
-  std::vector<std::vector<int>> slice_indices;
+  std::vector<std::vector<int> > slice_indices;
   PSSparseServerInterface* psint;
 };
 
@@ -529,13 +532,13 @@ class LoadingLDATaskS3 : public MLTask {
   void run(const Configuration& config);
   LDADataset read_dataset(const Configuration& config);
   LDAStatistics count_dataset(
-      const std::vector<std::vector<std::pair<int, int>>>& docs,
+      const std::vector<std::vector<std::pair<int, int> > >& docs,
       std::vector<int>& nvt,
       std::vector<int>& nt,
       std::vector<int>& w,
       int K,
       std::vector<int>& global_vocab,
-      std::vector<std::vector<int>>& topic_scope);
+      std::vector<std::vector<int> >& topic_scope);
 };
 }
 

@@ -117,7 +117,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
     throw std::runtime_error("Error getting sparse lr model");
   }
 
-  //4. receive weights from PS
+  // 4. receive weights from PS
   uint32_t to_receive_size = sizeof(FEATURE_TYPE) * num_weights;
 
 #ifdef DEBUG
@@ -286,8 +286,9 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   return status;
 }
 
-// void PSSparseServerInterface::send_lda_update(LDAUpdates& gradient, int total_sampled_tokens) {
-void PSSparseServerInterface::send_lda_update(char* gradient_mem, int total_sampled_tokens, uint32_t size) {
+void PSSparseServerInterface::send_lda_update(char* gradient_mem,
+                                              int total_sampled_tokens,
+                                              uint32_t size) {
   uint32_t operation = SEND_LDA_UPDATE;
 #ifdef DEBUG
   std::cout << "Sending LDA updates" << std::endl;
@@ -297,9 +298,6 @@ void PSSparseServerInterface::send_lda_update(char* gradient_mem, int total_samp
     throw std::runtime_error("Error sending operation_u");
   }
 
-  // uint32_t size;
-  // std::shared_ptr<char> mem = gradient.serialize(&size);
-  // std::shared_ptr<char> mem = gradient.serialize_sparse(&size);
 #ifdef DEBUG
   std::cout << "Sending LDA updates with size: " << size << std::endl;
 #endif
@@ -347,8 +345,9 @@ void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {
   }
 }
 
-
-char* PSSparseServerInterface::get_lda_model(int local_model_id, uint32_t& to_receive_size, uint32_t& uncompressed_size) {
+char* PSSparseServerInterface::get_lda_model(int local_model_id,
+                                             uint32_t& to_receive_size,
+                                             uint32_t& uncompressed_size) {
 
   auto start_time_benchmark = get_time_ms();
 
@@ -425,8 +424,5 @@ char* PSSparseServerInterface::get_slices_indices(int local_model_id) {
 
   return buffer;
 }
-
-
-
 
 }  // namespace cirrus

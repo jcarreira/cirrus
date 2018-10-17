@@ -93,7 +93,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
   store_value<int32_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
 
-    std::vector<std::pair<int, int>> sparse_nt_di;
+    std::vector<std::pair<int, int> > sparse_nt_di;
     sparse_nt_di.reserve(K_);
     nz = 0;
 
@@ -105,28 +105,29 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
     }
 
     if (2 * nz < K_) {
-      store_value<int8_t>(msg, sparse_type); // sparse type
+      store_value<int8_t>(msg, sparse_type);  // sparse type
       store_value<int16_t>(msg, nz);
-      for (auto& a: sparse_nt_di) {
+      for (auto& a : sparse_nt_di) {
         store_value<int16_t>(msg, a.first);
         store_value<int16_t>(msg, a.second);
       }
       N += nz;
       S += 1;
     } else {
-      store_value<int8_t>(msg, dense_type); // dense type
+      store_value<int8_t>(msg, dense_type);  // dense type
       int16_t* data = reinterpret_cast<int16_t*>(msg);
       std::copy(nt_di.begin(), nt_di.begin() + K_, data);
-      msg = reinterpret_cast<char*>((reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
+      msg = reinterpret_cast<char*>(
+          (reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
     }
   }
 
-  to_send_size = sizeof(int8_t) * ndt_.size() +
-                 sizeof(int16_t) * (1 + t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
-                 sizeof(int32_t) * (2 + 2 * t_.size());
+  to_send_size =
+      sizeof(int8_t) * ndt_.size() +
+      sizeof(int16_t) * (1 + t_.size() + S + 2 * N + (ndt_.size() - S) * K_) +
+      sizeof(int32_t) * (2 + 2 * t_.size());
 
   return msg_begin;
-
 }
 
 char* LDAStatistics::serialize_slice() {
@@ -142,7 +143,8 @@ char* LDAStatistics::serialize_slice() {
 }
 
 int LDAStatistics::get_serialize_size() {
-  return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) * sizeof(int32_t);
+  return (4 + 3 * t_.size() + ndt_.size() * K_ + slice_.size()) *
+         sizeof(int32_t);
 }
 
 int LDAStatistics::get_serialize_slice_size() {
@@ -160,7 +162,5 @@ void LDAStatistics::store_new_stats(LDAModel& model) {
 
   model.get_ndt(ndt_);
   model.get_t(t_);
-
 }
-
 }

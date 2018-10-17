@@ -51,9 +51,14 @@ void run_tasks(int rank, int nworkers,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);
     } else if (config.get_model_type() == cirrus::Configuration::LDA) {
-      cirrus::LDATaskS3 lt(1, batch_size,
-                           samples_per_batch, features_per_sample, nworkers,
-                           rank, ps_ip, ps_port);
+      cirrus::LDATaskS3 lt(1,
+                           batch_size,
+                           samples_per_batch,
+                           features_per_sample,
+                           nworkers,
+                           rank,
+                           ps_ip,
+                           ps_port);
       lt.run(config, rank - WORKERS_BASE);
     } else {
       exit(-1);
@@ -83,9 +88,14 @@ void run_tasks(int rank, int nworkers,
       exit(-1);
     }
   } else if (rank == LOADING_LDA_TASK_RANK) {
-    cirrus::LoadingLDATaskS3 st((1 << config.get_model_bits()) + 1, batch_size,
-                                samples_per_batch, features_per_sample,
-                                nworkers, rank, ps_ip, ps_port);
+    cirrus::LoadingLDATaskS3 st((1 << config.get_model_bits()) + 1,
+                                batch_size,
+                                samples_per_batch,
+                                features_per_sample,
+                                nworkers,
+                                rank,
+                                ps_ip,
+                                ps_port);
     st.run(config);
   } else {
     throw std::runtime_error("Wrong task rank: " + std::to_string(rank));

@@ -102,12 +102,16 @@ LDAModel::LDAModel(const char* info) {
   }
 }
 
-void LDAModel::update_model(const char* buffer_to_decompress, int compressed_size, int uncompressed_size, int slice_id) {
+void LDAModel::update_model(const char* buffer_to_decompress,
+                            int compressed_size,
+                            int uncompressed_size,
+                            int slice_id) {
 
   // decompress the serialized mem that contains the partial
   // global word-topic statistics
   char* buffer_decompressed = new char[uncompressed_size + 1024];
-  LZ4_decompress_fast(buffer_to_decompress, buffer_decompressed, uncompressed_size);
+  LZ4_decompress_fast(
+      buffer_to_decompress, buffer_decompressed, uncompressed_size);
   const char* buffer = buffer_decompressed;
 
   V_ = load_value<int32_t>(buffer);
@@ -141,7 +145,8 @@ void LDAModel::update_model(const char* buffer_to_decompress, int compressed_siz
     std::vector<int> nz_nt_vi;
     nz_nt_vi.reserve(K_);
 
-    int16_t store_type = load_value<int16_t>(buffer); // 1 -> sparse, 2 -> dense
+    int16_t store_type =
+        load_value<int16_t>(buffer);  // 1 -> sparse, 2 -> dense
     if (store_type == 1) {
       // sparse
       nt_vi.resize(K_, 0);
@@ -205,7 +210,7 @@ void LDAModel::update_model(const char* buffer_to_decompress, int compressed_siz
 }
 
 char* LDAModel::serialize_to_S3(uint64_t& to_send_size) {
-  uint64_t temp_size = (3 + 3 * t.size() + ndt.size() * K_ ) * sizeof(int32_t);
+  uint64_t temp_size = (3 + 3 * t.size() + ndt.size() * K_) * sizeof(int32_t);
   char* msg = new char[temp_size];
   char* msg_begin = msg;
 
@@ -224,23 +229,25 @@ char* LDAModel::serialize_to_S3(uint64_t& to_send_size) {
     if (2 * nz_ndt_indices[i].size() < K_) {
       store_value<int8_t>(msg, 1);
       store_value<int16_t>(msg, nz_ndt_indices[i].size());
-      for (auto& a: nz_ndt_indices[i]) {
+      for (auto& a : nz_ndt_indices[i]) {
         store_value<int16_t>(msg, a);
         store_value<int16_t>(msg, ndt[i][a]);
       }
       N += nz_ndt_indices[i].size();
       S += 1;
     } else {
-      store_value<int8_t>(msg, 2); // dense type
+      store_value<int8_t>(msg, 2);  // dense type
       int16_t* data = reinterpret_cast<int16_t*>(msg);
       std::copy(ndt[i].begin(), ndt[i].end(), data);
-      msg = reinterpret_cast<char*>((reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
+      msg = reinterpret_cast<char*>(
+          (reinterpret_cast<char*>(msg) + sizeof(int16_t) * K_));
     }
   }
 
-  to_send_size = sizeof(int8_t) * ndt.size() +
-                 sizeof(int16_t) * (1 + t.size() + S + 2 * N + (ndt.size() - S) * K_) +
-                 sizeof(int32_t) * (2 + 2 * t.size());
+  to_send_size =
+      sizeof(int8_t) * ndt.size() +
+      sizeof(int16_t) * (1 + t.size() + S + 2 * N + (ndt.size() - S) * K_) +
+      sizeof(int32_t) * (2 + 2 * t.size());
 
   return msg_begin;
 }
@@ -277,25 +284,32 @@ double LDAModel::compute_ll_ndt() {
 }
 
 char* LDAModel::sample_model(int& total_sampled_tokens,
-                                                   std::vector<int>& slice_indices,
-                                                   uint32_t& to_send_size) {
-  return sample_thread(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
-                       std::ref(nvt), std::ref(ndt), std::ref(slice), total_sampled_tokens, slice_indices, to_send_size);
+                             std::vector<int>& slice_indices,
+                             uint32_t& to_send_size) {
+  return sample_thread(std::ref(t),
+                       std::ref(d),
+                       std::ref(w),
+                       std::ref(nt),
+                       std::ref(nvt),
+                       std::ref(ndt),
+                       std::ref(slice),
+                       total_sampled_tokens,
+                       slice_indices,
+                       to_send_size);
 }
 
-char* LDAModel::sample_thread(
-    std::vector<int>& t,
-    std::vector<int>& d,
-    std::vector<int>& w,
-    std::vector<int>& nt,
-    std::vector<std::vector<int>>& nvt,
-    std::vector<std::vector<int>>& ndt,
-    std::vector<int>& slice,
-    int& total_sampled_tokens,
-    std::vector<int>& slice_indices,
-    uint32_t& to_send_size) {
+char* LDAModel::sample_thread(std::vector<int>& t,
+                              std::vector<int>& d,
+                              std::vector<int>& w,
+                              std::vector<int>& nt,
+                              std::vector<std::vector<int> >& nvt,
+                              std::vector<std::vector<int> >& ndt,
+                              std::vector<int>& slice,
+                              int& total_sampled_tokens,
+                              std::vector<int>& slice_indices,
+                              uint32_t& to_send_size) {
 
-  std::array<int , 1000000> slice_map;
+  std::array<int, 1000000> slice_map;
   slice_map.fill(-1);
   int idx = 0;
   for (int i : slice) {
@@ -315,7 +329,7 @@ char* LDAModel::sample_thread(
   // initialize an empty vector to hold the updates
   std::vector<int> change_nvt(nvt.size() * K_, 0);
   std::vector<int> change_nt(K_, 0);
-  std::vector<std::set<int>> change_nvt_indices(nvt.size(), std::set<int>());
+  std::vector<std::set<int> > change_nvt_indices(nvt.size(), std::set<int>());
 
   double smoothing_threshold = 0.0, doc_threshold = 0.0;
   std::vector<double> smoothing_vec, doc_vec, word_vec, coeff_base;
@@ -324,12 +338,13 @@ char* LDAModel::sample_thread(
   // Computing [smoothing_threshold]
   // Only iterating over non-zero entries
   smoothing_vec.resize(K_, (alpha * eta) / (eta * V_));
-  for (auto& i: nz_nt_indices) {
+  for (auto& i : nz_nt_indices) {
     double value = (alpha * eta) / (eta * V_ + nt[i]);
     smoothing_threshold += value;
     smoothing_vec[i] = value;
   }
-  smoothing_threshold += (alpha * eta) / (eta * V_) * (K_ - nz_nt_indices.size());
+  smoothing_threshold +=
+      (alpha * eta) / (eta * V_) * (K_ - nz_nt_indices.size());
 
   word_vec.resize(K_, 0);
 
@@ -337,7 +352,7 @@ char* LDAModel::sample_thread(
   // later to compute word_threshold
   coeff_base.reserve(K_);
   for (int i = 0; i < K_; ++i) {
-    double temp = alpha / ( eta * (double) V_ + (float) nt[i]);
+    double temp = alpha / (eta * (double)V_ + (float)nt[i]);
     coeff_base.push_back(temp);
   }
 
@@ -348,7 +363,7 @@ char* LDAModel::sample_thread(
     top = t[index], doc = d[index], gindex = w[index];
 
     // Check if current word is in the local word space or not
-    if (slice_map[gindex] == -1){
+    if (slice_map[gindex] == -1) {
       continue;
     }
 
@@ -366,7 +381,7 @@ char* LDAModel::sample_thread(
       doc_threshold = 0.0;
       doc_vec.clear();
       doc_vec.resize(K_, 0);
-      for (auto& nz_top: nz_ndt_indices[doc]) {
+      for (auto& nz_top : nz_ndt_indices[doc]) {
         double value = ndt[doc][nz_top] * eta / (eta * V_ + nt[nz_top]);
         doc_threshold += value;
         doc_vec[nz_top] = value;
@@ -374,8 +389,9 @@ char* LDAModel::sample_thread(
 
       // Compute actual coefficients for later word_threshold
       coeff_di = coeff_base;
-      for (auto& nz_top: nz_ndt_indices[doc]) {
-        coeff_di[nz_top] = 1.0 * (alpha + (double) ndt[doc][nz_top]) / ( eta * (double) V_ + (float) nt[nz_top]);
+      for (auto& nz_top : nz_ndt_indices[doc]) {
+        coeff_di[nz_top] = 1.0 * (alpha + (double)ndt[doc][nz_top]) /
+                           (eta * (double)V_ + (float)nt[nz_top]);
       }
     }
 
@@ -388,27 +404,29 @@ char* LDAModel::sample_thread(
     if (ndt[doc][top] == 0 && nz_ndt_indices_check[doc][top] != -1) {
 
       int ldoc_idx = nz_ndt_indices_check[doc][top];
-      for (int dec_doc_idx = ldoc_idx + 1; dec_doc_idx < nz_ndt_indices_counter[doc]; dec_doc_idx++) {
+      for (int dec_doc_idx = ldoc_idx + 1;
+           dec_doc_idx < nz_ndt_indices_counter[doc];
+           dec_doc_idx++) {
         int dec_top = nz_ndt_indices[doc][dec_doc_idx];
         nz_ndt_indices_check[doc][dec_top] -= 1;
       }
       nz_ndt_indices_counter[doc] -= 1;
       nz_ndt_indices_check[doc][top] = -1;
       nz_ndt_indices[doc].erase(nz_ndt_indices[doc].begin() + ldoc_idx);
-
     }
 
     if (nvt[lindex][top] == 0 && nz_nvt_indices_check[lindex][top] != -1) {
 
       int lvocab_idx = nz_nvt_indices_check[lindex][top];
-      for (int dec_vocab_idx = lvocab_idx + 1; dec_vocab_idx < nz_nvt_indices_counter[lindex]; dec_vocab_idx++) {
+      for (int dec_vocab_idx = lvocab_idx + 1;
+           dec_vocab_idx < nz_nvt_indices_counter[lindex];
+           dec_vocab_idx++) {
         int dec_top = nz_nvt_indices[lindex][dec_vocab_idx];
         nz_nvt_indices_check[lindex][dec_top] -= 1;
       }
       nz_nvt_indices_counter[lindex] -= 1;
       nz_nvt_indices_check[lindex][top] = -1;
       nz_nvt_indices[lindex].erase(nz_nvt_indices[lindex].begin() + lvocab_idx);
-
     }
 
     // Update the thresholds due to the current token's removal
@@ -421,8 +439,9 @@ char* LDAModel::sample_thread(
     doc_vec[top] = ndt[doc][top] * eta / (eta * V_ + nt[top]);
     doc_threshold += doc_vec[top];
 
-    coeff_di[top] = 1.0 * (alpha + (double) ndt[doc][top]) / ( eta * (double) V_ + (float) nt[top]);
-    coeff_base[top] = alpha / ( eta * (double) V_ + (float) nt[top]);
+    coeff_di[top] = 1.0 * (alpha + (double)ndt[doc][top]) /
+                    (eta * (double)V_ + (float)nt[top]);
+    coeff_base[top] = alpha / (eta * (double)V_ + (float)nt[top]);
 
     // // Naive Sampler
     // rate_cum = 0.0;
@@ -430,7 +449,8 @@ char* LDAModel::sample_thread(
     // which_topic[top] = 1;
     // for (int j = 0; j < K_; ++j) {
     //
-    //   // r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta + nt[j]);
+    //   // r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta +
+    // nt[j]);
     //   r = (alpha * eta) / (eta * V_ + nt[j]) +
     //       (ndt[doc][j] * eta) / (eta * V_ + nt[j]) +
     //       ((alpha + ndt[doc][j]) * nvt[lindex][j]) / (eta * V_ + nt[j]);
@@ -446,18 +466,20 @@ char* LDAModel::sample_thread(
 
     // Compute word_threshold from coeff_di helpers
     double word_threshold = 0.0;
-    for (auto& nz_top: nz_nvt_indices[lindex]) {
+    for (auto& nz_top : nz_nvt_indices[lindex]) {
       word_vec[nz_top] = coeff_di[nz_top] * nvt[lindex][nz_top];
       word_threshold += word_vec[nz_top];
     }
 
     // Generate a random number which cannot exceed the sum of three thresholds
-    double rdn = rand() * (smoothing_threshold + doc_threshold + word_threshold) / RAND_MAX;
+    double rdn = rand() *
+                 (smoothing_threshold + doc_threshold + word_threshold) /
+                 RAND_MAX;
 
     // Currently linear search; O(K_d + K_w)
     // XXX can be improved to log by using F+ tree
     if (rdn < word_threshold) {
-      for (auto& nz_top: nz_nvt_indices[lindex]) {
+      for (auto& nz_top : nz_nvt_indices[lindex]) {
         rdn -= word_vec[nz_top];
         if (rdn <= 0) {
           new_top = nz_top;
@@ -467,7 +489,7 @@ char* LDAModel::sample_thread(
     } else {
       rdn -= word_threshold;
       if (rdn < doc_threshold) {
-        for (auto& nz_top: nz_ndt_indices[doc]) {
+        for (auto& nz_top : nz_ndt_indices[doc]) {
           rdn -= doc_vec[nz_top];
           if (rdn <= 0) {
             new_top = nz_top;
@@ -493,7 +515,8 @@ char* LDAModel::sample_thread(
       nz_ndt_indices_counter[doc] += 1;
     }
 
-    if (nvt[lindex][new_top] == 0 && nz_nvt_indices_check[lindex][new_top] == -1) {
+    if (nvt[lindex][new_top] == 0 &&
+        nz_nvt_indices_check[lindex][new_top] == -1) {
       nz_nvt_indices[lindex].push_back(new_top);
       nz_nvt_indices_check[lindex][new_top] = nz_nvt_indices_counter[lindex];
       nz_nvt_indices_counter[lindex] += 1;
@@ -542,8 +565,9 @@ char* LDAModel::sample_thread(
     doc_vec[new_top] = ndt[doc][new_top] * eta / (eta * V_ + nt[new_top]);
     doc_threshold += doc_vec[new_top];
 
-    coeff_di[new_top] = 1.0 * (alpha + (double) ndt[doc][new_top]) / ( eta * (double) V_ + (float) nt[new_top]);
-    coeff_base[new_top] = alpha / ( eta * (double) V_ + (float) nt[new_top]);
+    coeff_di[new_top] = 1.0 * (alpha + (double)ndt[doc][new_top]) /
+                        (eta * (double)V_ + (float)nt[new_top]);
+    coeff_base[new_top] = alpha / (eta * (double)V_ + (float)nt[new_top]);
 
     total_sampled_tokens += 1;
   }
@@ -555,10 +579,9 @@ char* LDAModel::sample_thread(
   // delete[] rate;
 
   // The upper bound of the update's size
-  uint32_t temp_size =
-        sizeof(uint64_t) +
-        sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
-        sizeof(int16_t) * (nvt.size() * change_nt.size() * 2);
+  uint32_t temp_size = sizeof(uint64_t) +
+                       sizeof(int) * (3 + change_nt.size() + 2 * slice.size()) +
+                       sizeof(int16_t) * (nvt.size() * change_nt.size() * 2);
 
   char* mem = new char[temp_size];
   char* mem_begin = mem;
@@ -577,7 +600,7 @@ char* LDAModel::sample_thread(
   int N = 0;
   for (int i = 0; i < slice.size(); ++i) {
     store_value<int>(mem, change_nvt_indices[i].size());
-    for (auto& top: change_nvt_indices[i]) {
+    for (auto& top : change_nvt_indices[i]) {
       store_value<int16_t>(mem, top);
       store_value<int16_t>(mem, change_nvt[i * K_ + top]);
       N += 1;
@@ -593,10 +616,9 @@ char* LDAModel::sample_thread(
   store_value<uint32_t>(mem, 1);
 
   // save the actual size
-  to_send_size =
-      sizeof(uint64_t) +
-      sizeof(int) * (3  + change_nt.size() + 2 * slice.size()) +
-      sizeof(int16_t) * (2 * N);
+  to_send_size = sizeof(uint64_t) +
+                 sizeof(int) * (3 + change_nt.size() + 2 * slice.size()) +
+                 sizeof(int16_t) * (2 * N);
 
   return mem_begin;
 }
