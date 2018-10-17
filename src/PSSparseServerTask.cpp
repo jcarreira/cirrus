@@ -494,7 +494,7 @@ void PSSparseServerTask::start_server() {
 
   for (int i = NUM_POLL_THREADS - 1; i >= 0; i--) {
     server_threads.push_back(std::make_unique<std::thread>(
-          std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
+        std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
   }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {

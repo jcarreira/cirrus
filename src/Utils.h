@@ -159,8 +159,6 @@ ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
 
-
-
 // For reading the CSV for ps ips and ps ports
 template <typename T>
 std::vector<T> csv_to_vector(const std::string& csv) {
@@ -169,10 +167,10 @@ std::vector<T> csv_to_vector(const std::string& csv) {
   std::stringstream ss(csv);
   while (ss) {
     if (!getline(ss, tmp, ','))
-	  break;
-	T tmp_item;
-	std::istringstream iss(tmp);
-	iss >> tmp_item;
+      break;
+    T tmp_item;
+    std::istringstream iss(tmp);
+    iss >> tmp_item;
     items.push_back(tmp_item);
   }
   return items;

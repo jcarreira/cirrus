@@ -164,15 +164,15 @@ int main(int argc, char** argv) {
 
   std::string ps_ip_string = FLAGS_ps_ip;
   std::vector<std::string> ps_ips;
-  ps_ips= cirrus::csv_to_vector<std::string>(ps_ip_string);
+  ps_ips = cirrus::csv_to_vector<std::string>(ps_ip_string);
 
   std::string ps_port_string = FLAGS_ps_port;
   std::vector<uint64_t> ps_ports;
   ps_ports = cirrus::csv_to_vector<uint64_t>(ps_port_string);
-  
+
   // Same number of ports and ips
   assert(ps_ips.size() == ps_ports.size());
- 
+
   std::cout << "Number of parameter servers: " << ps_ips.size() << std::endl;
   std::cout << "Parameter servers: ";
   for (int i = 0; i < ps_ips.size(); i++) {
