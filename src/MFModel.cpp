@@ -330,8 +330,8 @@ void MFModel::sgd_update(
           std::cout << "learning_rate: " << learning_rate << std::endl;
           throw std::runtime_error("nan in item weight");
         }
-      }
 #endif
+      }
     }
   }
 }
