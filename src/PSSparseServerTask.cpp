@@ -173,14 +173,16 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   assert(to_send_size < MB);  // 1 MB
   unsigned char data_to_send[to_send_size];
   unsigned char* data_to_send_ptr = data_to_send;
-  //#ifdef DEBUG
-  // std::cout << "Sending back: " << num_entries
-  //           << " weights from model. Size: " << to_send_size << std::endl;
-  //#endif
 
   // Make the weights vector
   int num_bytes = 0;
-  for (uint32_t i = 0; i < num_entries; i++) {
+
+#ifdef DEBUG
+  std::cout << "Sending back: " << num_entries
+    << " weights from model. Size: " << to_send_size
+    << std::endl;
+#endif
+  for (uint32_t i = 0; i < num_entries; ++i) {
     uint32_t entry_index = load_value<uint32_t>(index_list);
     double weight = lr_model->get_nth_weight(entry_index);
     opt_method->edit_weight(weight);
@@ -245,7 +247,11 @@ bool PSSparseServerTask::process_get_lr_full_model(
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
-  int model_size = lr_model_copy.getSerializedSize();
+
+  // TODO: This should be largest non-zero weight in model. That way
+  // we can reduce the model size, espeically for a large model split across
+  // multiple PS
+  uint32_t model_size = lr_model_copy.getSerializedSize();
 
   if (thread_buffer.size() < model_size) {
     std::string error_str = "buffer with size " +
