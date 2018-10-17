@@ -75,6 +75,8 @@ class GridSearch:
         string = ""
         for param_name in self.hyper_vars:
             string += "%s: %s\n" % (param_name, str(self.param_lst[i][param_name]))
+        if self.cirrus_objs[i].is_dead():
+            string += "Terminated\n"
         return string
 
     def get_name_for(self, i):
