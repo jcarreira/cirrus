@@ -120,7 +120,7 @@ def get_traces(num, metric="LOSS"):
     trace_lst = []
     if num == 0:
         # Get all
-        for i in range(get_num_experiments()):
+        for i in range(get_num_experiments(metric)):
             xs = get_xs_for(i, metric)
             lll = len(xs)
             trace = Scatter(
@@ -136,7 +136,7 @@ def get_traces(num, metric="LOSS"):
         # Get top N
         q = []
 
-        for i in range(get_num_experiments()):
+        for i in range(get_num_experiments(metric)):
 
             xs = get_xs_for(i, metric)
             ys = get_ys_for(i, metric)
@@ -148,7 +148,7 @@ def get_traces(num, metric="LOSS"):
                 mode='markers+lines',
                 line = dict(color = (bundle.get_info(i, 'color'))),
                 customdata= str(i) * lll
-            )
+                )
             if (len(ys) > 0):
                 q.append((ys[-1], trace))
         q.sort(reverse=(num > 0))
@@ -162,8 +162,8 @@ dead_lst = []
 frozen_lstx = {}
 frozen_lsty = {}
 
-def get_num_experiments():
-    return bundle.get_number_experiments()
+def get_num_experiments(metric=None):
+    return bundle.get_number_experiments(metric)
 
 
 def get_xs_for(i, metric="LOSS"):
