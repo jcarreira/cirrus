@@ -210,7 +210,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
         // if (elapsed_sec > (lambda_time_out - est_time_one_iter * 2)) {
         // std::cout << elapsed_sec << std::endl;
-        if (elapsed_sec > (lambda_time_out - est_time_one_iter - 5)) {
+        if (elapsed_sec > (lambda_time_out - est_time_one_iter - 5.)) {
 
           // std::cout << "aaa\n";
 
