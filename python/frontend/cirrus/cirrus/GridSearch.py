@@ -227,6 +227,9 @@ class GridSearch:
     def kill_all(self):
         for cirrus_ob in self.cirrus_objs:
             cirrus_ob.kill()
+        for machine in machines:
+            cmd = 'ssh %s "rm -rf ~/tmp/*"' % (machine[0])
+            os.system(cmd)
 
     # Get data regarding experiment i.
     def get_info(self, i, param=None):

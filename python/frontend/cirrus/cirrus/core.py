@@ -191,6 +191,7 @@ class BaseTask(object):
         messenger.send_kill_signal(self.ps_ip_public, self.ps_ip_port)
         self.kill_signal.set()
         self.dead = True
+        cmd = "ssh %s"
 
     def is_dead(self):
         return self.dead
