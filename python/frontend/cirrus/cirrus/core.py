@@ -26,34 +26,33 @@ class BaseTask(object):
 
 
     def __init__(self,
-            n_workers,
-            lambda_size,
-            n_ps,
-            dataset,
-            learning_rate,
-            epsilon,
-            key_name, key_path, # aws key
-            ps_ip_public, # public parameter server ip
-            ps_ip_private, # private parameter server ip
-            ps_ip_port,
-            ps_username, # parameter server VM username
-            opt_method, # adagrad, sgd, nesterov, momentum
-            checkpoint_model, # checkpoint model every x seconds
-            train_set,
-            test_set,
-            minibatch_size,
-            model_bits,
-            use_grad_threshold,
-            grad_threshold,
-            timeout,
-            threshold_loss,
-            progress_callback
-            ):
+                 n_workers,
+                 lambda_size,
+                 n_ps,
+                 dataset,
+                 learning_rate,
+                 epsilon,
+                 key_name, key_path, # aws key
+                 ps_ip_public, # public parameter server ip
+                 ps_ip_private, # private parameter server ip
+                 ps_ip_port,
+                 ps_username, # parameter server VM username
+                 opt_method, # adagrad, sgd, nesterov, momentum
+                 checkpoint_model, # checkpoint model every x seconds
+                 train_set,
+                 test_set,
+                 minibatch_size,
+                 model_bits,
+                 use_grad_threshold,
+                 grad_threshold,
+                 timeout,
+                 threshold_loss,
+                 progress_callback):
         self.thread = threading.Thread(target=self.run)
         self.lambda_size = lambda_size
         self.n_workers = n_workers
         self.n_ps = n_ps
-        self.dataset=dataset
+        self.dataset = dataset
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.key_name = key_name
@@ -64,15 +63,15 @@ class BaseTask(object):
         self.ps_username = ps_username
         self.opt_method = opt_method
         self.checkpoint_model = checkpoint_model
-        self.train_set=train_set
-        self.test_set=test_set
-        self.minibatch_size=minibatch_size
-        self.model_bits=model_bits
-        self.use_grad_threshold=use_grad_threshold
-        self.grad_threshold=grad_threshold
-        self.timeout=timeout
-        self.threshold_loss=threshold_loss
-        self.progress_callback=progress_callback
+        self.train_set = train_set
+        self.test_set = test_set
+        self.minibatch_size = minibatch_size
+        self.model_bits = model_bits
+        self.use_grad_threshold = use_grad_threshold
+        self.grad_threshold = grad_threshold
+        self.timeout = timeout
+        self.threshold_loss = threshold_loss
+        self.progress_callback = progress_callback
         self.dead = False
         self.cost_model = None
         self.total_cost = 0
@@ -82,11 +81,11 @@ class BaseTask(object):
         self.kill_signal = threading.Event()
         self.num_lambdas = 0
         self.cost_model = CostModel(
-                    'm5.large',
-                    self.n_ps,
-                    0,
-                    self.n_workers,
-                    self.lambda_size)
+            'm5.large',
+            self.n_ps,
+            0,
+            self.n_workers,
+            self.lambda_size)
 
         self.start_time = time.time()
 
@@ -99,6 +98,9 @@ class BaseTask(object):
         }
 
         self.time_ups_lst = []
+        self.time_cps_lst = []
+        self.real_time_loss_lst = []
+        self.time_loss_lst = []
 
 
         # Stored values
@@ -143,18 +145,21 @@ class BaseTask(object):
         self.get_updates_per_second()
         num_task = 3
 
-        if num_lambdas == None:
-            return
+        if num_lambdas is None:
+            return num_lambdas
 
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
-            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
-            for i in range(shortage):
+            payload = '{"num_task": %d, "num_workers": " + \
+                    "%d, "ps_ip": \"%s\", "ps_port": %d}' \
+                        % (num_task, self.n_workers, \
+                        self.ps_ip_private, self.ps_ip_port)
+            for _ in range(shortage):
                 try:
-                    response = lambda_client.invoke(
-                        FunctionName="%s_%d" % (lambda_name, self.worker_size),
+                    # response =
+                    lambda_client.invoke(
+                        FunctionName="%s_%d" % (lambda_name, self.lambda_size),
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)
@@ -162,15 +167,17 @@ class BaseTask(object):
                     print "client.invoke exception caught"
                     print str(e)
 
-    def get_time_loss(self, rtl=False):
+            return None
 
+    def get_time_loss(self, rtl=False):
         if self.is_dead():
             if rtl:
                 return self.real_time_loss_lst
             else:
                 return self.time_loss_lst
-        out = messenger.get_last_time_error(self.ps_ip_public, self.ps_ip_port + 1)
-        if out == None:
+        out = messenger.get_last_time_error(self.ps_ip_public, \
+                self.ps_ip_port + 1)
+        if out is None:
             if rtl:
                 return self.real_time_loss_lst
             else:
@@ -183,9 +190,11 @@ class BaseTask(object):
             else:
                 return self.time_loss_lst
 
-        if len(self.time_loss_lst) == 0 or not ((t, loss) == self.time_loss_lst[-1]):
+        if self.time_loss_lst == [] or \
+                not ((t, loss) == self.time_loss_lst[-1]):
             self.time_loss_lst.append((t, loss))
-        self.real_time_loss_lst.append((time.time() - self.start_time, real_time_loss))
+        self.real_time_loss_lst.append((time.time() \
+                - self.start_time, real_time_loss))
         if rtl:
             return self.real_time_loss_lst
         else:
@@ -210,16 +219,23 @@ class BaseTask(object):
         self.launch_error_task(command_dict)
 
     def launch_error_task(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config ~/logfiles/config_%d.txt --nworkers %d --rank 2 --ps_ip %s --ps_port %d &> ~/logfiles/error_out_%d &' % (
-        self.ps_ip_port, self.n_workers, self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
+        cmd = 'nohup ./parameter_server --config ' \
+                + '~/logfiles/config_%d.txt ' \
+                + '--nworkers %d --rank 2 --ps_ip %s' \
+                + '--ps_port %d &> ~/logfiles/error_out_%d &' % (
+                    self.ps_ip_port, self.n_workers, \
+                    self.ps_ip_private, self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
             raise ValueError('SSH Error Task not implemented')
 
     def launch_ps(self, command_dict=None):
-        cmd = 'nohup ./parameter_server --config ~/logfiles/config_%d.txt --nworkers %d --rank 1 --ps_port %d &> ~/logfiles/ps_out_%d & ' % (
-            self.ps_ip_port, self.n_workers * 2, self.ps_ip_port, self.ps_ip_port)
+        cmd = 'nohup ./parameter_server --config ~/logfiles/config_%d.txt ' + \
+                '--nworkers %d --rank 1 --ps_port %d' + \
+                '&> ~/logfiles/ps_out_%d & ' % (
+                    self.ps_ip_port, self.n_workers * 2, \
+                    self.ps_ip_port, self.ps_ip_port)
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
@@ -228,7 +244,9 @@ class BaseTask(object):
     def copy_config(self, command_dict=None):
         config = self.define_config()
         if command_dict is not None:
-            command_dict[self.ps_ip_public].append('echo "%s" > ~/logfiles/config_%d.txt' % (config, self.ps_ip_port))
+            command_dict[self.ps_ip_public] \
+                    .append('echo "%s" > ~/logfiles/config_%d.txt' \
+                    % (config, self.ps_ip_port))
         else:
             raise ValueError('SSH Copy config not implemented')
 
@@ -237,8 +255,9 @@ class BaseTask(object):
     def define_config(self, fetch=False):
         pass
 
-    # This function is responsible for relaunching the lambdas as they die off. 
-    # It will poll the parameter server to determine how many lambdas are currently running
+    # This function is responsible for relaunching the lambdas as they die off.
+    # It will poll the parameter server to determine
+    # how many lambdas are currently running
     # and relaunch self.n_workers - num_lambdas number of lambdas
     def relaunch_lambdas(self):
         if self.is_dead():
@@ -249,17 +268,20 @@ class BaseTask(object):
         self.get_cost_per_second()
         num_task = 3
 
-        if num_lambdas == None:
+        if num_lambdas is None:
             return
 
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
-            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
-            for i in range(shortage):
+            payload = '{"num_task": %d, "num_workers": %d, ' \
+                    + '"ps_ip": \"%s\", "ps_port": %d}' \
+                        % (num_task, self.n_workers, \
+                        self.ps_ip_private, self.ps_ip_port)
+            for _ in range(shortage):
                 try:
-                    response = lambda_client.invoke(
+                    #response =
+                    lambda_client.invoke(
                         FunctionName=lambda_name,
                         InvocationType='Event',
                         LogType='Tail',
@@ -271,9 +293,9 @@ class BaseTask(object):
 
 
     def get_cost_per_second(self):
-
         cps = self.cost_model.get_cost_per_second()
-        self.fetch_metric(self.COST_PER_SECOND).append((time.time() - self.start_time, cps))
+        self.fetch_metric(self.COST_PER_SECOND) \
+                .append((time.time() - self.start_time, cps))
         return self.fetch_metric(self.COST_PER_SECOND)
 
     def get_num_lambdas(self, fetch=True):
@@ -312,7 +334,8 @@ class BaseTask(object):
         if self.is_dead():
             return
 
-        out = messenger.get_last_time_error(self.ps_ip_public, self.ps_ip_port + 1)
+        out = messenger \
+                .get_last_time_error(self.ps_ip_public, self.ps_ip_port + 1)
         if out is None:
             return
 
@@ -321,11 +344,14 @@ class BaseTask(object):
         if t == 0:
             return
 
-        if len(self.metrics[self.LOSS_VS_TIME]) == 0 or not ((t, loss) == self.metrics[self.LOSS_VS_TIME][-1]):
+        if self.metrics[self.LOSS_VS_TIME] == [] or \
+                not ((t, loss) == self.metrics[self.LOSS_VS_TIME][-1]):
             self.metrics[self.LOSS_VS_TIME].append((t, loss))
 
             elapsed_time = time.time() - self.start_time
             current_cost = self.cost_model.get_cost(elapsed_time)
-            self.metrics[self.TOTAL_LOSS_VS_TIME].append((t, total_loss / current_cost))
+            self.metrics[self.TOTAL_LOSS_VS_TIME] \
+                    .append((t, total_loss / current_cost))
 
-        self.metrics[self.REAL_TIME_LOSS_VS_TIME].append((time.time() - self.start_time, real_time_loss))
+        self.metrics[self.REAL_TIME_LOSS_VS_TIME] \
+                .append((time.time() - self.start_time, real_time_loss))
