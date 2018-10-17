@@ -47,8 +47,8 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
                                  uint64_t features_per_sample,
                                  uint64_t nworkers,
                                  uint64_t worker_id,
-                                 std::vector<std::string> ps_ips,
-                                 std::vector<uint64_t> ps_ports)
+                                 const std::vector<std::string>& ps_ips,
+                                 const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
              batch_size,
              samples_per_batch,
@@ -57,14 +57,13 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              worker_id,
              ps_ips,
              ps_ports) {
-  ps_ports = ps_ports;
   port_num = ps_ports.at(ps_ports.size() - 1) + 1;
   std::atomic_init(&curr_error, 0.0);
 }
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
-                                       const std::vector<std::string> ps_ips,
-                                       std::vector<uint64_t> ps_ports) {
+                                       const std::vector<std::string>& ps_ips,
+                                       const std::vector<uint64_t>& ps_ports) {
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {

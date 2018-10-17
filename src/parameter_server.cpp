@@ -12,6 +12,8 @@
 #include <S3.h>
 #include <gflags/gflags.h>
 
+#include "Utils.h"
+
 DEFINE_int64(nworkers, -1, "number of workers");
 DEFINE_int64(rank, -1, "rank");
 DEFINE_string(config, "", "config");
@@ -162,27 +164,15 @@ int main(int argc, char** argv) {
 
   std::string ps_ip_string = FLAGS_ps_ip;
   std::vector<std::string> ps_ips;
-  std::string tmp;
-  std::stringstream ss(ps_ip_string);
-  while (ss) {
-    if (!getline(ss, tmp, ','))
-      break;
-    ps_ips.push_back(tmp);
-  }
+  ps_ips= cirrus::csv_to_vector<std::string>(ps_ip_string);
 
   std::string ps_port_string = FLAGS_ps_port;
   std::vector<uint64_t> ps_ports;
-  std::stringstream ss1(ps_port_string);
-  while (ss1) {
-    if (!getline(ss1, tmp, ','))
-      break;
-    std::istringstream iss(tmp);
-    uint64_t tmp_port;
-    iss >> tmp_port;
-    ps_ports.push_back(tmp_port);
-  }
-
+  ps_ports = cirrus::csv_to_vector<uint64_t>(ps_port_string);
+  
+  // Same number of ports and ips
   assert(ps_ips.size() == ps_ports.size());
+ 
   std::cout << "Number of parameter servers: " << ps_ips.size() << std::endl;
   std::cout << "Parameter servers: ";
   for (int i = 0; i < ps_ips.size(); i++) {

@@ -162,10 +162,10 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
     uint32_t parts) const {
   std::vector<int> starts(parts, 0);
   std::vector<std::tuple<int, int>> starts_out(parts);
-
+  std::hash<int> hashfunc;
   // Perform count
   for (const auto& w : weights) {
-    starts[w.first % parts]++;
+    starts[hashfunc(w.first) % parts]++;
   }
 
   // starts[i] = number of items behind partition i
@@ -203,7 +203,7 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
     int index = w.first;
     FEATURE_TYPE v = w.second;
 
-    int ps_num = index % parts;
+    int ps_num = hashfunc(index) % parts;
     int position = starts[ps_num];
 
     uint64_t offset =

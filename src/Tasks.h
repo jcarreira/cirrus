@@ -48,8 +48,8 @@ class MLTask {
           uint64_t features_per_sample,
           uint64_t nworkers,
           uint64_t worker_id,
-          std::vector<std::string> ps_ips,
-          std::vector<uint64_t> ps_ports)
+          const std::vector<std::string>& ps_ips,
+          const std::vector<uint64_t>& ps_ports)
        : model_size(model_size),
          batch_size(batch_size),
          samples_per_batch(samples_per_batch),
@@ -218,15 +218,15 @@ class ErrorSparseTask : public MLTask {
                    uint64_t features_per_sample,
                    uint64_t nworkers,
                    uint64_t worker_id,
-                   std::vector<std::string> ps_ips,
-                   std::vector<uint64_t> ps_ports);
+                   const std::vector<std::string>& ps_ips,
+                   const std::vector<uint64_t>& ps_ports);
 
    void run(const Configuration& config);
    void error_response();
 
   private:
    // Stores last recorded time/loss values
-   int port_num;  // Error Resonpse port number
+   int port_num;  // Error Response port number
    double last_time = 0.0;
    double last_error = 0.0;
    std::atomic<double> curr_error;
