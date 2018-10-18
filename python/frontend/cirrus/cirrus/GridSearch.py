@@ -51,22 +51,20 @@ class GridSearch(object):
         self.num_jobs = num_jobs     # Number of threads checking check_queue
         self.hyper_vars = hyper_vars
 
-#        ips = []
-#        for public_dns in machines:
-#            private_ip = public_dns_to_private_ip(public_dns)
-#            ips.append(private_ip)
-#        print ips
+        ips = []
+        for public_dns in machines:
+            private_ip = public_dns_to_private_ip(public_dns)
+            ips.append(private_ip)
+        print ips
 
-        machine_values = []
+#        for machine in machines:
+#            response = ec2.describe_instances(InstanceIds=[machine])
+#            response = response['Reservations'][0]['Instances'][0]
+#            ip = response['PrivateIpAddress']
+#            uri = response['PublicDnsName']
+#            machine_values.append((uri, ip))
 
-        for machine in machines:
-            response = ec2.describe_instances(InstanceIds=[machine])
-            response = response['Reservations'][0]['Instances'][0]
-            ip = response['PrivateIpAddress']
-            uri = response['PublicDnsName']
-            machine_values.append((uri, ip))
-
-        self.machines = machine_values
+        self.machines = zip(machines, ips)
 
         # Setup
         self.set_task_parameters(
