@@ -13,19 +13,18 @@ def get_random_color():
 def get_all_lambdas():
     return [each['FunctionName'] for each in lc.list_functions()['Functions']]
 
-def public_dns_to_private_ip(instances): #public_dns):
-    # filters = [{'Name': 'dns-name', 'Values': [public_dns]}]
+def public_dns_to_private_ip(public_dns):
+    filters = [{'Name': 'dns-name', 'Values': [public_dns]}]
 
-    # response = ec2c.describe_instances(Filters=filters)
-
-    response = ec2c.describe_instances(InstanceIds=[instances])
+    response = ec2c.describe_instances(Filters=filters)
 
     instances = response['Reservations'][0]['Instances']
 
     if instances == []:
-        raise Exception('No EC2 with this instance ID exists!')
+        raise Exception('No EC2 with this: %s DNS name exists!' % public_dns)
     elif len(instances) > 1:
-        raise Exception('More than one EC2 with this instance ID exists!')
+        raise Exception('More than one EC2 with this: ' \
+                + '%s DNS name exists!' % public_dns)
 
     return instances[0]['PrivateIpAddress']
 
