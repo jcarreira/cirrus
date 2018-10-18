@@ -4,20 +4,19 @@ from core import BaseTask
 
 
 class CollaborativeFilteringTask(BaseTask):
-    def __init__(self, *args, **kwargs):
+    # def __init__(self, *args, **kwargs):
         # pass all arguments of init to parent class
-        super(CollaborativeFilteringTask, self).__init__(*args, **kwargs)
+    #    super(CollaborativeFilteringTask, self).__init__(*args, **kwargs)
 
     def __del__(self):
         print("Logistic Regression Task Lost")
 
-    def define_config(self):
-        if self.use_grad_threshold:
-            grad_t = 1
-        else:
-            grad_t = 0
-        config = "input_path: /home/ec2-user/cirrus/examples/ml/tests/test_mf/nf_parsed \n" + \
-                 "input_type: csv \n" + \
+    def define_config(self, fetch=False):
+        # if self.use_grad_threshold:
+        input_path = "/home/ec2-user/cirrus/examples" + \
+                "/ml/tests/test_mf/nf_parsed \n"
+        config = "load_input_path: " + input_path + \
+                 "dataset_format: csv \n" + \
                  "minibatch_size: %d \n" % self.minibatch_size + \
                  "s3_size: 10000 \n" + \
                  "model_type: CollaborativeFiltering \n" + \
@@ -36,50 +35,50 @@ class CollaborativeFilteringTask(BaseTask):
 
 # XXX: Is this really nessecary?
 def CollaborativeFiltering(
-            n_workers,
-            n_ps,
-            lambda_size,
-            dataset,
+        n_workers,
+        n_ps,
+        lambda_size,
+        dataset,
         learning_rate, epsilon,
         progress_callback,
-        resume_model,
+        # resume_model,
         key_name,
         key_path,
-            train_set,
-            test_set,
-            minibatch_size,
-            model_bits,
+        train_set,
+        test_set,
+        minibatch_size,
+        model_bits,
         ps_ip_public="",
         ps_ip_private="",
+        ps_ip_port=1337,
         ps_username="ec2-user",
         opt_method="sgd",
         checkpoint_model=0,
         use_grad_threshold=False,
         grad_threshold=0.001,
         timeout=60,
-        threshold_loss=0
-            ):
+        threshold_loss=0):
     return CollaborativeFilteringTask(
-            n_workers=n_workers,
-            n_ps=n_ps,
-            lambda_size=lambda_size,
-            dataset=dataset,
-            learning_rate=learning_rate,
-            epsilon=epsilon,
-            key_name=key_name,
-            key_path=key_path,
-            ps_ip_public=ps_ip_public,
-            ps_ip_private=ps_ip_private,
-            ps_username=ps_username,
-            opt_method=opt_method,
-            checkpoint_model=checkpoint_model,
-            train_set=train_set,
-            test_set=test_set,
-            minibatch_size=minibatch_size,
-            model_bits=model_bits,
-            use_grad_threshold=use_grad_threshold,
-            grad_threshold=grad_threshold,
-            timeout=timeout,
-            threshold_loss=threshold_loss,
-            progress_callback=progress_callback
-           )
+        n_workers=n_workers,
+        n_ps=n_ps,
+        lambda_size=lambda_size,
+        dataset=dataset,
+        learning_rate=learning_rate,
+        epsilon=epsilon,
+        key_name=key_name,
+        key_path=key_path,
+        ps_ip_public=ps_ip_public,
+        ps_ip_private=ps_ip_private,
+        ps_ip_port=ps_ip_port,
+        ps_username=ps_username,
+        opt_method=opt_method,
+        checkpoint_model=checkpoint_model,
+        train_set=train_set,
+        test_set=test_set,
+        minibatch_size=minibatch_size,
+        model_bits=model_bits,
+        use_grad_threshold=use_grad_threshold,
+        grad_threshold=grad_threshold,
+        timeout=timeout,
+        threshold_loss=threshold_loss,
+        progress_callback=progress_callback)

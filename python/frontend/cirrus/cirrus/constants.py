@@ -1,3 +1,1 @@
-
-
 lambda_prefix = "myfunc"
