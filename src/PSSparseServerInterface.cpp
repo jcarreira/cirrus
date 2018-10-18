@@ -310,6 +310,27 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   return std::move(model);
 }
 
+void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
+    SparseMFModel& mf_model,
+    const Configuration& config,
+    char* msg_begin,
+    uint32_t num_users,
+    uint32_t num_items,
+    int server_id,
+    int num_ps) {
+
+  char* msg = msg_begin;
+  uint32_t to_receive_size = sizeof(int) * (4 + num_users + num_items) 
+	  + sizeof(FEATURE_TYPE) * (num_items + num_users);
+  char* buffer = new char[to_receive_size];
+  read_all(sock, buffer, to_receive_size);
+  mf_model.loadSerializedSparse(buffer, num_users, num_items, config, server_id, num_ps);
+
+  delete[] buffer;
+
+
+}
+	
 void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient) {
   uint32_t operation = SEND_MF_GRADIENT;
   if (send(sock, &operation, sizeof(uint32_t), 0) == -1) {

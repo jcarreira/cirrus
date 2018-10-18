@@ -64,9 +64,36 @@ void MultiplePSSparseServerInterface::send_lr_gradient(
 }
 
 void MultiplePSSparseServerInterface::send_mf_gradient(
-    const MFSparseGradient&) {
-  throw std::runtime_error(
-      "MultiplePSSparseServerInterface::send_mf_gradient is not implemented!");
+    const MFSparseGradient& gradient) {
+  
+  int num_ps = psints.size();
+  uint32_t operation = SEND_MF_GRADIENT;
+  int ret;
+  // Send the operation to all PS servers
+  for (auto psint : psints) {
+    ret = psint->send_wrapper(operation, sizeof(uint32_t));
+    if (ret == -1)
+      throw std::runtime_error("Error sending operation");
+  }
+
+  uint32_t size = gradient.getShardSerializedSize(num_ps);
+  char data[size];
+  auto starts_and_size = gradient.shard_serialize(data, num_ps);
+  
+  for (int i = 0; i < num_ps; i++) {
+	  auto psint = psints[i];
+	  auto sas = starts_and_size[i];
+
+	  ret = psint->send_wrapper(std::get<1>(sas), sizeof(uint32_t));
+	  if (ret == -1) {
+		  throw std::runtime_error("Error sending grad size");
+	  }
+	  ret = psint->send_all_wrapper(data + std::get<0>(sas), std::get<1>(sas));
+	  if (ret == 0) {
+		  throw std::runtime_error("Error sending grad");
+	  }
+  }
+
 }
 
 SparseLRModel MultiplePSSparseServerInterface::get_lr_sparse_model(
@@ -140,13 +167,72 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
   delete[] num_weights_lst;
 }
 
-SparseMFModel MultiplePSSparseServerInterface::get_sparse_mf_model(
+SparseMFModel MultiplePSSparseServerInterface::get_sparse_mf_model(const SparseDataset& ds, const Configuration& config, uint32_t user_base, uint32_t minibatch_size) {
+
+	SparseMFModel model((uint64_t) 0, (uint64_t) 0, (uint64_t) NUM_FACTORS);
+	get_sparse_mf_model_inplace(ds, model, config, user_base, minibatch_size);
+	return std::move(model);
+}
+
+void MultiplePSSparseServerInterface::get_sparse_mf_model_inplace(
     const SparseDataset& ds,
-    uint32_t a,
-    uint32_t b) {
-  throw std::runtime_error(
-      "MultiplePSSparseServerInterface::get_sparse_mf_model_inplace not "
-      "implemented!");
+	SparseMFModel& model,
+	const Configuration& config,
+    uint32_t user_base,
+    uint32_t minibatch_size) {
+	
+  int num_servers = psints.size();
+  char** msg_lst = new char*[num_servers];
+  char** msg_begin_lst = new char*[num_servers];
+  uint32_t* item_ids_count_lst = new uint32_t[num_servers];
+  bool** seen = new bool*[num_servers];
+  for (int i = 0; i < num_servers; i++) {
+	seen[i] = new bool[17770];
+    msg_lst[i] = new char[MAX_MSG_SIZE];
+    msg_begin_lst[i] = msg_lst[i];
+    item_ids_count_lst[i] = 0;
+    store_value<uint32_t>(msg_lst[i], 0);  // We will right this value later
+    store_value<uint32_t>(msg_lst[i], user_base);
+    store_value<uint32_t>(msg_lst[i], minibatch_size / num_servers);
+    store_value<uint32_t>(msg_lst[i], MAGIC_NUMBER);
+    user_base += minibatch_size / num_servers;
+  }
+
+  for (const auto& sample : ds.data_) {
+	  for (const auto& w : sample) {
+		  uint32_t server_num = w.first % num_servers;
+		  uint32_t movieId = w.first / num_servers;
+		  if (seen[server_num][movieId])
+			  continue;
+		  store_value<uint32_t>(msg_lst[server_num], movieId);
+		  seen[server_num][movieId] = true;
+		  item_ids_count_lst[server_num]++;
+	  }
+  }
+
+  for (int i = 0; i < num_servers; i++) {
+	char* msg = msg_begin_lst[i];
+	store_value<uint32_t>(msg, item_ids_count_lst[i]);
+	
+    uint32_t operation = GET_MF_SPARSE_MODEL;
+	if (send_all(psints[i]->sock, &operation, sizeof(uint32_t)) == -1) {
+	  throw std::runtime_error("Error getting sparse mf model");
+	}
+
+
+	uint32_t msg_size = sizeof(uint32_t) * 4 + sizeof(uint32_t) * item_ids_count_lst[i];
+	send_all(psints[i]->sock, &msg_size, sizeof(uint32_t));
+
+	if (send_all(psints[i]->sock, msg_begin_lst[i], msg_size) == -1) {
+      throw std::runtime_error("Error getting sparse mf model");
+    }
+  }
+
+  for (int i = 0; i < num_servers; i++) {
+    psints[i]->get_mf_sparse_model_inplace_sharded(model, config, msg_begin_lst[i], minibatch_size/num_servers, item_ids_count_lst[i], i, num_servers);
+	delete[] msg_begin_lst[i];
+  }
+                               
 }
 
 std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
