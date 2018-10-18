@@ -40,6 +40,10 @@ class PSSparseServerInterface {
   virtual SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
                                             uint32_t,
                                             uint32_t);
+  virtual void get_mf_sparse_model_inplace(const SparseDataset& ds,
+                                           SparseMFModel&,
+                                           const Configuration& config, uint32_t user_base, uint32_t mb_size);
+  
   virtual std::unique_ptr<CirrusModel> get_full_model(
       bool isCollaborativeFiltering);  // XXX use a better argument here
 

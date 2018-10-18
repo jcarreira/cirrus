@@ -32,11 +32,11 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
   void get_lr_sparse_model_inplace(const SparseDataset& ds,
                                    SparseLRModel& model,
                                    const Configuration& config);
-  SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
+  SparseMFModel get_mf_sparse_model(const SparseDataset& ds,
                                     const Configuration& config,
                                     uint32_t,
                                     uint32_t);
-  void get_sparse_mf_model_inplace(const SparseDataset& ds,
+  void get_mf_sparse_model_inplace(const SparseDataset& ds,
                                    SparseMFModel& model,
                                    const Configuration& config,
                                    uint32_t user_base,

@@ -25,6 +25,7 @@ PSSparseServerInterface::PSSparseServerInterface(const std::string& ip, int port
 
   serv_addr.sin_family = AF_INET;
   if (inet_pton(AF_INET, ip.c_str(), &serv_addr.sin_addr) != 1) {
+    std::cout << "Connection FAILED " << ip << " " << port << std::endl;
     throw std::runtime_error("Address family invalid or invalid "
         "IP address passed in");
   }
@@ -40,6 +41,7 @@ void PSSparseServerInterface::connect() {
                              ip + " port: " + std::to_string(port) + "\n");
   }
   std::cout << "Connection established " << ip << " " << port << std::endl;
+  std::cout << "SOCK " << sock << std::endl;
 }
 
 PSSparseServerInterface::~PSSparseServerInterface() {
@@ -116,7 +118,60 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace_sharded(
   delete[] buffer;
 }
 
-void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel& lr_model,
+void PSSparseServerInterface::get_mf_sparse_model_inplace(const SparseDataset& ds, SparseMFModel& model, const Configuration& config, uint32_t user_base, uint32_t minibatch_size) {
+  char* msg = new char[MAX_MSG_SIZE];
+  char* msg_begin = msg; // need to keep this pointer to delete later
+  uint32_t item_ids_count = 0;
+  store_value<uint32_t>(msg, 0); // we will write this value later
+  store_value<uint32_t>(msg, user_base);
+  store_value<uint32_t>(msg, minibatch_size);
+  store_value<uint32_t>(msg, MAGIC_NUMBER); // magic value
+  bool seen[17770] = {false};
+  for (const auto& sample : ds.data_) {
+    for (const auto& w : sample) {
+      uint32_t movieId = w.first;
+      if (seen[movieId])
+          continue;
+      store_value<uint32_t>(msg, movieId);
+      seen[movieId] = true;
+      item_ids_count++;
+    }
+  }
+  msg = msg_begin;
+  store_value<uint32_t>(msg, item_ids_count); // store correct value here
+  uint32_t operation = GET_MF_SPARSE_MODEL;
+  int ret;
+  std::cout << "SOCK " << sock << std::endl;
+  ret = send_all(sock, &operation, sizeof(uint32_t));
+  if (ret == -1)
+    std::cout << "ERROR ERROR ERROR" << std::endl;
+  uint32_t msg_size = sizeof(uint32_t) * 4 + sizeof(uint32_t) * item_ids_count;
+  send_all(sock, &msg_size, sizeof(uint32_t));
+  std::cout << msg_size << std::endl;
+  if (send_all(sock, msg_begin, msg_size) == -1) {
+    throw std::runtime_error("Error getting sparse mf model");
+  }
+  uint32_t to_receive_size;
+  read_all(sock, &to_receive_size, sizeof(uint32_t));
+
+  char* buffer = new char[to_receive_size];
+  if (read_all(sock, buffer, to_receive_size) == 0) {
+    throw std::runtime_error("Error reading sparse mf model");
+  }
+
+  // build a sparse model and return
+  model.initialize_weights(0, 0, 0);
+  model.loadSerialized((FEATURE_TYPE*)buffer, minibatch_size, item_ids_count);
+  
+  delete[] msg_begin;
+  delete[] buffer;
+
+
+}
+
+  
+  
+  void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel& lr_model,
     const Configuration& config) {
 #ifdef DEBUG
   std::cout << "Getting LR sparse model inplace" << std::endl;
@@ -318,9 +373,8 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
     uint32_t num_items,
     int server_id,
     int num_ps) {
-  char* msg = msg_begin;
-  uint32_t to_receive_size = sizeof(int) * (4 + num_users + num_items) +
-                             sizeof(FEATURE_TYPE) * (num_items + num_users);
+  uint32_t to_receive_size;
+  read_all(sock, &to_receive_size, sizeof(uint32_t));
   char* buffer = new char[to_receive_size];
   read_all(sock, buffer, to_receive_size);
   mf_model.loadSerializedSparse(buffer, num_users, num_items, config, server_id,

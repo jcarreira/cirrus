@@ -59,8 +59,8 @@ void run_tasks(int rank,
     } else if (config.get_model_type()
             == cirrus::Configuration::COLLABORATIVE_FILTERING) {
       cirrus::MFNetflixTask lt(0, batch_size, samples_per_batch,
-                               features_per_sample, nworkers, rank, ps_ips[0],
-                               ps_ports[0]);
+                               features_per_sample, nworkers, rank, ps_ips,
+                               ps_ports);
       lt.run(config, rank - WORKERS_BASE);
     } else {
       exit(-1);

@@ -165,17 +165,18 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
   delete[] num_weights_lst;
 }
 
-SparseMFModel MultiplePSSparseServerInterface::get_sparse_mf_model(
+SparseMFModel MultiplePSSparseServerInterface::get_mf_sparse_model(
     const SparseDataset& ds,
     const Configuration& config,
     uint32_t user_base,
     uint32_t minibatch_size) {
+  std::cout << "DEEEEEEEEEEEEEEEEEBUG" << std::endl;
   SparseMFModel model((uint64_t) 0, (uint64_t) 0, (uint64_t) NUM_FACTORS);
-  get_sparse_mf_model_inplace(ds, model, config, user_base, minibatch_size);
+  get_mf_sparse_model_inplace(ds, model, config, user_base, minibatch_size);
   return std::move(model);
 }
 
-void MultiplePSSparseServerInterface::get_sparse_mf_model_inplace(
+void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     const SparseDataset& ds,
     SparseMFModel& model,
     const Configuration& config,

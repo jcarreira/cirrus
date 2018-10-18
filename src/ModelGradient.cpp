@@ -477,12 +477,13 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     // How many [version(int), num_weights] + [number of (int, FEATURE_TYPEs)]
     // that lie previous
     uint64_t offset = starts[i];
-
-    put_value<int>(mem, MAGIC_NUMBER, offset);
+    std::cout << "OFF " << offset << std::endl;
+    put_value<uint32_t>(mem, MAGIC_NUMBER, offset);
     put_value<int>(mem, ucnt, offset + sizeof(int));
     put_value<int>(mem, icnt, offset + 2 * sizeof(int));
+    starts[i] += 3 * sizeof(int);
     if (i > 1) {
-      put_value<int>(mem, MAGIC_NUMBER, offset - sizeof(int));
+      put_value<uint32_t>(mem, MAGIC_NUMBER, offset - sizeof(int));
     }
 
     count = count_next;
@@ -623,7 +624,7 @@ void MFSparseGradient::loadSerialized(const void* mem) {
     items_weights_grad.push_back(item_weights_grad);
   }
   magic_value = load_value<uint32_t>(mem);
-  assert(magic_value == 0x1338);
+  assert(magic_value == MAGIC_NUMBER);
 }
 
 void MFSparseGradient::check_values() const {

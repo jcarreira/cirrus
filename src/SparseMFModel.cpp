@@ -164,12 +164,13 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = load_value<uint32_t>(data) * num_ps + server_id;
+    std::cout << "Loaded: " << item_id << std::endl;
     FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).resize(NUM_FACTORS);
     for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
       FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
-      std::get<1>(item_model)[j] = item_weight;
+      std::get<1>(item_model).push_back(item_weight);
     }
     item_models[item_id] = item_model;
   }
@@ -185,6 +186,7 @@ FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) {
   FEATURE_TYPE res = global_bias_ + user_bias + item_bias;
   
   for (uint32_t i = 0; i < nfactors_; ++i) {
+    std::cout << "Want: " << itemId << std::endl;
     res += get_user_weights(userId, i) * get_item_weights(itemId, i);
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
