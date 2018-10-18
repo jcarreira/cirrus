@@ -140,39 +140,40 @@ void SparseMFModel::loadSerialized(const void* data, uint64_t minibatch_size, ui
 #endif
 }
 
-
-void SparseMFModel::loadSerializedSparse(const void* data, uint64_t num_users, uint64_t num_items, 
-		const Configuration& config, int server_id, int num_ps) {
+void SparseMFModel::loadSerializedSparse(const void* data,
+                                         uint64_t num_users,
+                                         uint64_t num_items,
+                                         const Configuration& config,
+                                         int server_id,
+                                         int num_ps) {
   nfactors_ = NUM_FACTORS;
   for (int i = 0; i < num_users; i++) {
-	std::tuple<int, FEATURE_TYPE, std::vector<FEATURE_TYPE>> user_model;
-	uint32_t user_id = load_value<uint32_t>(data) * num_ps + server_id;
+    std::tuple<int, FEATURE_TYPE, std::vector<FEATURE_TYPE>> user_model;
+    uint32_t user_id = load_value<uint32_t>(data) * num_ps + server_id;
     FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
-	std::get<0>(user_model) = user_id;
-	std::get<1>(user_model) = user_bias;
-	for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
-	  FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
-	  std::get<2>(user_model).push_back(user_weight);
-	}
-	user_models.push_back(user_model);
+    std::get<0>(user_model) = user_id;
+    std::get<1>(user_model) = user_bias;
+    for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
+      FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
+      std::get<2>(user_model).push_back(user_weight);
+    }
+    user_models.push_back(user_model);
   }
 
   global_bias_ = 3.604;
   for (uint64_t i = 0; i < num_items; i++) {
-	std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
-	uint32_t item_id = load_value<uint32_t>(data) * num_ps + server_id;
-	FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
-	std::get<0>(item_model) = item_bias;
-	std::get<1>(item_model).resize(NUM_FACTORS);
-	for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
-	  FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
-	  std::get<1>(item_model)[j] = item_weight;
-	}
-	item_models[item_id] = item_model;
+    std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
+    uint32_t item_id = load_value<uint32_t>(data) * num_ps + server_id;
+    FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
+    std::get<0>(item_model) = item_bias;
+    std::get<1>(item_model).resize(NUM_FACTORS);
+    for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
+      FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
+      std::get<1>(item_model)[j] = item_weight;
+    }
+    item_models[item_id] = item_model;
   }
-
 }
-
 
 /**
   * userId : 0 to minibatch_size

@@ -168,9 +168,9 @@ class MFSparseGradient : public ModelGradient {
     void serialize(void*) const override;
     uint64_t getSerializedSize() const override;
 
-	uint64_t getShardSerializedSize(int num_shards) const;
-	std::vector<std::tuple<int, int>> shard_serialize(void* mem, uint32_t parts) const;
-
+    uint64_t getShardSerializedSize(int num_shards) const;
+    std::vector<std::tuple<int, int>> shard_serialize(void* mem,
+                                                      uint32_t parts) const;
 
     void print() const {
       std::cout << users_bias_grad.size() << " / " << users_weights_grad.size() << std::endl;

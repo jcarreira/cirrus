@@ -408,39 +408,42 @@ uint64_t MFSparseGradient::getSerializedSize() const {
 }
 
 uint64_t MFSparseGradient::getShardSerializedSize(int num_shards) const {
-  return sizeof(uint32_t) * (2 + 2) * num_shards 
-	+ users_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE))
-	+ items_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE))
-	+ users_weights_grad.size() * (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE))
-	+ items_weights_grad.size() *  (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
-
+  return sizeof(uint32_t) * (2 + 2) * num_shards +
+         users_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE)) +
+         items_bias_grad.size() * (sizeof(int) + sizeof(FEATURE_TYPE)) +
+         users_weights_grad.size() *
+             (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE)) +
+         items_weights_grad.size() *
+             (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
 }
 
-
-std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(void* mem, uint32_t parts) const {
+std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
+    void* mem,
+    uint32_t parts) const {
   std::vector<int> starts(parts, 4 * sizeof(int));
   std::vector<int> icnts(parts, 0);
   std::vector<int> ucnts(parts, 0);
   std::vector<std::tuple<int, int>> starts_out(parts);
   std::hash<int> hashfunc;
-  
+
   // Perform count
   for (const auto& user_bias : users_bias_grad) {
-    starts[hashfunc(user_bias.first) % parts] += 2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    ucnts[hashfunc(user_bias.first) % parts]++; 
+    starts[hashfunc(user_bias.first) % parts] +=
+        2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
+    ucnts[hashfunc(user_bias.first) % parts]++;
   }
-
 
   for (const auto& item_bias : items_bias_grad) {
-    starts[hashfunc(item_bias.first) % parts] += 2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    icnts[hashfunc(item_bias.first) % parts]++; 
+    starts[hashfunc(item_bias.first) % parts] +=
+        2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
+    icnts[hashfunc(item_bias.first) % parts]++;
   }
-  
+
   // starts[i] = number of items behind partition i
   int count = starts[0];
   int icnt = icnts[0];
   int ucnt = ucnts[0];
-  
+
   int count_next = 0;
   int icnt_next = 0;
   int ucnt_next = 0;
@@ -451,12 +454,12 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(void* mem, u
       ucnt_next = ucnts[1];
 
       starts[1] = count;
-	  icnts[1] = icnt;
-	  ucnts[1] = ucnt;
+      icnts[1] = icnt;
+      ucnts[1] = ucnt;
 
       starts[0] = 0;
-	  ucnts[0] = 0;
-	  icnts[0] = 0;
+      ucnts[0] = 0;
+      icnts[0] = 0;
     } else if (i != (parts - 1)) {
       count_next = starts[i + 1];
       icnt_next = icnts[i + 1];
@@ -478,16 +481,17 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(void* mem, u
     put_value<int>(mem, MAGIC_NUMBER, offset);
     put_value<int>(mem, ucnt, offset + sizeof(int));
     put_value<int>(mem, icnt, offset + 2 * sizeof(int));
-	if (i > 1) {
-		put_value<int>(mem, MAGIC_NUMBER, offset - sizeof(int));
-	}
-   
+    if (i > 1) {
+      put_value<int>(mem, MAGIC_NUMBER, offset - sizeof(int));
+    }
+
     count = count_next;
     ucnt = ucnt_next;
     icnt = icnt_next;
   }
 
-  put_value<int>(mem, MAGIC_NUMBER, getShardSerializedSize(parts) - sizeof(int));
+  put_value<int>(mem, MAGIC_NUMBER,
+                 getShardSerializedSize(parts) - sizeof(int));
 
   // First we serialize the bias values
   for (const auto& user_bias : users_bias_grad) {
@@ -512,35 +516,34 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(void* mem, u
   // Second we serialize the weight gradients
   assert(users_weights_grad.size() == users_bias_grad.size());
   for (const auto& user : users_weights_grad) {
-	int index = user.first;
+    int index = user.first;
     int ps_num = hashfunc(index) % parts;
-	int position = starts[ps_num];
+    int position = starts[ps_num];
     put_value<int>(mem, index / parts, position);
-	starts[ps_num] += sizeof(int);
+    starts[ps_num] += sizeof(int);
     assert(user.second.size() == NUM_FACTORS);
     for (const auto& weight_grad : user.second) {
       put_value<FEATURE_TYPE>(mem, weight_grad, starts[ps_num]);
-	  starts[ps_num] += sizeof(FEATURE_TYPE);
+      starts[ps_num] += sizeof(FEATURE_TYPE);
     }
   }
 
   assert(items_weights_grad.size() == items_bias_grad.size());
   for (const auto& item : items_weights_grad) {
-	int index = item.first;
+    int index = item.first;
     int ps_num = hashfunc(index) % parts;
-	int position = starts[ps_num];
+    int position = starts[ps_num];
     put_value<int>(mem, index / parts, position);
-	starts[ps_num] += sizeof(int);
+    starts[ps_num] += sizeof(int);
     assert(item.second.size() == NUM_FACTORS);
     for (const auto& item_grad : item.second) {
       put_value<FEATURE_TYPE>(mem, item_grad, starts[ps_num]);
-	  starts[ps_num] += sizeof(FEATURE_TYPE);
+      starts[ps_num] += sizeof(FEATURE_TYPE);
     }
   }
 
   return starts_out;
 }
-
 
 void MFSparseGradient::serialize(void *mem) const {
   store_value<uint32_t>(mem, MAGIC_NUMBER); // magic value

@@ -33,10 +33,14 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
                                    SparseLRModel& model,
                                    const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
-		  		                    const Configuration& config,
+                                    const Configuration& config,
                                     uint32_t,
                                     uint32_t);
-  void get_sparse_mf_model_inplace(const SparseDataset& ds, SparseMFModel& model, const Configuration& config, uint32_t user_base, uint32_t minibatch_size);
+  void get_sparse_mf_model_inplace(const SparseDataset& ds,
+                                   SparseMFModel& model,
+                                   const Configuration& config,
+                                   uint32_t user_base,
+                                   uint32_t minibatch_size);
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering);
 
  private:
