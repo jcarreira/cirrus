@@ -108,6 +108,8 @@ class GridSearch:
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
             lst = self.total_costs
+        elif metric == "ICPS":
+            lst = self.cirrus_objs[i].get_cost_per_second()
         else:
             raise Exception('Metric not available')
         return [item[0] for item in lst]
@@ -127,6 +129,8 @@ class GridSearch:
             lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
         elif metric == "CPS":
             lst = self.total_costs
+        elif metric == "ICPS":
+            lst = self.cirrus_objs[i].get_cost_per_second()
         else:
             raise Exception('Metric not available')
         return [item[1] for item in lst]

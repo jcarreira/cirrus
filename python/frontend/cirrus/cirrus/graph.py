@@ -34,7 +34,8 @@ def div_graph(name):
             options=[
                 {'label': 'Loss vs. Time', 'value': 'LOSS'},
                 {'label': 'Updates/Second', 'value': 'UPS'},
-                {'label': 'Cost/Second', 'value': 'CPS'}
+                {'label': 'Total Cost/Second', 'value': 'CPS'},
+                {'label': 'Individual Cost/Second', 'value': 'ICPS'}
             ],
             value='LOSS'
         ),
@@ -293,7 +294,7 @@ def gen_loss(interval, menu, graph_type, oldfig, relayoutData, lockCamera):
 
     trace_lst = get_traces(how_many, graph_type)
 
-    graph_names = {'LOSS': "Loss", 'UPS': "Updates/Second", 'CPS': "Cost/Second"}
+    graph_names = {'LOSS': "Loss", 'UPS': "Updates/Second", 'CPS': "Total Cost/Second", 'ICPS': "Individual Cost/Second"}
 
     if 'lock' in lockCamera:
         return oldfig

@@ -3,12 +3,13 @@ from context import cirrus
 #list of public IPs for each VM used
 urls = [
         "ec2-34-210-144-212.us-west-2.compute.amazonaws.com", 
-        "ec2-34-212-6-172.us-west-2.compute.amazonaws.com"]
-
+        "ec2-54-68-55-168.us-west-2.compute.amazonaws.com"
+       ]
 #list of private IPs for each VM used
 ips = [
        "172.31.10.106",
-       "172.31.5.74"]
+       "172.31.0.235"
+      ]
 
 #name of the s3 data bucket
 data_bucket = 'criteo-kaggle-19b'
