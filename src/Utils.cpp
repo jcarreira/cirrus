@@ -122,14 +122,12 @@ int64_t send_all(int sock, void* data, size_t len) {
 }
 
 void send_flatbuffer(int sock, const flatbuffers::FlatBufferBuilder* fbb) {
-  // std::cout << "Attempting to get buffer pointer and size...\n";
   uint8_t* msg_buf = (*fbb).GetBufferPointer();
   int size = (*fbb).GetSize();
-  // std::cout << "Got buffer pointer and size.\n";
-  if (send_all(sock, &size, sizeof(int)) < 1) {
+  if (send_all(sock, &size, sizeof(int)) < 0) {
     throw std::runtime_error("Error sending message size");
   }
-  if (send_all(sock, msg_buf, size) < 1) {
+  if (send_all(sock, msg_buf, size) < 0) {
     throw std::runtime_error("Error sending gradient");
   }
 }

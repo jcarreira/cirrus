@@ -112,6 +112,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     throw std::runtime_error("Error reading size of message");
   }
+
+  assert(msg_size < MB);
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {
@@ -175,6 +177,8 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     throw std::runtime_error("Failed to read message size");
   }
+
+  assert(msg_size < MB);
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {
@@ -190,13 +194,10 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
-    // TODO: Need to use delete[]?
-    // delete[] buffer;
     return model;
   } else {
     std::unique_ptr<CirrusModel> model = std::make_unique<SparseLRModel>(0);
     model->loadSerialized(msg->model()->data());
-    // delete[] model_data;
     return model;
   }
 }
@@ -238,8 +239,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       num_bytes += sizeof(uint32_t);
     }
   }
-  // std::cout << "item_ids_count" << item_ids_count << std::endl;
-  // std::cout << "id_vec num_bytes" << num_bytes << std::endl;
+  
   auto id_vec = builder.CreateVector(
       reinterpret_cast<unsigned char*>(msg_begin), num_bytes);
 
@@ -266,6 +266,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     // TODO: Handle read failure.
   }
+  
+  assert(msg_size < MB);
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {
@@ -291,7 +293,7 @@ void PSSparseServerInterface::send_gradient(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
   int grad_size = gradient.getSerializedSize();
 
-  assert(grad_size < 1 * MB);  // make sure it fits in stack
+  assert(grad_size < MB);  // make sure it fits in stack
   unsigned char buf[grad_size];
 
   gradient.serialize(buf);
@@ -340,6 +342,8 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     // TODO: Handle read failure.
   }
+  
+  assert(msg_size < 1 * MB);  // make sure it fits in stack
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {

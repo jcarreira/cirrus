@@ -435,13 +435,15 @@ void PSSparseServerTask::gradient_f() {
         registered_tasks.insert(task_id);
       }
       // TODO: Change to FlatBuffer, or determine what this should be.
-      send_all(sock, &task_reg, sizeof(uint32_t));
+      if (send_all(sock, &task_reg, sizeof(uint32_t)) < 0) {
+        throw std::runtime_error("Error sending reply");
+      }
       break;
     }
     case message::WorkerMessage::Request_NumberConnectionsRequest: {
       std::cout << "Retrieve num connections: " << num_connections << std::endl;
       // TODO: Change to FlatBuffer, once this is being used.
-      if (send(sock, &num_connections, sizeof(uint32_t), 0) < 0) {
+      if (send_all(sock, &num_connections, sizeof(uint32_t)) < 0) {
         throw std::runtime_error("Error sending number of connections");
       }
       break;
@@ -449,7 +451,7 @@ void PSSparseServerTask::gradient_f() {
     case message::WorkerMessage::Request_NumberUpdatesRequest: {
       // TODO: Send with FlatBuffers.
       std::cout << "Retrieve info: " << num_updates << std::endl;
-      if (send(sock, &num_updates, sizeof(uint32_t), 0) < 0) {
+      if (send_all(sock, &num_updates, sizeof(uint32_t)) < 0) {
         throw std::runtime_error("Error sending number of connections");
       }
       break;
