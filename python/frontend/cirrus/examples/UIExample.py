@@ -17,7 +17,7 @@ model = 'model_v1'
 
 #base parameters for each experiment
 basic_params = {
-    'n_workers': 20,
+    'n_workers': 10,
     'n_ps': 1,
     'lambda_size': 128,
     'dataset': data_bucket,

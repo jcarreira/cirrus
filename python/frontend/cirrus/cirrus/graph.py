@@ -12,6 +12,8 @@ from IPython.display import IFrame
 from dash.dependencies import Input, Output, State
 from plotly.graph_objs import *
 
+from core import BaseTask
+
 process = psutil.Process(os.getpid())
 
 app = dash.Dash(__name__)
@@ -37,7 +39,7 @@ def div_graph(name):
                 {'label': 'Total Cost/Second', 'value': 'CPS'},
                 {'label': 'Individual Cost/Second', 'value': 'ICPS'}
             ],
-            value='LOSS'
+            value=BaseTask.LOSS_VS_TIME
         ),
 
         dcc.Checklist(
@@ -117,7 +119,7 @@ def get_mem_usage():
     global process
     return process.memory_info().rss / 1000000
 
-def get_traces(num, metric="LOSS"):
+def get_traces(num, metric=BaseTask.LOSS_VS_TIME):
     trace_lst = []
     if num == 0:
         # Get all
@@ -130,7 +132,7 @@ def get_traces(num, metric="LOSS"):
                 name=get_name_for(i),
                 mode='markers+lines',
                 line = dict(color = bundle.get_info(i, 'color')),
-                customdata =str(i) * lll
+                customdata = [str(i)] * lll
             )
             trace_lst.append(trace)
     else:
@@ -148,8 +150,8 @@ def get_traces(num, metric="LOSS"):
                 name=get_name_for(i),
                 mode='markers+lines',
                 line = dict(color = (bundle.get_info(i, 'color'))),
-                customdata= str(i) * lll
-                )
+                customdata= [str(i)] * lll
+            )
             if (len(ys) > 0):
                 q.append((ys[-1], trace))
         q.sort(reverse=(num > 0))
@@ -167,11 +169,11 @@ def get_num_experiments(metric=None):
     return bundle.get_number_experiments(metric)
 
 
-def get_xs_for(i, metric="LOSS"):
+def get_xs_for(i, metric=BaseTask.LOSS_VS_TIME):
     return bundle.get_xs_for(i, metric)
 
 
-def get_ys_for(i, metric="LOSS"):
+def get_ys_for(i, metric=BaseTask.LOSS_VS_TIME):
     return bundle.get_ys_for(i, metric)
 
 
@@ -188,6 +190,7 @@ def get_info_for(i):
     return bundle.get_info_for(i)
 
 # Callbacks
+
 
 # Kill and Info logic
 @app.callback(
@@ -285,14 +288,25 @@ def gen_cost(interval):
         State('mapControls', 'values')
     ])
 def gen_loss(interval, menu, graph_type, oldfig, relayoutData, lockCamera):
-    if menu=="top_ten":
-        how_many = -5
+
+    if menu == "top_ten":
+        if graph_type == "LOSS":
+            how_many = -5
+        elif graph_type == "CPS":
+            how_many = -5
+        elif graph_type == "UPS":
+            how_many = 5
     elif menu == 'last_ten':
-        how_many = 5
+        if graph_type == "LOSS":
+            how_many = 5
+        elif graph_type == "CPS":
+            how_many = 5
+        elif graph_type == "UPS":
+            how_many = -5
     else:
         how_many = 0
 
-    trace_lst = get_traces(how_many, graph_type)
+    trace_lst = get_traces(how_many, metric=graph_type)
 
     graph_names = {'LOSS': "Loss", 'UPS': "Updates/Second", 'CPS': "Total Cost/Second", 'ICPS': "Individual Cost/Second"}
 
