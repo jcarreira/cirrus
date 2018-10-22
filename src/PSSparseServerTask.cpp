@@ -127,8 +127,6 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
   unsigned char* msg = new unsigned char[MAX_MSG_SIZE];
-  // std::cout << "k_items: " << k_items << std::endl;
-  // TODO: Should I use thread_buffer[thread_number] instead of msg?
   SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
   sparse_mf_model.serializeFromDense(*mf_model, base_user_id, minibatch_size,
                                      k_items, id_list, msg);
@@ -259,7 +257,6 @@ bool PSSparseServerTask::process_get_lr_full_model(
                             "too small: " + std::to_string(model_size);
     throw std::runtime_error(error_str);
   }
-  // TODO: Should I use thread_buffer always?
   lr_model_copy.serializeTo(thread_buffer.data());
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
@@ -334,17 +331,14 @@ void PSSparseServerTask::gradient_f() {
     } catch (...) {
       throw std::runtime_error("Unhandled error");
     }
-    // std::cout << "Received message\n";
     const message::WorkerMessage::WorkerMessage* msg =
         message::WorkerMessage::GetWorkerMessage(thread_buffer.data());
-    // std::cout << "Attempting to verify message...\n";
     const unsigned char* buf =
         reinterpret_cast<unsigned char*>(thread_buffer.data());
     flatbuffers::Verifier verifier = flatbuffers::Verifier(buf, msg_size);
     if (!message::WorkerMessage::VerifyWorkerMessageBuffer(verifier)) {
       throw std::runtime_error("Flatbuffer verification failed!");
     }
-    // std::cout << "Interpreted message as a WorkerMessage\n";
 
     switch (msg->payload_type()) {
     case message::WorkerMessage::Request_GradientMessage: {
@@ -362,7 +356,6 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_SparseModelRequest: {
-      // std::cout << "Received SparseModelRequest\n";
       auto sparse_req = msg->payload_as_SparseModelRequest();
       const unsigned char* index_buf = sparse_req->index_info()->data();
       if (sparse_req->model_type() ==
@@ -380,7 +373,6 @@ void PSSparseServerTask::gradient_f() {
       break;
     }
     case message::WorkerMessage::Request_FullModelRequest: {
-      // std::cout << "Received FullModelRequest\n";
       auto full_req = msg->payload_as_FullModelRequest();
       if (full_req->model_type() ==
           message::WorkerMessage::ModelType_LOGISTIC_REGRESSION) {
@@ -493,7 +485,6 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
   // vestigial code.
 
   uint32_t incoming_size = 0;
-// TODO: Is this being set? I don't quite understand what's happening.
 #ifdef DEBUG
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif

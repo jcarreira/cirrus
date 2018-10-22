@@ -164,7 +164,6 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     full_msg = message::WorkerMessage::CreateFullModelRequest(
         builder, message::WorkerMessage::ModelType_MATRIX_FACTORIZATION);
   }
-  // std::cout << "Constructed FlatBuffer for FullModelRequest\n";
 
   auto worker_msg = message::WorkerMessage::CreateWorkerMessage(
       builder, message::WorkerMessage::Request_FullModelRequest,
@@ -187,10 +186,8 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
-  // std::cout << "Read response";
   auto msg =
       message::PSMessage::GetPSMessage(&buf)->payload_as_FullModelResponse();
-  // std::cout << "Interpreted FullModelResponse";
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
@@ -219,7 +216,9 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     uint32_t minibatch_size) {
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
-  char* msg = new char[MAX_MSG_SIZE];
+  std::shared_ptr<char> data = std::shared_ptr<char>(
+      new char[MAX_MSG_SIZE], std::default_delete<char[]>());
+  char* msg = data.get();
   char* msg_begin = msg; // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, user_base);
@@ -264,7 +263,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   // Get the message size and FlatBuffer message
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    // TODO: Handle read failure.
+    throw std::runtime_error("Failed to get msg size");
   }
   
   assert(msg_size < MB);
@@ -340,7 +339,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
 
   int msg_size;
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
-    // TODO: Handle read failure.
+    throw std::runtime_error("Failed to get msg size");
   }
   
   assert(msg_size < 1 * MB);  // make sure it fits in stack
