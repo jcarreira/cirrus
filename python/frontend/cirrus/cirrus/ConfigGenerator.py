@@ -13,9 +13,7 @@ def config_gen(**kwargs):
             print("arg:", arg)
             raise Exception("Unknown arg")
 
-        if config: # not empty
-            config = config + "\n"
-        config = config + "%s: %s" % (arg, kwargs[arg])
+        config = config + "%s: %s\n" % (arg, kwargs[arg])
 
     return config
 
