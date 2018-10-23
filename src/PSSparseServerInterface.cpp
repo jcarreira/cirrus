@@ -177,9 +177,9 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     throw std::runtime_error("Failed to read message size");
   }
   assert(msg_size < 3 * MB);
-  std::shared_ptr<char> data = std::shared_ptr<char>(
-      new char[msg_size], std::default_delete<char[]>());
-  char *buf = data.get();
+  std::shared_ptr<char> data =
+      std::shared_ptr<char>(new char[msg_size], std::default_delete<char[]>());
+  char* buf = data.get();
   try {
     if (read_all(sock, buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
@@ -239,7 +239,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       num_bytes += sizeof(uint32_t);
     }
   }
- 
+
   auto id_vec = builder.CreateVector(
       reinterpret_cast<unsigned char*>(msg_begin), num_bytes);
 
@@ -266,7 +266,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     throw std::runtime_error("Failed to get msg size");
   }
- 
+
   assert(msg_size < MAX_MSG_SIZE);
   char buf[msg_size];
   try {
@@ -342,7 +342,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     throw std::runtime_error("Failed to get msg size");
   }
- 
+
   assert(msg_size < MAX_MSG_SIZE);  // make sure it fits in stack
   char buf[msg_size];
   try {
