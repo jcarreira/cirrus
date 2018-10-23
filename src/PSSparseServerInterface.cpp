@@ -113,14 +113,14 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
     throw std::runtime_error("Error reading size of message");
   }
 
-  assert(msg_size < MB);
+  assert(msg_size < MAX_MSG_SIZE);
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
   } catch (...) {
-    throw std::runtime_error("Unhandled error");
+    throw std::runtime_error("Error in read_all for Flatbuffer");
   }
 
   auto sparse_model =
@@ -176,20 +176,19 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   if (read_all(sock, &msg_size, sizeof(int)) == 0) {
     throw std::runtime_error("Failed to read message size");
   }
-
+  assert(msg_size < 3 * MB);
   std::shared_ptr<char> data = std::shared_ptr<char>(
-      new char[3 * MAX_MSG_SIZE], std::default_delete<char[]>());
-  char* buf = data.get();
-
+      new char[msg_size], std::default_delete<char[]>());
+  char *buf = data.get();
   try {
-    if (read_all(sock, &buf, msg_size) == 0) {
+    if (read_all(sock, buf, msg_size) == 0) {
       throw std::runtime_error("Error reading message");
     }
   } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
   auto msg =
-      message::PSMessage::GetPSMessage(&buf)->payload_as_FullModelResponse();
+      message::PSMessage::GetPSMessage(buf)->payload_as_FullModelResponse();
   if (isCollaborative) {
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
         (FEATURE_TYPE*) msg->model()->data(), 0, 0, 0);  // XXX fix this
@@ -268,7 +267,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     throw std::runtime_error("Failed to get msg size");
   }
  
-  assert(msg_size < MB);
+  assert(msg_size < MAX_MSG_SIZE);
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {
@@ -344,7 +343,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
     throw std::runtime_error("Failed to get msg size");
   }
  
-  assert(msg_size < 1 * MB);  // make sure it fits in stack
+  assert(msg_size < MAX_MSG_SIZE);  // make sure it fits in stack
   char buf[msg_size];
   try {
     if (read_all(sock, &buf, msg_size) == 0) {

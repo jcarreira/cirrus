@@ -128,7 +128,7 @@ void send_flatbuffer(int sock, const flatbuffers::FlatBufferBuilder* fbb) {
     throw std::runtime_error("Error sending message size");
   }
   if (send_all(sock, msg_buf, size) < 0) {
-    throw std::runtime_error("Error sending gradient");
+    throw std::runtime_error("Error sending Flatbuffer");
   }
 }
 
