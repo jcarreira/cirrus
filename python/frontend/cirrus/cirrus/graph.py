@@ -34,9 +34,10 @@ def div_graph(name):
         dcc.Dropdown(
             id='graph-type',
             options=[
-                {'label': 'Loss vs. Time', 'value': BaseTask.LOSS_VS_TIME},
-                {'label': 'Updates/Second', 'value': BaseTask.UPDATES_PER_SECOND},
-                {'label': 'Loss vs. Cost', 'value': BaseTask.TOTAL_LOSS_VS_TIME}
+                {'label': 'Loss vs. Time', 'value': 'LOSS'},
+                {'label': 'Updates/Second', 'value': 'UPS'},
+                {'label': 'Total Cost/Second', 'value': 'CPS'},
+                {'label': 'Individual Cost/Second', 'value': 'ICPS'}
             ],
             value=BaseTask.LOSS_VS_TIME
         ),
@@ -122,7 +123,7 @@ def get_traces(num, metric=BaseTask.LOSS_VS_TIME):
     trace_lst = []
     if num == 0:
         # Get all
-        for i in range(get_num_experiments()):
+        for i in range(get_num_experiments(metric)):
             xs = get_xs_for(i, metric)
             lll = len(xs)
             trace = Scatter(
@@ -138,7 +139,7 @@ def get_traces(num, metric=BaseTask.LOSS_VS_TIME):
         # Get top N
         q = []
 
-        for i in range(get_num_experiments()):
+        for i in range(get_num_experiments(metric)):
 
             xs = get_xs_for(i, metric)
             ys = get_ys_for(i, metric)
@@ -164,8 +165,8 @@ dead_lst = []
 frozen_lstx = {}
 frozen_lsty = {}
 
-def get_num_experiments():
-    return bundle.get_number_experiments()
+def get_num_experiments(metric=None):
+    return bundle.get_number_experiments(metric)
 
 
 def get_xs_for(i, metric=BaseTask.LOSS_VS_TIME):
@@ -307,10 +308,7 @@ def gen_loss(interval, menu, graph_type, oldfig, relayoutData, lockCamera):
 
     trace_lst = get_traces(how_many, metric=graph_type)
 
-    graph_names = {
-            BaseTask.LOSS_VS_TIME : "Loss", 
-            BaseTask.UPDATES_PER_SECOND : "Updates/Second", 
-            BaseTask.TOTAL_LOSS_VS_TIME : "Loss/Cost"}
+    graph_names = {'LOSS': "Loss", 'UPS': "Updates/Second", 'CPS': "Total Cost/Second", 'ICPS': "Individual Cost/Second"}
 
     if 'lock' in lockCamera:
         return oldfig

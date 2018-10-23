@@ -39,6 +39,7 @@ class GridSearch:
         self.kill_signal = threading.Event()
         self.loss_lst = []
         self.start_time = time.time()
+        self.total_costs = []
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -106,6 +107,8 @@ class GridSearch:
         string = ""
         for param_name in self.hyper_vars:
             string += "%s: %s\n" % (param_name, str(self.param_lst[i][param_name]))
+        if self.cirrus_objs[i].is_dead():
+            string += "Terminated\n"
         return string
 
     def get_name_for(self, i):
@@ -120,14 +123,27 @@ class GridSearch:
         return cost
 
     def get_cost_per_sec(self):
-        return sum([c.cost_model.get_cost_per_second() for c in self.cirrus_objs])
+        total = 0
+        for c in self.cirrus_objs:
+            if not c.is_dead():
+                total += c.cost_model.get_cost_per_second()
+        return total
 
     def get_num_lambdas(self):
         return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
 
     # Gets x-axis values of specified metric from experiment i 
-    def get_xs_for(self, i, metric):
-        lst = self.cirrus_objs[i].fetch_metric(metric)
+    def get_xs_for(self, i, metric="LOSS"):
+        if metric == "LOSS":
+            lst = self.loss_lst[i]
+        elif metric == "UPS":
+            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
+        elif metric == "CPS":
+            lst = self.total_costs
+        elif metric == "ICPS":
+            lst = self.cirrus_objs[i].get_cost_per_second()
+        else:
+            raise Exception('Metric not available')
         return [item[0] for item in lst]
 
     # Helper method that collapses a list of commands into a single one
@@ -138,8 +154,17 @@ class GridSearch:
         return ' '.join(cmd_lst)
 
     # TODO: Fix duplicate methods
-    def get_ys_for(self, i, metric):
-        lst = self.cirrus_objs[i].fetch_metric(metric)
+    def get_ys_for(self, i, metric="LOSS"):
+        if metric == "LOSS":
+            lst = self.loss_lst[i]
+        elif metric == "UPS":
+            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
+        elif metric == "CPS":
+            lst = self.total_costs
+        elif metric == "ICPS":
+            lst = self.cirrus_objs[i].get_cost_per_second()
+        else:
+            raise Exception('Metric not available')
         return [item[1] for item in lst]
 
     def start_queue_threads(self):
@@ -157,7 +182,8 @@ class GridSearch:
                 cirrus_obj.relaunch_lambdas()
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
-
+                self.total_costs.append((time.time() - self.start_time, self.get_cost_per_sec()))
+                print("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
                 logging.info("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
 
 
@@ -197,9 +223,9 @@ class GridSearch:
                 sh_file = "machine_%d.sh" % thread_id
                 ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
 
-                cmd = "scp %s %s:~/" % (sh_file, ubuntu_machine)
+                cmd = "scp %s %s:~/tmp" % (sh_file, ubuntu_machine)         
                 os.system(cmd)
-                cmd = 'ssh %s "killall parameter_server; chmod +x %s; ./%s &"' % (ubuntu_machine, sh_file, sh_file)
+                cmd = 'ssh %s "killall parameter_server; chmod +x ~/tmp/%s; ./tmp/%s &"' % (ubuntu_machine, sh_file, sh_file)
                 os.system(cmd)
                 thread_id += copy_threads
 
@@ -216,7 +242,9 @@ class GridSearch:
             p = threading.Thread(target=custodian, args=(self.cirrus_objs, i, self.num_jobs))
             p.start()
 
-    def get_number_experiments(self):
+    def get_number_experiments(self, metric=None):
+        if metric == "CPS":
+            return 1
         return len(self.cirrus_objs)
 
     def set_threads(self, n):
@@ -244,6 +272,9 @@ class GridSearch:
     def kill_all(self):
         for cirrus_ob in self.cirrus_objs:
             cirrus_ob.kill()
+        for machine in machines:
+            cmd = 'ssh %s "rm -rf ~/tmp/*"' % (machine[0])
+            os.system(cmd)
 
     # Get data regarding experiment i.
     def get_info(self, i, param=None):

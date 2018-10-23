@@ -1,17 +1,25 @@
 from context import cirrus
 
+#list of public IPs for each VM used
 urls = [
-        "ec2-18-237-213-139.us-west-2.compute.amazonaws.com"
-        ]
+        "ec2-34-210-144-212.us-west-2.compute.amazonaws.com", 
+        "ec2-54-68-55-168.us-west-2.compute.amazonaws.com"
+       ]
+#list of private IPs for each VM used
 ips = [
-       "172.31.14.190"]
-data_bucket = 'cirrus-criteo-kaggle-19b-random'
+       "172.31.10.106",
+       "172.31.0.235"
+      ]
+
+#name of the s3 data bucket
+data_bucket = 'criteo-kaggle-19b'
 model = 'model_v1'
 
+#base parameters for each experiment
 basic_params = {
     'n_workers': 10,
     'n_ps': 1,
-    'worker_size': 128,
+    'lambda_size': 128,
     'dataset': data_bucket,
     'learning_rate': 0.01,
     'epsilon': 0.0001,
@@ -44,15 +52,18 @@ if __name__ == "__main__":
         
     machines = zip(urls, ips)
 
+    #generate the learning rates for each experiment
+    learning_rates = [1/(i * 10 * 1.0) for i in range(1, 20)]
 
-    learning_rates = [0.5/i for i in range(1, 20)]
-
+    #create the task object
     gs = cirrus.GridSearch(task=cirrus.LogisticRegression,
                            param_base=basic_params,
-                           hyper_vars=["learning_rate", "worker_size"],
-                           hyper_params=[learning_rates, [256, 1000, 2000]],
+                           hyper_vars=["learning_rate", "lambda_size"],
+                           hyper_params=[learning_rates, [128, 246, 512]],
                            machines=machines)
     gs.set_threads(10)
+
+    #run the task with UI=True (Frontend is displayed on localhost:8050)
     gs.run(UI=True)
 
 
