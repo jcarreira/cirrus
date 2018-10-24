@@ -278,10 +278,9 @@ void PSSparseServerInterface::get_full_model_inplace(
 
   char* buffer = new char[to_receive_size];
   read_all(sock, buffer, to_receive_size);
-  
-  std::cout
-    << " buffer checksum: " << crc32(buffer, to_receive_size)
-    << std::endl;
+
+  std::cout << " buffer checksum: " << crc32(buffer, to_receive_size)
+            << std::endl;
 
   // build a sparse model and return
   model->loadSerializedShard(buffer, server_id, num_ps);

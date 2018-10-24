@@ -11,11 +11,13 @@
 namespace cirrus {
 
 MFModel::MFModel(uint64_t users, uint64_t items, uint64_t nfactors) {
-    initialize_data(users, items, nfactors);
+  initialize_data(users, items, nfactors);
 }
 
-MFModel::MFModel(
-    const void* data, uint64_t /*nusers*/, uint64_t /*nitems*/, uint64_t /*nfactors*/) {
+MFModel::MFModel(const void* data,
+                 uint64_t /*nusers*/,
+                 uint64_t /*nitems*/,
+                 uint64_t /*nfactors*/) {
   loadSerialized(data);
 }
 
@@ -35,7 +37,6 @@ void MFModel::initialize_reg_params() {
 // ....
 
 void MFModel::initialize_data(uint64_t users, uint64_t items, uint64_t nfactors) {
-
   user_weights_.resize(users * nfactors);
   item_weights_.resize(items * nfactors);
   global_bias_ = 3.604;
@@ -52,8 +53,7 @@ void MFModel::initialize_data(uint64_t users, uint64_t items, uint64_t nfactors)
   randomize();
 
   std::cout << "Initializing MFModel nusers: " << nusers_
-            << " nitems: " << nitems_
-            << std::endl;
+            << " nitems: " << nitems_ << std::endl;
 }
 
 uint64_t MFModel::size() const {
@@ -351,28 +351,21 @@ std::pair<double, double> MFModel::calc_loss(Dataset& /*dataset*/) const {
 std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t start_index) const {
   double error = 0;
   uint64_t count = 0;
-  
+
 #ifdef DEBUG
-  std::cout
-    << "calc_loss() starting"
-    << std::endl;
+  std::cout << "calc_loss() starting" << std::endl;
 #endif
 
   for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
     uint64_t off_userId = userId + start_index;
 #ifdef DEBUG
-      std::cout
-        << "off_userId: " << off_userId
-        << " userId: " << userId
-        << " dataset.data_.size(): " << dataset.data_.size()
-        << std::endl;
+    std::cout << "off_userId: " << off_userId << " userId: " << userId
+              << " dataset.data_.size(): " << dataset.data_.size() << std::endl;
 #endif
     for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
       uint64_t movieId = dataset.data_.at(userId).at(j).first;
 #ifdef DEBUG
-      std::cout
-        << " movieId: " << movieId
-        << std::endl;
+      std::cout << " movieId: " << movieId << std::endl;
 #endif
       FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
 
@@ -382,14 +375,9 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
       FEATURE_TYPE e_pow_2 = pow(e, 2);
       error += e_pow_2;
 #ifdef DEBUG
-      std::cout
-        << "prediction: " << prediction
-        << " rating: " << rating
-        << " e: " << e
-        << " e_pow_2: " << pow(e, 2)
-        << " error: " << error
-        << " count: " << count
-        << std::endl;
+      std::cout << "prediction: " << prediction << " rating: " << rating
+                << " e: " << e << " e_pow_2: " << pow(e, 2)
+                << " error: " << error << " count: " << count << std::endl;
 #endif
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +

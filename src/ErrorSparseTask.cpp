@@ -191,14 +191,14 @@ void ErrorSparseTask::run(const Configuration& config) {
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
-  //  try {
+    //  try {
 // first we get the model
 #ifdef DEBUG
-      std::cout << "[ERROR_TASK] getting the full model"
-                << "\n";
+    std::cout << "[ERROR_TASK] getting the full model"
+              << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model;
-      model = get_model(config, ps_ips, ps_ports);
+    std::unique_ptr<CirrusModel> model;
+    model = get_model(config, ps_ips, ps_ports);
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
 #endif
@@ -241,7 +241,7 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-  //  }   
+      //  }
   }
 }
 

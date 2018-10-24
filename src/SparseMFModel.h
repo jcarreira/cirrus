@@ -146,9 +146,10 @@ class SparseMFModel : public CirrusModel {
         uint32_t base_user, uint32_t minibatch_size, uint32_t k_items,
         const char* item_data_ptr, char* holder) const;
 
-    std::pair<double, double> calc_loss(SparseDataset& dataset, uint32_t start_index) const;
+    std::pair<double, double> calc_loss(SparseDataset& dataset,
+                                        uint32_t start_index) const;
 
- public:
+   public:
 
     // for each user we have in order:
     // 1. user id
