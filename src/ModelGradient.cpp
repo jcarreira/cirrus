@@ -498,7 +498,6 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     FEATURE_TYPE v = user_bias.second;
     int ps_num = (user_bias.first / (minibatch_size / num_ps)) % num_ps;
     int converted_index = ((user_bias.first / minibatch_size)) * (minibatch_size / num_ps) + user_bias.first % (minibatch_size / num_ps);
-    //int ps_num = index % parts;
     int position = starts[ps_num];
     put_value<int>(mem, converted_index, position);
     put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));

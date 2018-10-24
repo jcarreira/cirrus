@@ -69,7 +69,7 @@ void run_tasks(int rank,
     * SPARSE tasks
     */
   } else if (rank == ERROR_SPARSE_TASK_RANK) {
-    if (ps_ips.size() > 1) {
+    if (ps_ips.size() >= 1) {
       cirrus::ErrorSparseTask et((1 << config.get_model_bits()), batch_size,
                                  samples_per_batch, features_per_sample,
                                  nworkers, rank, ps_ips, ps_ports);

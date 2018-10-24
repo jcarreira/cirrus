@@ -170,7 +170,6 @@ SparseMFModel MultiplePSSparseServerInterface::get_mf_sparse_model(
     const Configuration& config,
     uint32_t user_base,
     uint32_t minibatch_size) {
-  std::cout << "DEEEEEEEEEEEEEEEEEBUG" << std::endl;
   SparseMFModel model((uint64_t) 0, (uint64_t) 0, (uint64_t) NUM_FACTORS);
   get_mf_sparse_model_inplace(ds, model, config, user_base, minibatch_size);
   return std::move(model);
@@ -187,6 +186,9 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   char** msg_begin_lst = new char*[num_servers];
   uint32_t* item_ids_count_lst = new uint32_t[num_servers];
   bool** seen = new bool*[num_servers];
+
+  user_base /= num_servers;
+
   for (int i = 0; i < num_servers; i++) {
     seen[i] = new bool[17770]();
     msg_lst[i] = new char[MAX_MSG_SIZE];
