@@ -41,6 +41,7 @@ class SparseMFModel : public CirrusModel {
      */
     void loadSerialized(const void*) { throw std::runtime_error("Not implemented"); }
     void loadSerialized(const void* mem, uint64_t, uint64_t);
+    void loadSerializedShard(const void* mem, int server_id, int num_ps);
     void loadSerializedSparse(const void* mem,
                               uint64_t num_users,
                               uint64_t num_items,
@@ -145,6 +146,8 @@ class SparseMFModel : public CirrusModel {
         uint32_t base_user, uint32_t minibatch_size, uint32_t k_items,
         const char* item_data_ptr, char* holder) const;
 
+    std::pair<double, double> calc_loss(SparseDataset& dataset, uint32_t start_index) const;
+
  public:
 
     // for each user we have in order:
@@ -164,7 +167,7 @@ class SparseMFModel : public CirrusModel {
     FEATURE_TYPE& get_user_weights(uint64_t userId, uint64_t factor);
     FEATURE_TYPE& get_item_weights(uint64_t itemId, uint64_t factor);
 
-    FEATURE_TYPE predict(uint32_t userId, uint32_t itemId);
+    FEATURE_TYPE predict(uint32_t userId, uint32_t itemId) const;
 
     void initialize_weights(uint64_t, uint64_t, uint64_t);
 

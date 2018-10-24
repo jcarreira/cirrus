@@ -69,6 +69,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   if (first_time) {
     first_time = false;
     if (ps_ips.size() > 1) {
+      std::cout << "USING MULTIPLE PS" << std::endl;
       psi = new MultiplePSSparseServerInterface(ps_ips, ps_ports);
     } else {
       psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
@@ -85,6 +86,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   }
   bool use_col_filtering =
       config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+  std::cout << "[ERROR_TASK] Call to get_model" << std::endl;
   return psi->get_full_model(use_col_filtering);
 }
 
@@ -189,7 +191,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
-    try {
+  //  try {
 // first we get the model
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] getting the full model"
@@ -239,9 +241,7 @@ void ErrorSparseTask::run(const Configuration& config) {
                   << " time(us): " << get_time_us()
                   << " time from start (sec): " << last_time << std::endl;
       }
-    } catch (...) {
-      std::cout << "run_compute_error_task unknown id" << std::endl;
-    }
+  //  }   
   }
 }
 

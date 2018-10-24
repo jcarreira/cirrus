@@ -240,16 +240,22 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
 std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
     bool use_col_filtering) {
   if (use_col_filtering) {
-    throw std::runtime_error(
-        "MultiplePSSparseServerInterface::get_full_model does not support "
-        "using collaborative filtering!");
-  }
+    std::unique_ptr<SparseMFModel> model = std::make_unique<SparseMFModel>(
+        (uint64_t) 0, (uint64_t) 0, (uint64_t) NUM_FACTORS);
+    for (int i = 0; i < psints.size(); i++) {
+      psints[i]->get_full_model_inplace(model, i, psints.size());
+    }
+    return std::move(model);
+  
+  
+  } else {
 
-  std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);
-  for (int i = 0; i < psints.size(); i++) {
-    psints[i]->get_full_model_inplace(model, i, psints.size());
+    std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);
+    for (int i = 0; i < psints.size(); i++) {
+      psints[i]->get_full_model_inplace(model, i, psints.size());
+    }
+    return std::move(model);
   }
-  return std::move(model);
 }
 
 }  // namespace cirrus

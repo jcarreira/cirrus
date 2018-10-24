@@ -10,6 +10,40 @@
 
 namespace cirrus {
 
+  std::pair<double, double> SparseMFModel::calc_loss(SparseDataset& dataset, uint32_t start_index) const { 
+    double error = 0;
+    uint64_t count = 0;
+
+
+    for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
+      uint64_t off_userId = userId + start_index;
+      for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
+        uint64_t movieId = dataset.data_.at(userId).at(j).first;
+        FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
+
+        FEATURE_TYPE prediction = predict(off_userId, movieId);
+        FEATURE_TYPE e = rating - prediction;
+
+        FEATURE_TYPE e_pow_2 = pow(e, 2);
+        error += e_pow_2;
+        if (std::isnan(e) || std::isnan(error)) {
+          std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
+            " prediction: " + std::to_string(prediction);
+          throw std::runtime_error(error);
+        }
+        count++;
+      }
+    }
+
+    if (std::isnan(error)) {
+      throw std::runtime_error("error isnan");
+    }
+    return std::make_pair(error, count);
+
+
+  }
+
+
 // FORMAT
 // Number of users (32bits)
 // Number of factors (32bits)
@@ -49,7 +83,7 @@ std::unique_ptr<CirrusModel> SparseMFModel::deserialize(void* data, uint64_t /*s
 
 std::pair<std::unique_ptr<char[]>, uint64_t>
 SparseMFModel::serialize() const {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("serialize not implemented");
     std::pair<std::unique_ptr<char[]>, uint64_t> res;
     uint64_t size = getSerializedSize();
     
@@ -61,7 +95,7 @@ SparseMFModel::serialize() const {
 }
 
 void SparseMFModel::serializeTo(void* /*mem*/) const {
-  throw std::runtime_error("Not implemented");
+  throw std::runtime_error(" serializeTo Not implemented");
 }
 
 /**
@@ -92,6 +126,65 @@ uint64_t SparseMFModel::getSerializedSize() const {
   throw std::runtime_error("Not implemented");
   return 0;
 }
+
+void SparseMFModel::loadSerializedShard(const void* data, int server_id, int num_ps) {
+   uint64_t nusers_ = load_value<uint64_t>(data);
+   uint64_t nitems_ = load_value<uint64_t>(data);
+   uint64_t nfactors_ = NUM_FACTORS;
+   global_bias_ = 3.604;
+   int minibatch_size = 20; 
+   uint64_t user_base = (minibatch_size / num_ps) * server_id;
+
+   if (user_models.size() < 480189)
+     user_models.resize(480189);
+
+   for (uint64_t i = 0; i < nusers_; ++i) {
+    uint32_t user_id = (i % (minibatch_size / num_ps)) + (minibatch_size / num_ps) * server_id + (i / (minibatch_size / num_ps)) * minibatch_size;
+    if (user_id >= 480189)
+      break;
+    FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
+    std::get<0>(user_models[user_id]) = user_id;
+    std::get<1>(user_models[user_id]) = user_bias;
+    std::get<2>(user_models[user_id]).resize(NUM_FACTORS);
+    //user_models[i] = user_model;
+    //std::cout << "saw " << user_id << " " << get_user_weights(user_id,0) << std::endl; 
+   }
+  
+   for (uint64_t i = 0; i < nitems_; ++i) {
+    std::pair<FEATURE_TYPE,
+      std::vector<FEATURE_TYPE>> item_model;
+    uint32_t item_id = i * num_ps + server_id;
+    if (item_id >= 17770)
+      break;
+    FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
+    std::get<0>(item_model) = item_bias;
+    std::get<1>(item_model).resize(NUM_FACTORS);
+    item_models[item_id] = item_model;
+  }
+
+   for (uint32_t i = 0; i < nusers_; ++i) {
+     for (uint32_t j = 0; j < nfactors_; ++j) {
+    uint32_t user_id = (i % (minibatch_size / num_ps)) + (minibatch_size / num_ps) * server_id + (i / (minibatch_size / num_ps)) * minibatch_size;
+    if (user_id >= 480189)
+      break;
+       FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
+       //std::cout << "saw2 " << user_id << " " << nfactors_ << std::endl; 
+       get_user_weights(user_id, j) = user_weight;
+     }
+   }
+   
+   for (uint32_t i = 0; i < nitems_; ++i) {
+     for (uint32_t j = 0; j < nfactors_; ++j) {
+       uint32_t item_id = i * num_ps + server_id;
+       if (item_id >= 17770)
+         break;
+       FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
+       get_item_weights(item_id, j) = item_weight;
+     }
+   }
+
+}
+  
 
 void SparseMFModel::loadSerialized(const void* data, uint64_t minibatch_size, uint64_t num_item_ids) {
 #ifdef DEBUG
@@ -178,14 +271,14 @@ void SparseMFModel::loadSerializedSparse(const void* data,
 /**
   * userId : 0 to minibatch_size
   */
-FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) {
+FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) const {
   FEATURE_TYPE user_bias = std::get<1>(user_models[userId]);
   FEATURE_TYPE item_bias = item_models[itemId].first;
 
   FEATURE_TYPE res = global_bias_ + user_bias + item_bias;
   
   for (uint32_t i = 0; i < nfactors_; ++i) {
-    res += get_user_weights(userId, i) * get_item_weights(itemId, i);
+    res += std::get<2>(user_models[userId])[i] * item_models[itemId].second[i];
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
       std::cout << "userId: " << userId << " itemId: " << itemId 
@@ -320,7 +413,7 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
   return gradient;
 }
 
-FEATURE_TYPE& SparseMFModel::get_user_weights(uint64_t userId, uint64_t factor) {
+FEATURE_TYPE& SparseMFModel::get_user_weights(uint64_t userId, uint64_t factor)  {
   return std::get<2>(user_models[userId])[factor];
 }
 

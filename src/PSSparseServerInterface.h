@@ -71,6 +71,9 @@ class PSSparseServerInterface {
   void get_full_model_inplace(std::unique_ptr<cirrus::SparseLRModel>& model,
                               int server_id,
                               int num_ps);
+  void get_full_model_inplace(std::unique_ptr<cirrus::SparseMFModel>& model,
+                              int server_id,
+                              int num_ps);
 
   int send_wrapper(uint32_t num, std::size_t size);
   int send_all_wrapper(char* data, uint32_t size);

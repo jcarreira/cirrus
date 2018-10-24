@@ -426,11 +426,15 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   std::vector<std::tuple<int, int>> starts_out(parts);
   std::hash<int> hashfunc;
 
+  int num_ps = parts;
+  int minibatch_size = 20;
+
   // Perform count
   for (const auto& user_bias : users_bias_grad) {
-    starts[user_bias.first % parts] +=
+    int ps_num = (user_bias.first / (minibatch_size / num_ps)) % num_ps;
+    starts[ps_num] +=
         2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    ucnts[user_bias.first % parts]++;
+    ucnts[ps_num]++;
   }
 
   for (const auto& item_bias : items_bias_grad) {
@@ -492,16 +496,18 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   for (const auto& user_bias : users_bias_grad) {
     int index = user_bias.first;
     FEATURE_TYPE v = user_bias.second;
-    int ps_num = index % parts;
+    int ps_num = (user_bias.first / (minibatch_size / num_ps)) % num_ps;
+    int converted_index = ((user_bias.first / minibatch_size)) * (minibatch_size / num_ps) + user_bias.first % (minibatch_size / num_ps);
+    //int ps_num = index % parts;
     int position = starts[ps_num];
-    put_value<int>(mem, index / parts, position);
+    put_value<int>(mem, converted_index, position);
     put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
     starts[ps_num] += sizeof(int) + sizeof(FEATURE_TYPE);
   }
   for (const auto& bias_grad : items_bias_grad) {
     int index = bias_grad.first;
     FEATURE_TYPE v = bias_grad.second;
-    int ps_num = hashfunc(index) % parts;
+    int ps_num = index % parts;
     int position = starts[ps_num];
     put_value<int>(mem, index / parts, position);
     put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
@@ -512,9 +518,11 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   assert(users_weights_grad.size() == users_bias_grad.size());
   for (const auto& user : users_weights_grad) {
     int index = user.first;
-    int ps_num = hashfunc(index) % parts;
+    //int ps_num = hashfunc(index) % parts;
+    int converted_index = ((user.first / minibatch_size)) * (minibatch_size / num_ps) + user.first % (minibatch_size / num_ps);
+    int ps_num = (user.first / (minibatch_size / num_ps)) % num_ps;
     int position = starts[ps_num];
-    put_value<int>(mem, index / parts, position);
+    put_value<int>(mem, converted_index, position);
     starts[ps_num] += sizeof(int);
     assert(user.second.size() == NUM_FACTORS);
     for (const auto& weight_grad : user.second) {
@@ -526,7 +534,7 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   assert(items_weights_grad.size() == items_bias_grad.size());
   for (const auto& item : items_weights_grad) {
     int index = item.first;
-    int ps_num = hashfunc(index) % parts;
+    int ps_num = index % parts;
     int position = starts[ps_num];
     put_value<int>(mem, index / parts, position);
     starts[ps_num] += sizeof(int);

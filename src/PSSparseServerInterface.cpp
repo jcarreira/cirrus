@@ -266,6 +266,28 @@ void PSSparseServerInterface::get_full_model_inplace(
   delete[] model_data;
 }
 
+void PSSparseServerInterface::get_full_model_inplace(
+    std::unique_ptr<SparseMFModel>& model,
+    int server_id,
+    int num_ps) {
+  // 1. Send operation
+  uint32_t operation = GET_MF_FULL_MODEL;
+  send_all(sock, &operation, sizeof(uint32_t));
+  uint32_t to_receive_size;
+  read_all(sock, &to_receive_size, sizeof(uint32_t));
+
+  char* buffer = new char[to_receive_size];
+  read_all(sock, buffer, to_receive_size);
+  
+  std::cout
+    << " buffer checksum: " << crc32(buffer, to_receive_size)
+    << std::endl;
+
+  // build a sparse model and return
+  model->loadSerializedShard(buffer, server_id, num_ps);
+  delete[] buffer;
+}
+
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     bool isCollaborative //XXX use a better argument here
     ) {
