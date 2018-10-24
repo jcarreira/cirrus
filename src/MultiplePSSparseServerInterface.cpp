@@ -188,7 +188,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   uint32_t* item_ids_count_lst = new uint32_t[num_servers];
   bool** seen = new bool*[num_servers];
   for (int i = 0; i < num_servers; i++) {
-    seen[i] = new bool[17770];
+    seen[i] = new bool[17770]();
     msg_lst[i] = new char[MAX_MSG_SIZE];
     msg_begin_lst[i] = msg_lst[i];
     item_ids_count_lst[i] = 0;
@@ -196,7 +196,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     store_value<uint32_t>(msg_lst[i], user_base);
     store_value<uint32_t>(msg_lst[i], minibatch_size / num_servers);
     store_value<uint32_t>(msg_lst[i], MAGIC_NUMBER);
-    user_base += minibatch_size / num_servers;
+    //user_base += minibatch_size / num_servers;
   }
 
   for (const auto& sample : ds.data_) {

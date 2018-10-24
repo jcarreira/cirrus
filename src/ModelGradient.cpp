@@ -428,15 +428,15 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
 
   // Perform count
   for (const auto& user_bias : users_bias_grad) {
-    starts[hashfunc(user_bias.first) % parts] +=
+    starts[user_bias.first % parts] +=
         2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    ucnts[hashfunc(user_bias.first) % parts]++;
+    ucnts[user_bias.first % parts]++;
   }
 
   for (const auto& item_bias : items_bias_grad) {
-    starts[hashfunc(item_bias.first) % parts] +=
+    starts[item_bias.first % parts] +=
         2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    icnts[hashfunc(item_bias.first) % parts]++;
+    icnts[item_bias.first % parts]++;
   }
 
   // starts[i] = number of items behind partition i
@@ -482,17 +482,11 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     put_value<int>(mem, ucnt, offset + sizeof(int));
     put_value<int>(mem, icnt, offset + 2 * sizeof(int));
     starts[i] += 3 * sizeof(int);
-    if (i > 1) {
-      put_value<uint32_t>(mem, MAGIC_NUMBER, offset - sizeof(int));
-    }
 
     count = count_next;
     ucnt = ucnt_next;
     icnt = icnt_next;
   }
-
-  put_value<int>(mem, MAGIC_NUMBER,
-                 getShardSerializedSize(parts) - sizeof(int));
 
   // First we serialize the bias values
   for (const auto& user_bias : users_bias_grad) {
@@ -510,7 +504,7 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     int ps_num = hashfunc(index) % parts;
     int position = starts[ps_num];
     put_value<int>(mem, index / parts, position);
-    put_value<int>(mem, v, position + sizeof(int));
+    put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
     starts[ps_num] += sizeof(int) + sizeof(FEATURE_TYPE);
   }
 
@@ -542,6 +536,9 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
       starts[ps_num] += sizeof(FEATURE_TYPE);
     }
   }
+
+  for (int i = 0; i < parts; i++)
+    put_value<uint32_t>(mem, MAGIC_NUMBER, starts[i]);
 
   return starts_out;
 }

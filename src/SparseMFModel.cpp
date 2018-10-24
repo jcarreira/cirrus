@@ -164,7 +164,6 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = load_value<uint32_t>(data) * num_ps + server_id;
-    std::cout << "Loaded: " << item_id << std::endl;
     FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).resize(NUM_FACTORS);
@@ -186,7 +185,6 @@ FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) {
   FEATURE_TYPE res = global_bias_ + user_bias + item_bias;
   
   for (uint32_t i = 0; i < nfactors_; ++i) {
-    std::cout << "Want: " << itemId << std::endl;
     res += get_user_weights(userId, i) * get_item_weights(itemId, i);
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
@@ -385,14 +383,12 @@ void SparseMFModel::serializeFromDense(
   // now we store data about items
   for (uint32_t i = 0; i < k_items; ++i) {
     uint32_t item_id = load_value<uint32_t>(item_data_ptr);
-    //std::cout << "item_id: " << item_id << std::endl;
     store_value<uint32_t>(data_to_send_ptr, item_id);
     store_value<FEATURE_TYPE>(data_to_send_ptr, mf_model.get_item_bias(item_id));
     for (uint32_t j = 0; j < NUM_FACTORS; ++j) {
       store_value<FEATURE_TYPE>(data_to_send_ptr, mf_model.get_item_weights(item_id, j));
     }
   }
-
 }
 
 } // namespace cirrus

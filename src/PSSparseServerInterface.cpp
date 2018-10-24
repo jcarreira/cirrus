@@ -130,6 +130,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(const SparseDataset& d
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
+      std::cout << "Asked for " << movieId << std::endl;
       if (seen[movieId])
           continue;
       store_value<uint32_t>(msg, movieId);
@@ -373,6 +374,11 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
     uint32_t num_items,
     int server_id,
     int num_ps) {
+
+
+
+
+
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
   char* buffer = new char[to_receive_size];

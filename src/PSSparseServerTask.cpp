@@ -492,10 +492,6 @@ void PSSparseServerTask::start_server() {
 
   sem_init(&sem_new_req, 0, 0);
 
-  for (int i = NUM_POLL_THREADS - 1; i >= 0; i--) {
-    server_threads.push_back(std::make_unique<std::thread>(
-        std::bind(&PSSparseServerTask::main_poll_thread_fn, this, i)));
-  }
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
     gradient_thread.push_back(std::make_unique<std::thread>(
@@ -527,6 +523,7 @@ void PSSparseServerTask::kill_server() {
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   // id=0 -> poll thread responsible for handling new connections
   if (poll_id == 0) {
+  pthread_barrier_wait(threads_barrier.get());
     std::cout << "Starting server, poll id " << poll_id << std::endl;
 
     server_sock_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -574,10 +571,10 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     fdses[poll_id].at(0).fd = pipefds[poll_id][0];
     fdses[poll_id].at(0).events = POLLIN;
     curr_indexes[poll_id] = 1;
+  pthread_barrier_wait(threads_barrier.get());
 
   }
 
-  pthread_barrier_wait(threads_barrier.get());
 
   loop(poll_id);
 }
