@@ -126,9 +126,8 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
 
   flatbuffers::FlatBufferBuilder builder(initial_buffer_size);
 
-  std::shared_ptr<unsigned char> data =
-      std::shared_ptr<unsigned char>(new unsigned char[MAX_MSG_SIZE],
-                                     std::default_delete<char[]>());
+  std::shared_ptr<unsigned char> data = std::shared_ptr<unsigned char>(
+      new unsigned char[MAX_MSG_SIZE], std::default_delete<char[]>());
   unsigned char* msg = data.get();
   SparseMFModel sparse_mf_model((uint64_t) 0, 0, 0);
   sparse_mf_model.serializeFromDense(*mf_model, base_user_id, minibatch_size,
