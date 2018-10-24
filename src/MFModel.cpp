@@ -18,10 +18,12 @@ namespace cirrus {
 // ....
 
 void MFModel::initialize_data(uint64_t users, uint64_t items, uint64_t nfactors) {
-  //user_weights_ = std::shared_ptr<FEATURE_TYPE>(
-  //    new FEATURE_TYPE[users * nfactors], std::default_delete<FEATURE_TYPE[]>());
-  //item_weights_ = std::shared_ptr<FEATURE_TYPE>(
-  //    new FEATURE_TYPE[items * nfactors], std::default_delete<FEATURE_TYPE[]>());
+  // user_weights_ = std::shared_ptr<FEATURE_TYPE>(
+  //    new FEATURE_TYPE[users * nfactors],
+  //    std::default_delete<FEATURE_TYPE[]>());
+  // item_weights_ = std::shared_ptr<FEATURE_TYPE>(
+  //    new FEATURE_TYPE[items * nfactors],
+  //    std::default_delete<FEATURE_TYPE[]>());
   user_weights_.resize(users * nfactors);
   item_weights_.resize(items * nfactors);
   global_bias_ = 3.604;
@@ -41,15 +43,18 @@ void MFModel::initialize_data(uint64_t users, uint64_t items, uint64_t nfactors)
 
   randomize();
 
-  std::cout << "Initializing MFModel nusers: " << nusers_ << " nitems: " << nitems_ << std::endl;
+  std::cout << "Initializing MFModel nusers: " << nusers_
+            << " nitems: " << nitems_ << std::endl;
 }
 
 MFModel::MFModel(uint64_t users, uint64_t items, uint64_t nfactors) {
-    initialize_data(users, items, nfactors);
+  initialize_data(users, items, nfactors);
 }
 
-MFModel::MFModel(
-    const void* data, uint64_t /*nusers*/, uint64_t /*nitems*/, uint64_t /*nfactors*/) {
+MFModel::MFModel(const void* data,
+                 uint64_t /*nusers*/,
+                 uint64_t /*nitems*/,
+                 uint64_t /*nfactors*/) {
   loadSerialized(data);
 }
 
@@ -195,18 +200,18 @@ void MFModel::sgd_update(double learning_rate,
 
   // apply grad to users_bias_grad
   for (const auto& v : grad_ptr->users_bias_grad) {
-    //std::cout << "ub: " << v.second << "\n";
-      user_bias_[v.first] += v.second;
+    // std::cout << "ub: " << v.second << "\n";
+    user_bias_[v.first] += v.second;
   }
   for (const auto& v : grad_ptr->items_bias_grad) {
-    //std::cout << "ib: " << v.second << "\n";
-      item_bias_[v.first] += v.second;
+    // std::cout << "ib: " << v.second << "\n";
+    item_bias_[v.first] += v.second;
   }
   for (const auto& v : grad_ptr->users_weights_grad) {
     int user_id = v.first;
     assert(v.second.size() == NUM_FACTORS);
     for (uint32_t i = 0; i < v.second.size(); ++i) {
-      //std::cout << "uw: " << v.second[i] << "\n";
+      // std::cout << "uw: " << v.second[i] << "\n";
       get_user_weights(user_id, i) += v.second[i];
     }
   }
@@ -214,7 +219,7 @@ void MFModel::sgd_update(double learning_rate,
     int item_id = v.first;
     assert(v.second.size() == NUM_FACTORS);
     for (uint32_t i = 0; i < v.second.size(); ++i) {
-      //std::cout << "iw: " << v.second[i] << "\n";
+      // std::cout << "iw: " << v.second[i] << "\n";
       get_item_weights(item_id, i) += v.second[i];
     }
   }
@@ -353,28 +358,28 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
   double error = 0;
   uint64_t count = 0;
 
-//#ifdef DEBUG
-//  std::cout
-//    << "calc_loss() starting"
-//    << std::endl;
-//#endif
+  //#ifdef DEBUG
+  //  std::cout
+  //    << "calc_loss() starting"
+  //    << std::endl;
+  //#endif
 
   for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
     uint64_t off_userId = userId + start_index;
-//#ifdef DEBUG
-//      std::cout
-//        << "off_userId: " << off_userId
-//        << " userId: " << userId
-//        << " dataset.data_.size(): " << dataset.data_.size()
-//        << std::endl;
-//#endif
+    //#ifdef DEBUG
+    //      std::cout
+    //        << "off_userId: " << off_userId
+    //        << " userId: " << userId
+    //        << " dataset.data_.size(): " << dataset.data_.size()
+    //        << std::endl;
+    //#endif
     for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
       uint64_t movieId = dataset.data_.at(userId).at(j).first;
-//#ifdef DEBUG
-//      std::cout
-//        << " movieId: " << movieId
-//        << std::endl;
-//#endif
+      //#ifdef DEBUG
+      //      std::cout
+      //        << " movieId: " << movieId
+      //        << std::endl;
+      //#endif
       FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
 
       FEATURE_TYPE prediction = predict(off_userId, movieId);
@@ -382,16 +387,16 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
 
       FEATURE_TYPE e_pow_2 = pow(e, 2);
       error += e_pow_2;
-//#ifdef DEBUG
-//      std::cout
-//        << "prediction: " << prediction
-//        << " rating: " << rating
-//        << " e: " << e
-//        << " e_pow_2: " << pow(e, 2)
-//        << " error: " << error
-//        << " count: " << count
-//        << std::endl;
-//#endif
+      //#ifdef DEBUG
+      //      std::cout
+      //        << "prediction: " << prediction
+      //        << " rating: " << rating
+      //        << " e: " << e
+      //        << " e_pow_2: " << pow(e, 2)
+      //        << " error: " << error
+      //        << " count: " << count
+      //        << std::endl;
+      //#endif
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
           " prediction: " + std::to_string(prediction);

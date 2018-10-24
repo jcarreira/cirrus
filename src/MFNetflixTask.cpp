@@ -26,13 +26,12 @@ void MFNetflixTask::push_gradient(MFSparseGradient* mfg) {
     before = get_time_us();
   auto now = get_time_us();
   std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * mfg->getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
+            << "Worker task published gradient"
+            << " at time (us): " << get_time_us()
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
+            << (1.0 * mfg->getSerializedSize() / elapsed_push_us / 1024 / 1024 *
+                1000 * 1000)
+            << " since last(us): " << (now - before) << "\n";
   before = now;
 #endif
 }
@@ -130,8 +129,8 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-      mf_model_get->get_new_model_inplace(
-              *dataset, model, config, sample_index, config.get_minibatch_size());
+    mf_model_get->get_new_model_inplace(*dataset, model, config, sample_index,
+                                        config.get_minibatch_size());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;

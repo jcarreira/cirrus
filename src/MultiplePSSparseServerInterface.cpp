@@ -196,7 +196,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     store_value<uint32_t>(msg_lst[i], user_base);
     store_value<uint32_t>(msg_lst[i], minibatch_size / num_servers);
     store_value<uint32_t>(msg_lst[i], MAGIC_NUMBER);
-    //user_base += minibatch_size / num_servers;
+    // user_base += minibatch_size / num_servers;
   }
 
   for (const auto& sample : ds.data_) {

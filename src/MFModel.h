@@ -163,8 +163,8 @@ class MFModel : public CirrusModel {
     // between vector and shared_ptr, which one to use?
     std::vector<FEATURE_TYPE> user_weights_;
     std::vector<FEATURE_TYPE> item_weights_;
-    //std::shared_ptr<FEATURE_TYPE> user_weights_;
-    //std::shared_ptr<FEATURE_TYPE> item_weights_;
+    // std::shared_ptr<FEATURE_TYPE> user_weights_;
+    // std::shared_ptr<FEATURE_TYPE> item_weights_;
 
     std::vector<FEATURE_TYPE> user_bias_;
     std::vector<FEATURE_TYPE> item_bias_;

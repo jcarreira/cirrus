@@ -118,28 +118,33 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace_sharded(
   delete[] buffer;
 }
 
-void PSSparseServerInterface::get_mf_sparse_model_inplace(const SparseDataset& ds, SparseMFModel& model, const Configuration& config, uint32_t user_base, uint32_t minibatch_size) {
+void PSSparseServerInterface::get_mf_sparse_model_inplace(
+    const SparseDataset& ds,
+    SparseMFModel& model,
+    const Configuration& config,
+    uint32_t user_base,
+    uint32_t minibatch_size) {
   char* msg = new char[MAX_MSG_SIZE];
-  char* msg_begin = msg; // need to keep this pointer to delete later
+  char* msg_begin = msg;  // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
-  store_value<uint32_t>(msg, 0); // we will write this value later
+  store_value<uint32_t>(msg, 0);  // we will write this value later
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
-  store_value<uint32_t>(msg, MAGIC_NUMBER); // magic value
+  store_value<uint32_t>(msg, MAGIC_NUMBER);  // magic value
   bool seen[17770] = {false};
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
       std::cout << "Asked for " << movieId << std::endl;
       if (seen[movieId])
-          continue;
+        continue;
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
       item_ids_count++;
     }
   }
   msg = msg_begin;
-  store_value<uint32_t>(msg, item_ids_count); // store correct value here
+  store_value<uint32_t>(msg, item_ids_count);  // store correct value here
   uint32_t operation = GET_MF_SPARSE_MODEL;
   int ret;
   std::cout << "SOCK " << sock << std::endl;
@@ -162,17 +167,15 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(const SparseDataset& d
 
   // build a sparse model and return
   model.initialize_weights(0, 0, 0);
-  model.loadSerialized((FEATURE_TYPE*)buffer, minibatch_size, item_ids_count);
-  
+  model.loadSerialized((FEATURE_TYPE*) buffer, minibatch_size, item_ids_count);
+
   delete[] msg_begin;
   delete[] buffer;
-
-
 }
 
-  
-  
-  void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel& lr_model,
+void PSSparseServerInterface::get_lr_sparse_model_inplace(
+    const SparseDataset& ds,
+    SparseLRModel& lr_model,
     const Configuration& config) {
 #ifdef DEBUG
   std::cout << "Getting LR sparse model inplace" << std::endl;
@@ -374,11 +377,6 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
     uint32_t num_items,
     int server_id,
     int num_ps) {
-
-
-
-
-
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
   char* buffer = new char[to_receive_size];
