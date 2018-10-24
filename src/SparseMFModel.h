@@ -150,7 +150,6 @@ class SparseMFModel : public CirrusModel {
                                         uint32_t start_index) const;
 
    public:
-
     // for each user we have in order:
     // 1. user id
     // 2. user_bias
