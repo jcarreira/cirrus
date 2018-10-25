@@ -588,7 +588,7 @@ void MFSparseGradient::serialize(void *mem) const {
       store_value<FEATURE_TYPE>(mem, weight_grad);
     }
   }
-  store_value<uint32_t>(mem, MAGIC_NUMBER); // magic value
+  store_value<uint32_t>(mem, MAGIC_NUMBER);  // magic value
 }
 
 void MFSparseGradient::loadSerialized(const void* mem) {
