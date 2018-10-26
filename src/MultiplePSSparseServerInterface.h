@@ -21,9 +21,10 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
  public:
   MultiplePSSparseServerInterface(std::vector<std::string> ps_ips,
                                   std::vector<uint64_t> ps_ports);
-  
+
   MultiplePSSparseServerInterface(std::vector<std::string> ps_ips,
-                                  std::vector<uint64_t> ps_ports, uint32_t minibatch_size);
+                                  std::vector<uint64_t> ps_ports,
+                                  uint32_t minibatch_size);
 
   void connect();
 

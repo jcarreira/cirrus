@@ -40,8 +40,8 @@ int main() {
   ps_ports.push_back(1338);
   ps_ports.push_back(1340);
 
-  MultiplePSSparseServerInterface> psi(ps_ips, ps_ports);
-  
+  MultiplePSSparseServerInterface > psi(ps_ips, ps_ports);
+
   int version = 0;
   while (1) {
     for (uint64_t i = 0; i < nusers; i += batch_size) {

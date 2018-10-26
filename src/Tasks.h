@@ -465,7 +465,8 @@ class MFNetflixTask : public MLTask {
                 worker_id,
                 ps_ips,
                 ps_ports) {
-     mf_model_get = std::make_unique<MFModelGet>(ps_ips, ps_ports, samples_per_batch);
+     mf_model_get =
+         std::make_unique<MFModelGet>(ps_ips, ps_ports, samples_per_batch);
    }
 
    /**
@@ -489,9 +490,10 @@ class MFNetflixTask : public MLTask {
      }
 
      MFModelGet(const std::vector<std::string> ps_ips,
-                std::vector<uint64_t> ps_ports, uint32_t minibatch_size) {
-       psi =
-           std::make_unique<MultiplePSSparseServerInterface>(ps_ips, ps_ports, minibatch_size);
+                std::vector<uint64_t> ps_ports,
+                uint32_t minibatch_size) {
+       psi = std::make_unique<MultiplePSSparseServerInterface>(ps_ips, ps_ports,
+                                                               minibatch_size);
      }
 
      SparseMFModel get_new_model(const SparseDataset& ds,
