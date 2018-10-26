@@ -21,6 +21,9 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
  public:
   MultiplePSSparseServerInterface(std::vector<std::string> ps_ips,
                                   std::vector<uint64_t> ps_ports);
+  
+  MultiplePSSparseServerInterface(std::vector<std::string> ps_ips,
+                                  std::vector<uint64_t> ps_ports, uint32_t minibatch_size);
 
   void connect();
 
@@ -45,6 +48,7 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
 
  private:
   std::vector<PSSparseServerInterface*> psints;
+  uint32_t minibatch_size;
 };
 
 }  // namespace cirrus

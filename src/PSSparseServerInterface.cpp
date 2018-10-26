@@ -41,7 +41,6 @@ void PSSparseServerInterface::connect() {
                              ip + " port: " + std::to_string(port) + "\n");
   }
   std::cout << "Connection established " << ip << " " << port << std::endl;
-  std::cout << "SOCK " << sock << std::endl;
 }
 
 PSSparseServerInterface::~PSSparseServerInterface() {

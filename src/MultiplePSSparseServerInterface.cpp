@@ -30,6 +30,28 @@ MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
   }
 }
 
+MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
+    std::vector<std::string> param_ips,
+    std::vector<uint64_t> ps_ports, uint32_t mb_size) {
+  std::cout << "Starting Multiple PS " << param_ips.size() << std::endl;
+  for (int i = 0; i < param_ips.size(); i++) {  // replace 2 with num_servers
+    std::cout << "Attempting connection to " << param_ips[i] << ":"
+              << ps_ports[i] << std::endl;
+    auto ptr = new PSSparseServerInterface(param_ips[i], ps_ports[i]);
+    while (true) {
+      try {
+        ptr->connect();
+        break;
+      } catch (std::exception& exc) {
+        std::cout << exc.what();
+      }
+    }
+    psints.push_back(ptr);
+    std::cout << "Connected!!!" << std::endl;
+  }
+  minibatch_size = mb_size;
+}
+
 void MultiplePSSparseServerInterface::send_lr_gradient(
     const LRSparseGradient& gradient) {
   int num_ps = psints.size();
@@ -77,7 +99,7 @@ void MultiplePSSparseServerInterface::send_mf_gradient(
 
   uint32_t size = gradient.getShardSerializedSize(num_ps);
   char data[size];
-  auto starts_and_size = gradient.shard_serialize(data, num_ps);
+  auto starts_and_size = gradient.shard_serialize(data, num_ps, minibatch_size);
 
   for (int i = 0; i < num_ps; i++) {
     auto psint = psints[i];

@@ -170,6 +170,7 @@ class MFSparseGradient : public ModelGradient {
 
     uint64_t getShardSerializedSize(int num_shards) const;
     std::vector<std::tuple<int, int>> shard_serialize(void* mem,
+                                                      uint32_t minibatch_size,
                                                       uint32_t parts) const;
 
     void print() const {

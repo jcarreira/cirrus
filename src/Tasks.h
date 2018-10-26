@@ -465,7 +465,7 @@ class MFNetflixTask : public MLTask {
                 worker_id,
                 ps_ips,
                 ps_ports) {
-     mf_model_get = std::make_unique<MFModelGet>(ps_ips, ps_ports);
+     mf_model_get = std::make_unique<MFModelGet>(ps_ips, ps_ports, samples_per_batch);
    }
 
    /**
@@ -474,39 +474,6 @@ class MFNetflixTask : public MLTask {
    void run(const Configuration& config, int worker);
 
   private:
-   /*
-   class SparseModelGet {
-     public:
-      SparseModelGet(const std::string& ps_ip, uint64_t ps_port) {
-        psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-        while (true) {
-          try {
-            psi->connect();
-            break;
-          } catch (const std::exception& exc) {
-            std::cout << exc.what();
-          }
-        }
-      }
-
-      SparseModelGet(const std::vector<std::string> ps_ips,
-                     std::vector<uint64_t> ps_ports) {
-        psi = std::make_unique<MultiplePSSparseServerInterface>(ps_ips,
-                                                                ps_ports);
-       }
-
-       SparseLRModel get_new_model(const SparseDataset& ds,
-                                   const Configuration& config) {
-         return std::move(psi->get_lr_sparse_model(ds, config));
-       }
-       void get_new_model_inplace(const SparseDataset& ds,
-                                  SparseLRModel& model,
-                                  const Configuration& config) {
-         psi->get_lr_sparse_model_inplace(ds, model, config);
-       }
-
-       std::unique_ptr<PSSparseServerInterface> psi;
-   }; */
    class MFModelGet {
     public:
      MFModelGet(const std::string& ps_ip, int ps_port) {
@@ -522,10 +489,9 @@ class MFNetflixTask : public MLTask {
      }
 
      MFModelGet(const std::vector<std::string> ps_ips,
-                std::vector<uint64_t> ps_ports) {
-       std::cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEE" << std::endl;
+                std::vector<uint64_t> ps_ports, uint32_t minibatch_size) {
        psi =
-           std::make_unique<MultiplePSSparseServerInterface>(ps_ips, ps_ports);
+           std::make_unique<MultiplePSSparseServerInterface>(ps_ips, ps_ports, minibatch_size);
      }
 
      SparseMFModel get_new_model(const SparseDataset& ds,

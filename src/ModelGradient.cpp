@@ -419,6 +419,7 @@ uint64_t MFSparseGradient::getShardSerializedSize(int num_shards) const {
 
 std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     void* mem,
+    uint32_t minibatch_size,
     uint32_t parts) const {
   std::vector<int> starts(parts, 4 * sizeof(int));
   std::vector<int> icnts(parts, 0);
@@ -427,7 +428,6 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   std::hash<int> hashfunc;
 
   int num_ps = parts;
-  int minibatch_size = 20;
 
   // Perform count
   for (const auto& user_bias : users_bias_grad) {
@@ -588,7 +588,7 @@ void MFSparseGradient::serialize(void *mem) const {
       store_value<FEATURE_TYPE>(mem, weight_grad);
     }
   }
-  store_value<uint32_t>(mem, MAGIC_NUMBER);  // magic value
+  store_value<uint32_t>(mem, 0x1338);  // magic value
 }
 
 void MFSparseGradient::loadSerialized(const void* mem) {
@@ -632,7 +632,7 @@ void MFSparseGradient::loadSerialized(const void* mem) {
     items_weights_grad.push_back(item_weights_grad);
   }
   magic_value = load_value<uint32_t>(mem);
-  assert(magic_value == MAGIC_NUMBER);
+  assert(magic_value == 0x1338);
 }
 
 void MFSparseGradient::check_values() const {

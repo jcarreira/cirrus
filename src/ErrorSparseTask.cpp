@@ -69,7 +69,6 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   if (first_time) {
     first_time = false;
     if (ps_ips.size() > 1) {
-      std::cout << "USING MULTIPLE PS" << std::endl;
       psi = new MultiplePSSparseServerInterface(ps_ips, ps_ports);
     } else {
       psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
@@ -99,7 +98,7 @@ void ErrorSparseTask::error_response() {
   struct sockaddr_in serveraddr;
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = INADDR_ANY;
-  serveraddr.sin_port = htons(port_num);
+  serveraddr.sin_port = htons(port_num + 1);
   std::memset(serveraddr.sin_zero, 0, sizeof(serveraddr.sin_zero));
 
   int ret =
@@ -107,7 +106,7 @@ void ErrorSparseTask::error_response() {
 
   if (ret < 0) {
     throw std::runtime_error("Error in binding in port " +
-                             std::to_string((port_num)));
+                             std::to_string((port_num + 1)));
   }
 
   uint32_t operation;
