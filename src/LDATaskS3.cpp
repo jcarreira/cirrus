@@ -203,7 +203,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             ((get_time_ms() - start_time) / 1000.) / full_iteration;
 
         if (elapsed_sec > (lambda_time_out - est_time_one_iter - 10.)) {
-        // if (elapsed_sec > (lambda_time_out - 295)) {
+          // if (elapsed_sec > (lambda_time_out - 295)) {
           uint64_t size_temp;
           char* mem_to_send = model->serialize_to_S3(size_temp);
           upload_wih_bucket_id_fn(mem_to_send, size_temp,
@@ -211,7 +211,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
           delete mem_to_send;
 
-          psint->send_time_dist(time_sample, time_download + time_update + time_get_model);
+          psint->send_time_dist(time_sample,
+                                time_download + time_update + time_get_model);
 
           std::cout << "--------------------------\n";
           std::cout << "Time to download from S3: " << time_download

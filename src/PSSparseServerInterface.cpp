@@ -343,7 +343,8 @@ void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {
   }
 }
 
-void PSSparseServerInterface::send_time_dist(double sampling_time, double comm_time) {
+void PSSparseServerInterface::send_time_dist(double sampling_time,
+                                             double comm_time) {
 
   // 1. Send operation
   uint32_t operation = SEND_TIME;

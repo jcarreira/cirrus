@@ -1,5 +1,8 @@
 #define DEBUG
 
+#include <LDAModel.h>
+#include <Utils.h>
+#include <gamma.h>
 #include <math.h>
 #include <algorithm>
 #include <array>
@@ -12,9 +15,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "lz4.h"
-#include <LDAModel.h>
-#include <Utils.h>
-#include <gamma.h>
 
 namespace cirrus {
 LDAModel::LDAModel(const char* info) {

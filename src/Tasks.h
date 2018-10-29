@@ -535,7 +535,7 @@ class LoadingLDATaskS3 : public MLTask {
   void run(const Configuration& config);
   LDADataset read_dataset(const Configuration& config);
   LDAStatistics count_dataset(
-      const std::vector<std::vector<std::pair<int, int>> >& docs,
+      const std::vector<std::vector<std::pair<int, int>>>& docs,
       std::vector<int>& nvt,
       std::vector<int>& nt,
       std::vector<int>& w,

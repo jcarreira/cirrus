@@ -416,7 +416,8 @@ bool PSSparseServerTask::process_send_time(const Request& req,
   worker_sampling_time.push_back(sampling_time);
   worker_communication_time.push_back(comm_time);
 
-  if (worker_sampling_time.size() >= nworkers || worker_communication_time.size() >= nworkers) {
+  if (worker_sampling_time.size() >= nworkers ||
+      worker_communication_time.size() >= nworkers) {
     double avg_sampling = 0., avg_comm = 0.;
     double cur_time = (get_time_ms() - start_time) / 1000.;
 
@@ -440,7 +441,6 @@ bool PSSparseServerTask::process_send_time(const Request& req,
 
   benchmark_lock.unlock();
   return true;
-
 }
 
 bool PSSparseServerTask::process_get_mf_full_model(
@@ -721,9 +721,11 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
+
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
   mf_model->randomize();
+
   if (task_config.get_model_type() == cirrus::Configuration::LDA) {
     std::cout << "Getting initial LDAUpdate from S3\n";
     // Get the global stats from S3

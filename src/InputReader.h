@@ -3,9 +3,9 @@
 
 // #include <functional>
 #include <Configuration.h>
+#include <Dataset.h>
 #include <LDADataset.h>
 #include <MurmurHash3.h>
-#include <Dataset.h>
 #include <SparseDataset.h>
 #include <config.h>
 #include <functional>
@@ -226,7 +226,7 @@ class InputReader {
       std::mutex& fin_lock,
       std::mutex& out_lock,
       const std::string& delimiter,
-      std::vector<std::vector<std::pair<int, int>> >& samples_res,
+      std::vector<std::vector<std::pair<int, int>>>& samples_res,
       uint64_t limit_lines,
       std::atomic<unsigned int>&,
       std::function<void(const std::string&,
