@@ -76,13 +76,13 @@ class Configuration {
     std::string get_load_input_type() const;
 
     /**
-      * Get the path to the file with vocabularies for lda
-      */
+     * Get the path to the file with vocabularies for lda
+     */
     std::string get_vocab_path() const;
 
     /**
-      * Get the path to the file with statistics representing documents for lda
-      */
+     * Get the path to the file with statistics representing documents for lda
+     */
     std::string get_doc_path() const;
 
     /**
@@ -150,8 +150,8 @@ class Configuration {
     int get_items() const;
 
     /**
-      * LDA specific
-      */
+     * LDA specific
+     */
     int get_k() const;
 
     std::string get_opt_method() const;

@@ -1,11 +1,10 @@
+#include "PSSparseServerInterface.h"
 #include <cassert>
 #include <stdexcept>
-#include "PSSparseServerInterface.h"
-#include "Constants.h"
-#include "MFModel.h"
 #include "Checksum.h"
 #include "Constants.h"
 #include "LDAStatistics.h"
+#include "MFModel.h"
 
 //#define DEBUG
 
@@ -323,7 +322,6 @@ void PSSparseServerInterface::send_lda_update(char* gradient_mem,
 }
 
 void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {
-
   // 1. Send operation
   uint32_t operation = SEND_LL_NDT;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
@@ -339,16 +337,37 @@ void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {
     throw std::runtime_error("Error sending bucket id");
   }
 
-  // 3. Send ll
+  // 4. Send ll
   if (send_all(sock, &ll, sizeof(double)) == -1) {
     throw std::runtime_error("Error sending ll to update");
+  }
+}
+
+void PSSparseServerInterface::send_time_dist(double sampling_time, double comm_time) {
+
+  // 1. Send operation
+  uint32_t operation = SEND_TIME;
+  if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
+    throw std::runtime_error("Error sending operation_m");
+  }
+
+  // 2. Send the size
+  int size_send = sizeof(double) * 2;
+  send_all(sock, &size_send, sizeof(int));
+
+  if (send_all(sock, &comm_time, sizeof(double)) == -1) {
+    throw std::runtime_error("Error sending communication time");
+  }
+
+  // 4. Send ll
+  if (send_all(sock, &sampling_time, sizeof(double)) == -1) {
+    throw std::runtime_error("Error sending sampling time");
   }
 }
 
 char* PSSparseServerInterface::get_lda_model(int local_model_id,
                                              uint32_t& to_receive_size,
                                              uint32_t& uncompressed_size) {
-
   auto start_time_benchmark = get_time_ms();
 
   num_get_lda_model += 1;
@@ -401,7 +420,6 @@ char* PSSparseServerInterface::get_lda_model(int local_model_id,
 }
 
 char* PSSparseServerInterface::get_slices_indices(int local_model_id) {
-
   // 1. Send operation
   uint32_t operation = GET_LDA_SLICES_IDX;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {

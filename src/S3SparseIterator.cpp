@@ -1,9 +1,9 @@
-#include "LDAStatistics.h"
 #include "S3SparseIterator.h"
-#include "Utils.h"
 #include <unistd.h>
-#include <vector>
 #include <iostream>
+#include <vector>
+#include "LDAStatistics.h"
+#include "Utils.h"
 
 #include <pthread.h>
 #include <semaphore.h>

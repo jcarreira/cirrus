@@ -1,11 +1,11 @@
 #include <ModelGradient.h>
-#include <iostream>
-#include <algorithm>
 #include <Utils.h>
+#include <algorithm>
 #include <cassert>
-#include "Constants.h"
 #include <cstring>
+#include <iostream>
 #include <set>
+#include "Constants.h"
 #include "lz4.h"
 
 // #include "temp.h"
@@ -499,7 +499,6 @@ LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
 }
 
 void LDAUpdates::loadSerialized(const char* mem) {
-
   version = load_value<uint64_t>(mem);
 
   int len = load_value<uint32_t>(mem);
@@ -533,7 +532,7 @@ void LDAUpdates::loadSerialized(const char* mem) {
   }
 
   int len_temp = load_value<int8_t>(mem);
-  ws_ptr.reset(new std::vector<std::vector<int> >());
+  ws_ptr.reset(new std::vector<std::vector<int>>());
   ws_ptr->reserve(len_temp);
   for (int i = 0; i < len_temp; ++i) {
     len = load_value<int32_t>(mem);
@@ -560,7 +559,6 @@ void LDAUpdates::loadSerialized(const char* mem) {
 }
 
 std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
-
   int N = 0;
   for (int i = 0; i < ws_ptr->size(); ++i) {
     N += ws_ptr->operator[](i).size();
@@ -600,8 +598,8 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
   for (int i = 0; i < ws_ptr->size(); ++i) {
     store_value<uint32_t>(mem, ws_ptr->operator[](i).size());
     int32_t* data_32 = reinterpret_cast<int32_t*>(mem);
-    std::copy(
-        ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(), data_32);
+    std::copy(ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(),
+              data_32);
     mem = reinterpret_cast<char*>(
         (reinterpret_cast<char*>(mem) +
          sizeof(int32_t) * ws_ptr->operator[](i).size()));
@@ -620,7 +618,6 @@ uint64_t LDAUpdates::getSerializedSize() const {
 }
 
 int LDAUpdates::update(const char* mem) {
-
   version = load_value<uint64_t>(mem);
 
   int V = load_value<int>(mem);
@@ -637,7 +634,6 @@ int LDAUpdates::update(const char* mem) {
   for (int i = 0; i < V; ++i) {
     int len = load_value<int>(mem);
     for (int j = 0; j < len; ++j) {
-
       int16_t top = load_value<int16_t>(mem);
       int16_t count = load_value<int16_t>(mem);
       int gindex = gradient_slice[i];
@@ -656,7 +652,7 @@ int LDAUpdates::update(const char* mem) {
             sparse_nvt_indices[temp_look_up[gindex]].size();
       }
 
-      change_nvt_ptr->operator[](slice_map.at(gindex)* K + top) += count;
+      change_nvt_ptr->operator[](slice_map.at(gindex) * K + top) += count;
 
       // if the word with word_id = gindex has been stored sparsely
       // and the addition of current update would bring zero entries
@@ -687,7 +683,6 @@ char* LDAUpdates::get_partial_model(int slice_id,
                                     uint32_t& to_send_size,
                                     uint32_t& uncompressed_size,
                                     int local_model_id) {
-
   auto start_time_func = get_time_ms();
 
   int N = 0, S = 0, word_idx;
@@ -711,14 +706,13 @@ char* LDAUpdates::get_partial_model(int slice_id,
 
   auto start_time_temp = get_time_ms();
   for (int i = 0; i < len; ++i) {
-
     auto start_time_ttemp = get_time_ms();
     word_idx = fixed_slices[slice_id][i];
 
     std::set<int> sparse_nt_vi;
     int n = 0;
     // check for sparsity every 50 iterations
-    if ((int)counts % 50 == 0 && sparse_records[word_idx] == -1) {
+    if ((int) counts % 50 == 0 && sparse_records[word_idx] == -1) {
       for (int j = 0; j < K; ++j) {
         if (change_nvt_ptr->operator[](slice_map[word_idx] * K + j) != 0) {
           sparse_nt_vi.insert(j);
@@ -812,8 +806,8 @@ char* LDAUpdates::get_partial_model(int slice_id,
   char* compressed_mem = new char[uncompressed_size];
   time_temp += (get_time_ms() - start_time_temp) / 1000.0;
 
-  to_send_size = LZ4_compress_default(
-      mem_begin, compressed_mem, uncompressed_size, max_compressed_size);
+  to_send_size = LZ4_compress_default(mem_begin, compressed_mem,
+                                      uncompressed_size, max_compressed_size);
   time_compress += (get_time_ms() - start_time_temp) / 1000.0;
 
   // std::cout << uncompressed_size << " " << to_send_size << std::endl;
@@ -826,7 +820,6 @@ char* LDAUpdates::get_partial_model(int slice_id,
 }
 
 int LDAUpdates::pre_assign_slices(int slice_size) {
-
   int num_slices = slice.size() / slice_size;
   std::array<int, 1000000> gindex_2_slice_id;
   gindex_2_slice_id.fill(-1);
@@ -855,7 +848,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
   w_slices.clear();
   w_slices.reserve(ws_ptr->size());
   for (int i = 0; i < ws_ptr->size(); ++i) {
-    std::vector<std::vector<int> > w_slice_i;
+    std::vector<std::vector<int>> w_slice_i;
     w_slice_i.resize(num_slices, std::vector<int>());
     for (int j = 0; j < num_slices; ++j) {
       w_slice_i[j].reserve(slice.size());
@@ -895,11 +888,11 @@ char* LDAUpdates::get_slices_indices(int local_model_id,
   return mem_begin;
 }
 
-void LDAUpdates::get_nvt_pointer(std::shared_ptr<std::vector<int> >& nvt_ptr) {
+void LDAUpdates::get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr) {
   nvt_ptr = change_nvt_ptr;
 }
 
-void LDAUpdates::get_nt_pointer(std::shared_ptr<std::vector<int> >& nt_ptr) {
+void LDAUpdates::get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr) {
   nt_ptr = change_nt_ptr;
 }
 

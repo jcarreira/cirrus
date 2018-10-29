@@ -1,18 +1,18 @@
 #ifndef _MODELGRADIENT_H_
 #define _MODELGRADIENT_H_
 
-#include <cstdint>
-#include <cassert>
-#include <vector>
-#include <iostream>
-#include <unordered_map>
-#include <array>
 #include <config.h>
-#include <memory>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
 #include <map>
-#include <set>
-#include <unordered_set>
+#include <memory>
 #include <mutex>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 // #include <codecfactory.h>
 
 namespace cirrus {
@@ -219,36 +219,36 @@ class LDAUpdates {
 
   void loadSerialized(const char* mem);
   /**
-    * serialize the current LDAUpdate to memory;
-    * this function is only called in the LoadingLDATaskS3
-    * and it also stores the word indices for each LDAStatistics
-    * stored in S3
-    */
+   * serialize the current LDAUpdate to memory;
+   * this function is only called in the LoadingLDATaskS3
+   * and it also stores the word indices for each LDAStatistics
+   * stored in S3
+   */
   std::shared_ptr<char> serialize(uint32_t*);
   uint64_t getSerializedSize() const;
   /**
-    * apply updates according to the serialized gradient
-    */
+   * apply updates according to the serialized gradient
+   */
   int update(const char* mem);
   /**
-    * serialize the word slice
-    */
+   * serialize the word slice
+   */
   char* get_partial_model(int slice_id,
                           uint32_t& to_send_size,
                           uint32_t& uncompressed_size,
                           int local_model_id);
   /**
-    * serialize the pre-cached token indices given worker id
-    */
+   * serialize the pre-cached token indices given worker id
+   */
   char* get_slices_indices(int local_model_id, uint32_t& to_send_size);
   /**
-    * assign the token indices for each word slices for each models
-    */
+   * assign the token indices for each word slices for each models
+   */
   int pre_assign_slices(int slice_size);
 
   void get_slice(std::vector<int>& s) { s = slice; }
-  void get_nvt_pointer(std::shared_ptr<std::vector<int> >& nvt_ptr);
-  void get_nt_pointer(std::shared_ptr<std::vector<int> >& nt_ptr);
+  void get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr);
+  void get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr);
   int get_nvt_size() { return change_nvt_ptr->size(); }
   int get_nt_size() { return change_nt_ptr->size(); }
   int get_slice_size() { return slice.size(); }
@@ -261,23 +261,23 @@ class LDAUpdates {
   // void check_values() const;
   // protected:
   /**
-    *
-    * @variable change_nvt: the statistics of word counts over vocabularies and
-    *topics
-    *            - size: V * K where V is the size of vocabulary space
-    * @variable change_nt: the statistics of word counts over topics
-    *            - size: K
-    * @variable slice: the local vocabulary space
-    */
-  std::shared_ptr<std::vector<int> > change_nvt_ptr, change_nt_ptr;
+   *
+   * @variable change_nvt: the statistics of word counts over vocabularies and
+   *topics
+   *            - size: V * K where V is the size of vocabulary space
+   * @variable change_nt: the statistics of word counts over topics
+   *            - size: K
+   * @variable slice: the local vocabulary space
+   */
+  std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
   std::vector<int> slice;
-  std::shared_ptr<std::vector<std::vector<std::pair<int, int> > > >
+  std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>>
       sparse_change_nvt_ptr;
-  std::shared_ptr<std::vector<std::vector<int> > > ws_ptr;
-  std::vector<std::vector<std::vector<int> > > w_slices;
-  std::vector<std::vector<int> > change_nvt_indices;
-  std::vector<std::set<int> > sparse_nvt_indices;
-  std::vector<std::vector<int> > fixed_slices;
+  std::shared_ptr<std::vector<std::vector<int>>> ws_ptr;
+  std::vector<std::vector<std::vector<int>>> w_slices;
+  std::vector<std::vector<int>> change_nvt_indices;
+  std::vector<std::set<int>> sparse_nvt_indices;
+  std::vector<std::vector<int>> fixed_slices;
   // helper array to track the order of words stored in
   // the sparse_change_nvt_ptr
   std::array<int, 1000000> temp_look_up;

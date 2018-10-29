@@ -1,25 +1,23 @@
 #define DEBUG
 
-#include <algorithm>
-#include <chrono>
-#include <random>
-#include <unordered_map>
-#include <array>
-#include <ctime>
 #include <math.h>
-#include <set>
-#include <unordered_set>
-#include <map>
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <ctime>
 #include <deque>
+#include <map>
+#include <random>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include "lz4.h"
-
+#include <LDAModel.h>
 #include <Utils.h>
 #include <gamma.h>
-#include <LDAModel.h>
 
 namespace cirrus {
 LDAModel::LDAModel(const char* info) {
-
   // # of potential latent topics
   K_ = load_value<int16_t>(info);
 
@@ -106,12 +104,11 @@ void LDAModel::update_model(const char* buffer_to_decompress,
                             int compressed_size,
                             int uncompressed_size,
                             int slice_id) {
-
   // decompress the serialized mem that contains the partial
   // global word-topic statistics
   char* buffer_decompressed = new char[uncompressed_size + 1024];
-  LZ4_decompress_fast(
-      buffer_to_decompress, buffer_decompressed, uncompressed_size);
+  LZ4_decompress_fast(buffer_to_decompress, buffer_decompressed,
+                      uncompressed_size);
   const char* buffer = buffer_decompressed;
 
   V_ = load_value<int32_t>(buffer);
@@ -286,16 +283,9 @@ double LDAModel::compute_ll_ndt() {
 char* LDAModel::sample_model(int& total_sampled_tokens,
                              std::vector<int>& slice_indices,
                              uint32_t& to_send_size) {
-  return sample_thread(std::ref(t),
-                       std::ref(d),
-                       std::ref(w),
-                       std::ref(nt),
-                       std::ref(nvt),
-                       std::ref(ndt),
-                       std::ref(slice),
-                       total_sampled_tokens,
-                       slice_indices,
-                       to_send_size);
+  return sample_thread(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
+                       std::ref(nvt), std::ref(ndt), std::ref(slice),
+                       total_sampled_tokens, slice_indices, to_send_size);
 }
 
 char* LDAModel::sample_thread(std::vector<int>& t,
@@ -308,7 +298,6 @@ char* LDAModel::sample_thread(std::vector<int>& t,
                               int& total_sampled_tokens,
                               std::vector<int>& slice_indices,
                               uint32_t& to_send_size) {
-
   std::array<int, 1000000> slice_map;
   slice_map.fill(-1);
   int idx = 0;
@@ -352,13 +341,12 @@ char* LDAModel::sample_thread(std::vector<int>& t,
   // later to compute word_threshold
   coeff_base.reserve(K_);
   for (int i = 0; i < K_; ++i) {
-    double temp = alpha / (eta * (double)V_ + (float)nt[i]);
+    double temp = alpha / (eta * (double) V_ + (float) nt[i]);
     coeff_base.push_back(temp);
   }
 
   int pre_doc = -1;
   for (int i = 0; i < slice_indices.size(); i++) {
-
     int index = slice_indices[i];
     top = t[index], doc = d[index], gindex = w[index];
 
@@ -373,7 +361,6 @@ char* LDAModel::sample_thread(std::vector<int>& t,
     // True only if model has finished sampling the document
     // with id = pre_doc
     if (doc != pre_doc) {
-
       // Save the new doc_id
       pre_doc = doc;
 
@@ -390,8 +377,8 @@ char* LDAModel::sample_thread(std::vector<int>& t,
       // Compute actual coefficients for later word_threshold
       coeff_di = coeff_base;
       for (auto& nz_top : nz_ndt_indices[doc]) {
-        coeff_di[nz_top] = 1.0 * (alpha + (double)ndt[doc][nz_top]) /
-                           (eta * (double)V_ + (float)nt[nz_top]);
+        coeff_di[nz_top] = 1.0 * (alpha + (double) ndt[doc][nz_top]) /
+                           (eta * (double) V_ + (float) nt[nz_top]);
       }
     }
 
@@ -402,11 +389,9 @@ char* LDAModel::sample_thread(std::vector<int>& t,
 
     // Remove the corresponding non-zero entry's index if needed
     if (ndt[doc][top] == 0 && nz_ndt_indices_check[doc][top] != -1) {
-
       int ldoc_idx = nz_ndt_indices_check[doc][top];
       for (int dec_doc_idx = ldoc_idx + 1;
-           dec_doc_idx < nz_ndt_indices_counter[doc];
-           dec_doc_idx++) {
+           dec_doc_idx < nz_ndt_indices_counter[doc]; dec_doc_idx++) {
         int dec_top = nz_ndt_indices[doc][dec_doc_idx];
         nz_ndt_indices_check[doc][dec_top] -= 1;
       }
@@ -416,11 +401,9 @@ char* LDAModel::sample_thread(std::vector<int>& t,
     }
 
     if (nvt[lindex][top] == 0 && nz_nvt_indices_check[lindex][top] != -1) {
-
       int lvocab_idx = nz_nvt_indices_check[lindex][top];
       for (int dec_vocab_idx = lvocab_idx + 1;
-           dec_vocab_idx < nz_nvt_indices_counter[lindex];
-           dec_vocab_idx++) {
+           dec_vocab_idx < nz_nvt_indices_counter[lindex]; dec_vocab_idx++) {
         int dec_top = nz_nvt_indices[lindex][dec_vocab_idx];
         nz_nvt_indices_check[lindex][dec_top] -= 1;
       }
@@ -439,9 +422,9 @@ char* LDAModel::sample_thread(std::vector<int>& t,
     doc_vec[top] = ndt[doc][top] * eta / (eta * V_ + nt[top]);
     doc_threshold += doc_vec[top];
 
-    coeff_di[top] = 1.0 * (alpha + (double)ndt[doc][top]) /
-                    (eta * (double)V_ + (float)nt[top]);
-    coeff_base[top] = alpha / (eta * (double)V_ + (float)nt[top]);
+    coeff_di[top] = 1.0 * (alpha + (double) ndt[doc][top]) /
+                    (eta * (double) V_ + (float) nt[top]);
+    coeff_base[top] = alpha / (eta * (double) V_ + (float) nt[top]);
 
     // // Naive Sampler
     // rate_cum = 0.0;
@@ -565,9 +548,9 @@ char* LDAModel::sample_thread(std::vector<int>& t,
     doc_vec[new_top] = ndt[doc][new_top] * eta / (eta * V_ + nt[new_top]);
     doc_threshold += doc_vec[new_top];
 
-    coeff_di[new_top] = 1.0 * (alpha + (double)ndt[doc][new_top]) /
-                        (eta * (double)V_ + (float)nt[new_top]);
-    coeff_base[new_top] = alpha / (eta * (double)V_ + (float)nt[new_top]);
+    coeff_di[new_top] = 1.0 * (alpha + (double) ndt[doc][new_top]) /
+                        (eta * (double) V_ + (float) nt[new_top]);
+    coeff_base[new_top] = alpha / (eta * (double) V_ + (float) nt[new_top]);
 
     total_sampled_tokens += 1;
   }
@@ -622,4 +605,4 @@ char* LDAModel::sample_thread(std::vector<int>& t,
 
   return mem_begin;
 }
-}
+}  // namespace cirrus

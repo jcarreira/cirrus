@@ -415,7 +415,9 @@ int Configuration::get_items() const {
   return nitems;
 }
 
-int Configuration::get_k() const { return K_; }
+int Configuration::get_k() const {
+  return K_;
+}
 
 bool Configuration::get_grad_threshold_use() const {
   return use_grad_threshold;

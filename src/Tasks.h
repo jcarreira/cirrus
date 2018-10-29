@@ -3,21 +3,21 @@
 
 #include <Configuration.h>
 
-#include "config.h"
-#include "LRModel.h"
-#include "MFModel.h"
-#include "SparseLRModel.h"
 #include "LDAModel.h"
 #include "LDAStatistics.h"
+#include "LRModel.h"
+#include "MFModel.h"
 #include "ModelGradient.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
+#include <deque>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
-#include <deque>
 
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
@@ -309,22 +309,23 @@ class PSSparseServerTask : public MLTask {
                                   std::vector<char>& thread_buffer);
   bool process_send_ll_update(const Request& req,
                               std::vector<char>& thread_buffer);
+  bool process_send_time(const Request& req, std::vector<char>& thread_buffer);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
 
   /**
-    * Compute the initial loglikelihood;
-    * only one document is downloaded from S3
-    */
+   * Compute the initial loglikelihood;
+   * only one document is downloaded from S3
+   */
   void init_loglikelihood();
 
   double compute_loglikelihood();
   void update_ll_word_thread(double ll);
 
   /**
-    * Pre-cache the token indices for each word slices
-    */
+   * Pre-cache the token indices for each word slices
+   */
   void pre_assign_slices(int slice_size);
 
   /**
@@ -373,9 +374,9 @@ class PSSparseServerTask : public MLTask {
   std::vector<double> ll_ndt;
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
   int K = 0, V = 0;
-  std::mutex ll_lock, slice_lock;
-  std::vector<std::unique_ptr<std::thread> > compute_ll_threads;
-  std::vector<std::vector<int> > fixed_slices;
+  std::mutex ll_lock, slice_lock, benchmark_lock;
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
+  std::vector<std::vector<int>> fixed_slices;
   std::vector<int> unused_slice_id;
   int num_slices;
   std::array<int, 100000> sock_lookup;
@@ -388,6 +389,8 @@ class PSSparseServerTask : public MLTask {
   double time_pure_find_partial = 0.0, time_find_partial = 0.0,
          time_send_sizes = 0.0, time_send_partial = 0.0, time_whole = 0.0;
   double time_assign_slice_id = 0.0, time_assign_slice_id_wo_waiting = 0.0;
+
+  std::vector<double> worker_sampling_time, worker_communication_time;
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
@@ -501,9 +504,9 @@ class LDATaskS3 : public MLTask {
    */
   void load_serialized_indices(char* mem_begin);
 
-  std::vector<std::unique_ptr<std::thread> > help_upload_threads;
+  std::vector<std::unique_ptr<std::thread>> help_upload_threads;
   std::vector<int> upload_lock_indicators;
-  std::vector<std::vector<int> > slice_indices;
+  std::vector<std::vector<int>> slice_indices;
   PSSparseServerInterface* psint;
 };
 
@@ -532,13 +535,13 @@ class LoadingLDATaskS3 : public MLTask {
   void run(const Configuration& config);
   LDADataset read_dataset(const Configuration& config);
   LDAStatistics count_dataset(
-      const std::vector<std::vector<std::pair<int, int> > >& docs,
+      const std::vector<std::vector<std::pair<int, int>> >& docs,
       std::vector<int>& nvt,
       std::vector<int>& nt,
       std::vector<int>& w,
       int K,
       std::vector<int>& global_vocab,
-      std::vector<std::vector<int> >& topic_scope);
+      std::vector<std::vector<int>>& topic_scope);
 };
 }
 

@@ -1,10 +1,10 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "Utils.h"
-#include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
 #include "S3Client.h"
+#include "S3SparseIterator.h"
+#include "Serializers.h"
+#include "Utils.h"
 // #include "S3.h"
 
 #include <pthread.h>
@@ -35,8 +35,8 @@ void LDATaskS3::push_gradient(char* gradient_mem,
             << " at time (us): " << get_time_us()
             << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
             << (1.0 * gradient->getSerializedSize() / elapsed_push_us / 1024 /
-                1024 * 1000 * 1000) << " since last(us): " << (now - before)
-            << "\n";
+                1024 * 1000 * 1000)
+            << " since last(us): " << (now - before) << "\n";
   before = now;
 #endif
 }
@@ -45,7 +45,6 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
                                         uint64_t to_send_size,
                                         int& upload_lock,
                                         int bucket_id) {
-
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     if (upload_lock == -1) {
@@ -59,8 +58,7 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
-  s3_client->s3_put_object(obj_id_str,
-                           this->config.get_s3_bucket(),
+  s3_client->s3_put_object(obj_id_str, this->config.get_s3_bucket(),
                            std::string(mem_to_send, to_send_size));
 
   // to_save.reset();
@@ -70,7 +68,6 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
 }
 
 void LDATaskS3::load_serialized_indices(char* mem_begin) {
-
   const char* mem = mem_begin;
 
   int num_slices = load_value<int32_t>(mem);
@@ -89,7 +86,6 @@ void LDATaskS3::load_serialized_indices(char* mem_begin) {
 }
 
 void LDATaskS3::run(const Configuration& config, int worker) {
-
   double lambda_time_out = 300.0;  // 3 min currently
   double time_download = 0.0, time_update = 0.0, time_get_model = 0.0,
          time_sample = 0.0, time_create_model = 0.0;
@@ -161,17 +157,15 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // only True if current LDAStatistics has been sampled with
     // more than (num_runs) number of word slices
     if (cur >= num_runs) {
-
       // update_bucket = cur_train_idx;
       total_sampled_doc += model->get_ndt_size();
 
       // // only send to S3 if the next LDAStatistics is not the current one
       if (end != start + 1) {
-
         uint64_t size_temp;
         char* mem_to_send = model->serialize_to_S3(size_temp);
-        upload_wih_bucket_id_fn(
-            mem_to_send, size_temp, upload_lock_indicators[0], cur_train_idx);
+        upload_wih_bucket_id_fn(mem_to_send, size_temp,
+                                upload_lock_indicators[0], cur_train_idx);
 
         // s3_local_vars->store_new_stats(*model.get());
         //
@@ -208,14 +202,16 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         float est_time_one_iter =
             ((get_time_ms() - start_time) / 1000.) / full_iteration;
 
-        if (elapsed_sec > (lambda_time_out - est_time_one_iter - 5.)) {
-
+        if (elapsed_sec > (lambda_time_out - est_time_one_iter - 10.)) {
+        // if (elapsed_sec > (lambda_time_out - 295)) {
           uint64_t size_temp;
           char* mem_to_send = model->serialize_to_S3(size_temp);
-          upload_wih_bucket_id_fn(
-              mem_to_send, size_temp, upload_lock_indicators[0], cur_train_idx);
+          upload_wih_bucket_id_fn(mem_to_send, size_temp,
+                                  upload_lock_indicators[0], cur_train_idx);
 
           delete mem_to_send;
+
+          psint->send_time_dist(time_sample, time_download + time_update + time_get_model);
 
           std::cout << "--------------------------\n";
           std::cout << "Time to download from S3: " << time_download
@@ -241,19 +237,22 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
           std::cout << "--------------------------\n";
           std::cout << "documents/sec: "
-                    << (double)total_sampled_doc /
-                           ((get_time_ms() - start_time) / 1000) << std::endl;
+                    << (double) total_sampled_doc /
+                           ((get_time_ms() - start_time) / 1000)
+                    << std::endl;
           std::cout << "tokens/sec: "
-                    << (double)total_sampled_tokens /
-                           ((get_time_ms() - start_time) / 1000) << std::endl;
+                    << (double) total_sampled_tokens /
+                           ((get_time_ms() - start_time) / 1000)
+                    << std::endl;
 
           std::cout << "--------------------------\n";
           if (full_iteration == 0) {
             std::cout << "sec/iteration: N/A yet \n";
           } else {
             std::cout << "sec/iteration: "
-                      << (double)full_iteration /
-                             ((get_time_ms() - start_time) / 1000) << std::endl;
+                      << (double) full_iteration /
+                             ((get_time_ms() - start_time) / 1000)
+                      << std::endl;
           }
 
           std::cout << "successfully exit\n";
@@ -313,8 +312,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
     start_time_benchmark = get_time_ms();
     // update current LDAModel
-    model->update_model(
-        partial_model, to_receive_size, uncompressed_size, psint->slice_id);
+    model->update_model(partial_model, to_receive_size, uncompressed_size,
+                        psint->slice_id);
     time_create_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
     // sampling phase
@@ -330,8 +329,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       start_time_benchmark = get_time_ms();
       push_gradient(gradient_mem, total_sampled_tokens, gradient_size);
       time_update += (get_time_ms() - start_time_benchmark) / 1000.0;
-    }
-    catch (...) {
+    } catch (...) {
       std::cout << "[WORKER] "
                 << "Worker task error doing put of gradient"
                 << "\n";
@@ -371,10 +369,12 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       std::cout << "--------------------------\n";
       std::cout << "documents/sec: "
-                << (double)total_sampled_doc /
-                       ((get_time_ms() - start_time) / 1000) << std::endl;
-      std::cout << "tokens/sec: " << (double)total_sampled_tokens /
-                                         ((get_time_ms() - start_time) / 1000)
+                << (double) total_sampled_doc /
+                       ((get_time_ms() - start_time) / 1000)
+                << std::endl;
+      std::cout << "tokens/sec: "
+                << (double) total_sampled_tokens /
+                       ((get_time_ms() - start_time) / 1000)
                 << std::endl;
 
       std::cout << "--------------------------\n";
@@ -382,8 +382,9 @@ void LDATaskS3::run(const Configuration& config, int worker) {
         std::cout << "sec/iteration: N/A yet \n";
       } else {
         std::cout << "sec/iteration: "
-                  << (double)full_iteration /
-                         ((get_time_ms() - start_time) / 1000) << std::endl;
+                  << (double) full_iteration /
+                         ((get_time_ms() - start_time) / 1000)
+                  << std::endl;
       }
       benchmark_time += 5;
     }

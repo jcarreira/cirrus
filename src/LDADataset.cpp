@@ -1,7 +1,7 @@
 #include <LDADataset.h>
-#include <iostream>
-#include <string.h>
 #include <Utils.h>
+#include <string.h>
+#include <iostream>
 
 // #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
@@ -47,9 +47,13 @@ LDADataset::LDADataset(const char* msg_begin) {
   sample_size = (docs_.size()) / 100;
 }
 
-uint64_t LDADataset::num_docs() const { return docs_.size(); }
+uint64_t LDADataset::num_docs() const {
+  return docs_.size();
+}
 
-uint64_t LDADataset::num_vocabs() const { return vocabs_.size(); }
+uint64_t LDADataset::num_vocabs() const {
+  return vocabs_.size();
+}
 
 void LDADataset::check() const {
   for (const auto& w : docs_) {
@@ -72,9 +76,9 @@ void LDADataset::get_some_docs(
       docs_.begin(),
       docs_.size() > sample_size ? docs_.begin() + sample_size : docs_.end(),
       docs.begin());
-  docs_.erase(
-      docs_.begin(),
-      docs_.size() > sample_size ? docs_.begin() + sample_size : docs_.end());
+  docs_.erase(docs_.begin(), docs_.size() > sample_size
+                                 ? docs_.begin() + sample_size
+                                 : docs_.end());
 }
 
 char* LDADataset::serialize() {
@@ -132,4 +136,4 @@ int LDADataset::get_serialize_size() {
   serialize_size = (2 * N + D + V + 2) * sizeof(int) + V_letter * sizeof(char);
   return serialize_size;
 }
-}
+}  // namespace cirrus

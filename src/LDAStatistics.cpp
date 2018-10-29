@@ -1,7 +1,7 @@
-#include <iostream>
-#include <string.h>
-#include <Utils.h>
 #include <LDAStatistics.h>
+#include <Utils.h>
+#include <string.h>
+#include <iostream>
 
 // #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
@@ -23,7 +23,6 @@ LDAStatistics::LDAStatistics(int K,
 }
 
 LDAStatistics::LDAStatistics(const char* msg) {
-
   K_ = load_value<int16_t>(msg);
 
   int32_t t_size = load_value<int32_t>(msg);
@@ -50,7 +49,6 @@ LDAStatistics::LDAStatistics(const char* msg) {
   std::vector<int> ndt_row;
 
   for (int i = 0; i < num_docs; ++i) {
-
     int8_t store_type = load_value<int8_t>(msg);
     ndt_row.clear();
 
@@ -75,7 +73,6 @@ LDAStatistics::LDAStatistics(const char* msg) {
 }
 
 char* LDAStatistics::serialize(uint64_t& to_send_size) {
-
   char* msg = new char[get_serialize_size()];
   char* msg_begin = msg;  // need to keep this pointer to delete later
 
@@ -92,7 +89,6 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
 
   store_value<int32_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
-
     std::vector<std::pair<int, int> > sparse_nt_di;
     sparse_nt_di.reserve(K_);
     nz = 0;
@@ -156,11 +152,10 @@ int LDAStatistics::get_receive_size() {
 }
 
 void LDAStatistics::store_new_stats(LDAModel& model) {
-
   ndt_.clear();
   t_.clear();
 
   model.get_ndt(ndt_);
   model.get_t(t_);
 }
-}
+}  // namespace cirrus

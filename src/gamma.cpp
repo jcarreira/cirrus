@@ -14,8 +14,8 @@
  */
 
 #include <float.h>
-#include <math.h>
 #include <gamma.h>
+#include <math.h>
 
 /* Euler's gamma constant. */
 #define GAMMA 0.577215664901532860606512090
@@ -70,7 +70,7 @@ static double lda_gamma(double x) {
     if (arg_was_less_than_one)
       y += 1.0;
     else {
-      n = (int)floor(y) - 1;
+      n = (int) floor(y) - 1;
       y -= n;
     }
     num = 0.0;

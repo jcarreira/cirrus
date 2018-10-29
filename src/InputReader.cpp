@@ -675,30 +675,17 @@ SparseDataset InputReader::read_input_criteo_sparse(const std::string& input_fil
   uint64_t nthreads = 8;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(std::make_shared<std::thread>(
-        std::bind(&InputReader::read_input_criteo_sparse_thread,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  std::placeholders::_5,
-                  std::placeholders::_6,
-                  std::placeholders::_7,
-                  std::placeholders::_8),
-        std::ref(fin),
-        std::ref(fin_lock),
-        std::ref(delimiter),
-        std::ref(samples),
-        std::ref(labels),
-        config.get_limit_samples(),
+        std::bind(&InputReader::read_input_criteo_sparse_thread, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4,
+                  std::placeholders::_5, std::placeholders::_6,
+                  std::placeholders::_7, std::placeholders::_8),
+        std::ref(fin), std::ref(fin_lock), std::ref(delimiter),
+        std::ref(samples), std::ref(labels), config.get_limit_samples(),
         std::ref(lines_count),
-        std::bind(&InputReader::parse_criteo_sparse_line,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  config)));
+        std::bind(&InputReader::parse_criteo_sparse_line, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4, config)));
   }
 
   for (auto& t : threads) {
@@ -837,29 +824,16 @@ SparseDataset InputReader::read_input_rcv1_sparse(const std::string& input_file,
   uint64_t nthreads = 1;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(std::make_shared<std::thread>(
-        std::bind(&InputReader::read_input_criteo_sparse_thread,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  std::placeholders::_5,
-                  std::placeholders::_6,
-                  std::placeholders::_7,
-                  std::placeholders::_8),
-        std::ref(fin),
-        std::ref(fin_lock),
-        std::ref(delimiter),
-        std::ref(samples),
-        std::ref(labels),
-        limit_lines,
-        std::ref(lines_count),
-        std::bind(&InputReader::parse_rcv1_vw_sparse_line,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4)));
+        std::bind(&InputReader::read_input_criteo_sparse_thread, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4,
+                  std::placeholders::_5, std::placeholders::_6,
+                  std::placeholders::_7, std::placeholders::_8),
+        std::ref(fin), std::ref(fin_lock), std::ref(delimiter),
+        std::ref(samples), std::ref(labels), limit_lines, std::ref(lines_count),
+        std::bind(&InputReader::parse_rcv1_vw_sparse_line, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4)));
   }
 
   for (auto& t : threads) {
@@ -956,30 +930,17 @@ SparseDataset InputReader::read_input_criteo_kaggle_sparse(
   uint64_t nthreads = 8;
   for (uint64_t i = 0; i < nthreads; ++i) {
     threads.push_back(std::make_shared<std::thread>(
-        std::bind(&InputReader::read_input_criteo_sparse_thread,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  std::placeholders::_5,
-                  std::placeholders::_6,
-                  std::placeholders::_7,
-                  std::placeholders::_8),
-        std::ref(fin),
-        std::ref(fin_lock),
-        std::ref(delimiter),
-        std::ref(samples),
-        std::ref(labels),
-        config.get_limit_samples(),
+        std::bind(&InputReader::read_input_criteo_sparse_thread, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4,
+                  std::placeholders::_5, std::placeholders::_6,
+                  std::placeholders::_7, std::placeholders::_8),
+        std::ref(fin), std::ref(fin_lock), std::ref(delimiter),
+        std::ref(samples), std::ref(labels), config.get_limit_samples(),
         std::ref(lines_count),
-        std::bind(&InputReader::parse_criteo_kaggle_sparse_line,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  config)));
+        std::bind(&InputReader::parse_criteo_kaggle_sparse_line, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4, config)));
   }
 
   for (auto& t : threads) {
@@ -1147,45 +1108,31 @@ LDADataset InputReader::read_lda_input(const std::string& input_doc_file,
       out_lock;  // one for reading fin, one for writing to samples
   std::atomic<unsigned int> lines_count(0);
 
-  std::vector<std::vector<std::pair<int, int> > > samples;  // final result
+  std::vector<std::vector<std::pair<int, int>>> samples;  // final result
 
   uint64_t nthreads = 10;
   std::vector<std::string> vocabs;
-  std::vector<std::shared_ptr<std::thread> > threads;
+  std::vector<std::shared_ptr<std::thread>> threads;
 
   for (uint64_t i = 0; i < nthreads - 1; ++i) {
     threads.push_back(std::make_shared<std::thread>(
-        std::bind(&InputReader::parse_read_lda_input_thread,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
-                  std::placeholders::_3,
-                  std::placeholders::_4,
-                  std::placeholders::_5,
-                  std::placeholders::_6,
-                  std::placeholders::_7,
-                  std::placeholders::_8),
-        std::ref(fin),
-        std::ref(fin_lock),
-        std::ref(out_lock),
-        std::ref(delimiter),
-        std::ref(samples),
-        config.get_limit_samples(),
+        std::bind(&InputReader::parse_read_lda_input_thread, this,
+                  std::placeholders::_1, std::placeholders::_2,
+                  std::placeholders::_3, std::placeholders::_4,
+                  std::placeholders::_5, std::placeholders::_6,
+                  std::placeholders::_7, std::placeholders::_8),
+        std::ref(fin), std::ref(fin_lock), std::ref(out_lock),
+        std::ref(delimiter), std::ref(samples), config.get_limit_samples(),
         std::ref(lines_count),
-        std::bind(&InputReader::parse_read_lda_input_line,
-                  this,
-                  std::placeholders::_1,
-                  std::placeholders::_2,
+        std::bind(&InputReader::parse_read_lda_input_line, this,
+                  std::placeholders::_1, std::placeholders::_2,
                   std::placeholders::_3)));
   }
 
   threads.push_back(std::make_shared<std::thread>(
-      std::bind(&InputReader::read_lda_vocab_input,
-                this,
-                std::placeholders::_1,
+      std::bind(&InputReader::read_lda_vocab_input, this, std::placeholders::_1,
                 std::placeholders::_2),
-      std::ref(fin_vocab),
-      std::ref(vocabs)));
+      std::ref(fin_vocab), std::ref(vocabs)));
 
   for (auto& t : threads) {
     t->join();
@@ -1200,13 +1147,13 @@ void InputReader::parse_read_lda_input_thread(
     std::mutex& fin_lock,
     std::mutex& out_lock,
     const std::string& delimiter,
-    std::vector<std::vector<std::pair<int, int> > >& samples_res,
+    std::vector<std::vector<std::pair<int, int>>>& samples_res,
     uint64_t limit_lines,
     std::atomic<unsigned int>& lines_count,
     std::function<void(const std::string&,
                        const std::string&,
-                       std::vector<std::pair<int, int> >&)> fun) {
-  std::vector<std::vector<std::pair<int, int> > > samples;
+                       std::vector<std::pair<int, int>>&)> fun) {
+  std::vector<std::vector<std::pair<int, int>>> samples;
   std::string line;
   uint64_t lines_count_thread = 0;
 
@@ -1223,7 +1170,7 @@ void InputReader::parse_read_lda_input_thread(
       break;
     }
 
-    std::vector<std::pair<int, int> > words;
+    std::vector<std::pair<int, int>> words;
     fun(line, delimiter, words);
     samples.push_back(words);
 
@@ -1240,11 +1187,11 @@ void InputReader::parse_read_lda_input_thread(
 void InputReader::parse_read_lda_input_line(
     const std::string& line,
     const std::string& delimiter,
-    std::vector<std::pair<int, int> >& output_features) {
+    std::vector<std::pair<int, int>>& output_features) {
   if (line.size() > LDA_STR_SIZE) {
-    throw std::runtime_error("Input line is too big: " +
-                             std::to_string(line.size()) + " " +
-                             std::to_string(LDA_STR_SIZE));
+    throw std::runtime_error(
+        "Input line is too big: " + std::to_string(line.size()) + " " +
+        std::to_string(LDA_STR_SIZE));
   }
 
   char str[LDA_STR_SIZE];

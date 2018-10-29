@@ -1,13 +1,13 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "InputReader.h"
-#include "S3.h"
-#include "Utils.h"
-#include "config.h"
+#include <array>
 #include <random>
 #include <set>
-#include <array>
+#include "InputReader.h"
+#include "S3.h"
+#include "Serializers.h"
+#include "Utils.h"
+#include "config.h"
 
 namespace cirrus {
 
@@ -20,8 +20,8 @@ int idx = 0;
 
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
   InputReader input;
-  return input.read_lda_input(
-      config.get_doc_path(), config.get_vocab_path(), ",", config);
+  return input.read_lda_input(config.get_doc_path(), config.get_vocab_path(),
+                              ",", config);
 }
 
 LDAStatistics LoadingLDATaskS3::count_dataset(
@@ -124,7 +124,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   for (int i = 0; i < K; ++i) {
     temp_global_vocab.push_back(i);
   }
-  int length = K;
+  int length = K / 2;
   nvt_init_rnd_scope.reserve(dataset.num_vocabs());
   for (int i = 0; i < dataset.num_vocabs(); ++i) {
     std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());
@@ -142,7 +142,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-
     std::vector<int> w;
 
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
@@ -151,8 +150,8 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     std::vector<std::vector<std::pair<int, int> > > partial_docs;
     dataset.get_some_docs(partial_docs);
 
-    LDAStatistics to_save = count_dataset(
-        partial_docs, nvt, nt, w, K, global_vocab, nvt_init_rnd_scope);
+    LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, w, K,
+                                          global_vocab, nvt_init_rnd_scope);
     std::cout << i << " : " << w.size() << std::endl;
     ws.push_back(w);
 
@@ -163,8 +162,8 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     std::string obj_id =
         std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
         "-LDA";
-    s3_client->s3_put_object(
-        obj_id, config.get_s3_bucket(), std::string(msg, to_send_size));
+    s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
+                             std::string(msg, to_send_size));
     delete msg;
   }
 
@@ -190,8 +189,8 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   uint32_t len;
   std::shared_ptr<char> s3_obj = initial_global_var->serialize(&len);
 
-  s3_client->s3_put_object(
-      obj_id, config.get_s3_bucket(), std::string(s3_obj.get(), len));
+  s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
+                           std::string(s3_obj.get(), len));
 
   // s3_shutdown_aws();
 

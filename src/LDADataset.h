@@ -1,18 +1,18 @@
 #ifndef _LDADATASET_H_
 #define _LDADATASET_H_
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace cirrus {
 /**
-  * This class is used to hold a LDA dataset
-  */
+ * This class is used to hold a LDA dataset
+ */
 class LDADataset {
  public:
   /**
-    * Construct empty dataset
-    */
+   * Construct empty dataset
+   */
   LDADataset();
   /**
    * Construct a dataset from a vector of documents
@@ -23,8 +23,8 @@ class LDADataset {
   LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
              std::vector<std::string> vocabs);
   /**
-    * Load a dataset from serialized format
-    */
+   * Load a dataset from serialized format
+   */
   LDADataset(const char* msg_begin);
   /**
    * Return both documents and vocabularies in serialized format
@@ -62,6 +62,6 @@ class LDADataset {
   std::vector<std::string> vocabs_;
   int sample_size = 0, serialize_size = 0;
 };
-}
+}  // namespace cirrus
 
 #endif
