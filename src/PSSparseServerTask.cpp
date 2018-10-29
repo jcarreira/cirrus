@@ -722,8 +722,8 @@ void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
 
-  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
-                             NUM_FACTORS));
+  mf_model.reset(new MFModel(
+      task_config.get_users(), task_config.get_items(), NUM_FACTORS));
   mf_model->randomize();
 
   if (task_config.get_model_type() == cirrus::Configuration::LDA) {
