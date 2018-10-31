@@ -20,12 +20,13 @@ class LogisticRegressionTask(BaseTask):
 
         config = "load_input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
                  "load_input_type: csv\n" + \
+                 "dataset_format: binary\n" + \
                  "num_classes: 2 \n" + \
                  "num_features: 13 \n" + \
                  "limit_cols: 14 \n" + \
-                 "normalize: 1 \n" + \
-                 "limit_samples: 50000000 \n" + \
-                 "s3_size: 50000 \n" + \
+                 "normalize: 0 \n" + \
+                 "limit_samples: 10000 \n" + \
+                 "s3_size: 10 \n" + \
                  "use_bias: 1 \n" + \
                  "model_type: LogisticRegression \n" + \
                  "minibatch_size: %d \n" % self.minibatch_size + \
@@ -48,17 +49,12 @@ def LogisticRegression(
             dataset,
             learning_rate, epsilon,
             progress_callback,
-            key_name,
-            key_path,
             train_set,
             test_set,
             minibatch_size,
             model_bits,
             resume_model=0,
-            ps_ip_public="",
-            ps_ip_private="",
-            ps_ip_port=1337,
-            ps_username="ec2-user",
+            ps=None,
             opt_method="sgd",
             checkpoint_model=0,
             use_grad_threshold=False,
@@ -73,12 +69,7 @@ def LogisticRegression(
             dataset=dataset,
             learning_rate=learning_rate,
             epsilon=epsilon,
-            key_name=key_name,
-            key_path=key_path,
-            ps_ip_public=ps_ip_public,
-            ps_ip_private=ps_ip_private,
-            ps_ip_port=ps_ip_port,
-            ps_username=ps_username,
+            ps=ps,
             opt_method=opt_method,
             checkpoint_model=checkpoint_model,
             train_set=train_set,

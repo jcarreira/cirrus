@@ -6,6 +6,8 @@ import time
 
 import graph
 from utils import *
+import automate
+import setup
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
 
@@ -13,7 +15,7 @@ class GridSearch:
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=1, timeout=-1):
+    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], instances=[], num_jobs=1, timeout=-1):
 
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
@@ -30,7 +32,7 @@ class GridSearch:
         self.set_timeout = timeout # Timeout. -1 means never timeout
         self.num_jobs = num_jobs     # Number of threads checking check_queue
         self.hyper_vars = hyper_vars
-        self.machines = machines
+        self.instances = instances
 
         # Setup
         self.set_task_parameters(
@@ -38,9 +40,9 @@ class GridSearch:
                 param_base=param_base,
                 hyper_vars=hyper_vars,
                 hyper_params=hyper_params,
-                machines=machines)
+                instances=instances)
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -48,19 +50,18 @@ class GridSearch:
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
-    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], machines=[]):
+    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[]):
         possibilities = list(itertools.product(*hyper_params))
         base_port = 1337
         index = 0
-        num_machines = len(machines)
+        num_machines = len(instances)
         for p in possibilities:
             configuration = zip(hyper_vars, p)
             modified_config = param_base.copy()
             for var_name, var_value in configuration:
                 modified_config[var_name] = var_value
-            modified_config['ps_ip_port'] = base_port
-            modified_config['ps_ip_public'] = machines[index][0]
-            modified_config['ps_ip_private'] = machines[index][1]
+            modified_config["ps"] = automate.ParameterServer(instances[index], base_port, base_port+1,
+                                                             modified_config["n_workers"] * 2)
             index = (index + 1) % num_machines
             base_port += 2
 
@@ -136,7 +137,6 @@ class GridSearch:
         return [item[1] for item in lst]
 
     def start_queue_threads(self):
-
         # Function that checks each experiment to restore lambdas, grab metrics
         def custodian(cirrus_objs, thread_id, num_jobs):
             index = thread_id
@@ -144,10 +144,9 @@ class GridSearch:
             start_time = time.time()
 
             time.sleep(5)  # HACK: Sleep for 5 seconds to wait for PS to start
-            while True:
+            while self.custodians_should_continue:
                 cirrus_obj = cirrus_objs[index]
 
-                cirrus_obj.relaunch_lambdas()
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
                 self.total_costs.append((time.time() - self.start_time, self.get_cost_per_sec()))
@@ -158,50 +157,38 @@ class GridSearch:
                     index = thread_id
 
                     # Dampener to prevent too many calls at once
-                    if time.time() - start_time < 1:
-                        time.sleep(1 - time.time() + start_time)
+                    if time.time() - start_time < 3:
+                        time.sleep(3 - time.time() + start_time)
                     start_time = time.time()
 
-        # Dictionary of commands per machine
-        command_dict = {}
-        for machine in self.machines:
-            command_dict[machine[0]] = []
 
-        # Grab commands each machine needs to run
-        for c in self.cirrus_objs:
-            c.get_command(command_dict)
+        def unbuffer_instance(instance):
+            status, stdout, stderr = instance.buffer_commands(False)
+            if status != 0:
+                print("An error occurred while unbuffering commands on an"
+                      " instance. The exit code was %d and the stderr was:"
+                      % status)
+                print(stderr)
+                raise RuntimeError("An error occured while unbuffering"
+                                   " commands on an instance.")
 
-        # Write those commands into bash files
-        command_dict_to_file(command_dict)
+        for instance in self.instances:
+            instance.buffer_commands(True)
 
-        # Number of threads
-        copy_threads = min(len(self.machines), self.num_jobs)
+        for cirrus_obj in self.cirrus_objs:
+            cirrus_obj.run()
 
-        # Copies bash files to machines and starts experiment
-        def copy_and_run(thread_id):
-            while True:
-                if thread_id >= len(self.machines):
-                    return
-
-                sh_file = "machine_%d.sh" % thread_id
-                ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
-
-                cmd = "scp %s %s:~/tmp" % (sh_file, ubuntu_machine)
-                print cmd
-                os.system(cmd)
-                cmd = 'ssh %s "killall parameter_server; chmod +x ~/tmp/%s; ./tmp/%s &"' % (ubuntu_machine, sh_file, sh_file)
-                os.system(cmd)
-                thread_id += copy_threads
-
-        p_lst = []
-        for i in range(copy_threads):
-            p = threading.Thread(target=copy_and_run, args=(i,))
-            p.start()
-            p_lst.append(p)
-
-        [p.join() for p in p_lst]
+        threads = []
+        for instance in self.instances:
+            t = threading.Thread(
+                target=unbuffer_instance,
+                args=(instance,))
+            t.start()
+            threads.append(t)
+        [t.join() for t in threads]
 
         # Start custodian threads
+        self.custodians_should_continue = True
         for i in range(self.num_jobs):
             p = threading.Thread(target=custodian, args=(self.cirrus_objs, i, self.num_jobs))
             p.start()
@@ -214,7 +201,7 @@ class GridSearch:
     def set_threads(self, n):
         self.num_jobs = n
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
 
     # Start threads to maintain all experiments
@@ -231,11 +218,22 @@ class GridSearch:
 
     # Stop all experiments
     def kill_all(self):
+        total_workers = sum(c.n_workers for c in self.cirrus_objs)
+        # I add one extra concurrent execution per experiment. I haven't
+        #   observed anything that leads me to believe this is necessary - it's
+        #   just in case.
+        min_concurrency = total_workers + len(self.cirrus_objs)
+        if automate.concurrency_limit(setup.LAMBDA_NAME) < min_concurrency:
+            raise RuntimeError("The concurrency limit is set too low to run "
+                               "these experiments in parallel.")
+
         for cirrus_ob in self.cirrus_objs:
             cirrus_ob.kill()
         for machine in machines:
             cmd = 'ssh %s "rm -rf ~/tmp/*"' % (machine[0])
             os.system(cmd)
+
+        self.custodians_should_continue = False
 
     # Get data regarding experiment i.
     def get_info(self, i, param=None):
