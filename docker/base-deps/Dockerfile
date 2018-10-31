@@ -37,4 +37,3 @@ RUN ./bootstrap.sh
 RUN ls
 RUN ls third_party/
 RUN make -j 10
-RUN .travis/check-git-clang-format-output.sh  
