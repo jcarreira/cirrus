@@ -16,6 +16,8 @@
 #define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
 #define THREAD_MSG_BUFFER_SIZE 1000000
 
+#define TIMEOUT_THRESHOLD_SEC (20)
+
 namespace cirrus {
 
 PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
@@ -325,7 +327,7 @@ void PSSparseServerTask::process_register_task(int sock, const Request& req) {
 }
 
 void PSSparseServerTask::declare_task_dead(uint32_t task_id) {
-    tasks_to_remaining_time[task_id] = -1;
+    task_to_remaining_time[task_id] = -1;
     task_to_starttime.erase(task_id);
     num_tasks--;
 }
@@ -728,7 +730,7 @@ void PSSparseServerTask::check_tasks_lifetime() {
     auto elapsed_sec =
       std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
 
-    if (elapsed_sec > task_to_remaining_time[task_id] + TIMEOUT_THRESHOLD) {
+    if (elapsed_sec > task_to_remaining_time[task_id] + TIMEOUT_THRESHOLD_SEC) {
       declare_task_dead(task_id);
     }
   }
