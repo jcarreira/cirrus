@@ -18,7 +18,10 @@ RUN apt-get update \
         libssl-dev libcurl4-nss-dev \
         bison libldap2-dev \
         libkrb5-dev autoconf-archive \
-        uuid-dev libpulse-dev
+        uuid-dev libpulse-dev \
+        python-pip
+RUN pip install -r python/frontend/cirrus/requirements.txt
+RUN pip install xlrd
 RUN g++ --version; gcc --version
 RUN ls; pwd
 RUN ls third_party; pwd
