@@ -314,7 +314,7 @@ void PSSparseServerTask::process_register_task(int sock, const Request& req) {
   uint32_t task_id = data[0];
   uint32_t remaining_time = data[1];
   uint32_t task_reg =
-    (registered_tasks.find(task_id) != registered_tasks.end());
+      (registered_tasks.find(task_id) != registered_tasks.end());
 
   if (task_reg == 0) {
     registered_tasks.insert(task_id);
@@ -327,9 +327,9 @@ void PSSparseServerTask::process_register_task(int sock, const Request& req) {
 }
 
 void PSSparseServerTask::declare_task_dead(uint32_t task_id) {
-    task_to_remaining_time[task_id] = -1;
-    task_to_starttime.erase(task_id);
-    num_tasks--;
+  task_to_remaining_time[task_id] = -1;
+  task_to_starttime.erase(task_id);
+  num_tasks--;
 }
 
 void PSSparseServerTask::process_deregister_task(int sock, const Request& req) {
@@ -728,7 +728,8 @@ void PSSparseServerTask::check_tasks_lifetime() {
     auto start_time = task.second;
 
     auto elapsed_sec =
-      std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+        std::chrono::duration_cast<std::chrono::seconds>(now - start_time)
+            .count();
 
     if (elapsed_sec > task_to_remaining_time[task_id] + TIMEOUT_THRESHOLD_SEC) {
       declare_task_dead(task_id);
@@ -793,11 +794,10 @@ void PSSparseServerTask::run(const Configuration& config) {
     if (elapsed_us > 1000000) {
       last_tick = now;
       std::cout << "Events in the last sec: "
-        << 1.0 * gradientUpdatesCount / elapsed_us * 1000 * 1000
-        << " since (sec): " << since_start_sec
-        << " #conns: " << num_connections
-        << " #tasks: " << num_tasks
-        << std::endl;
+                << 1.0 * gradientUpdatesCount / elapsed_us * 1000 * 1000
+                << " since (sec): " << since_start_sec
+                << " #conns: " << num_connections << " #tasks: " << num_tasks
+                << std::endl;
       gradientUpdatesCount = 0;
 
       check_tasks_lifetime();
@@ -822,8 +822,8 @@ void PSSparseServerTask::run(const Configuration& config) {
 
 void PSSparseServerTask::checkpoint_model_loop() {
   if (task_config.get_checkpoint_frequency() == 0) {
-      // checkpoint disabled
-      return;
+    // checkpoint disabled
+    return;
   }
 
   while (!kill_signal) {

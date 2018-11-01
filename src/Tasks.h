@@ -11,10 +11,10 @@
 #include "S3SparseIterator.h"
 #include "OptimizationMethod.h"
 
+#include <chrono>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
-#include <chrono>
 
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
@@ -327,7 +327,7 @@ class PSSparseServerTask : public MLTask {
   // reamining time (sec) of each registered task
   std::map<uint64_t, int64_t> task_to_remaining_time;
   std::map<uint64_t, std::chrono::time_point<std::chrono::steady_clock>>
-    task_to_starttime;
+      task_to_starttime;
 
   // thread to checkpoint model
   std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
