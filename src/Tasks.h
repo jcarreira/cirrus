@@ -405,8 +405,6 @@ class PSSparseServerTask : public MLTask {
 
   std::vector<double> worker_sampling_time, worker_communication_time;
 
-  Configuration task_config;     //< config for parameter server
-  uint32_t num_connections = 0;  //< number of current connections
   Configuration task_config;                //< config for parameter server
   uint32_t num_connections = 0;             //< num of current connections
   uint32_t num_tasks = 0;                   //< num of currently reg. tasks
