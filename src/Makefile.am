@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 CXX = g++
 
-bin_PROGRAMS = parameter_server ps_test csv_to_libsvm 
+bin_PROGRAMS = parameter_server ps_test csv_to_libsvm
 
 LIBS         =  -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
 		-lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
@@ -16,7 +16,7 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/keyutils/ \
 	       -L$(TOP_DIR)/third_party/gflags/lib/ \
 	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
-				 -L$(TOP_DIR)/third_party/lz4/lib/
+				 -L$(TOP_DIR)/third_party/lz4-dev/lib/
 
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
@@ -29,7 +29,7 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
-		 -I$(TOP_DIR)/third_party/lz4/lib/ \
+		 -I$(TOP_DIR)/third_party/lz4-dev/lib/ \
 	   -ggdb -frecord-gcc-switches -O3
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \

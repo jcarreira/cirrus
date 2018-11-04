@@ -140,8 +140,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   model.reset(new LDAModel(s3_obj->str().c_str()));
   delete s3_obj;
 
-  std::cout << "boom\n";
-
   // load the pre-cached indices from server
   char* slice_indices_mem = psint->get_slices_indices(cur_train_idx);
   load_serialized_indices(slice_indices_mem);
@@ -203,7 +201,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
             ((get_time_ms() - start_time) / 1000.) / full_iteration;
 
         if (elapsed_sec > (lambda_time_out - est_time_one_iter - 10.)) {
-          // if (elapsed_sec > (lambda_time_out - 295)) {
           uint64_t size_temp;
           char* mem_to_send = model->serialize_to_S3(size_temp);
           upload_wih_bucket_id_fn(mem_to_send, size_temp,
