@@ -14,6 +14,7 @@
 #include "SparseLRModel.h"
 #include "config.h"
 
+#include <chrono>
 #include <deque>
 #include <map>
 #include <string>
@@ -310,9 +311,16 @@ class PSSparseServerTask : public MLTask {
   bool process_send_ll_update(const Request& req,
                               std::vector<char>& thread_buffer);
   bool process_send_time(const Request& req, std::vector<char>& thread_buffer);
+
+  void process_register_task(int sock, const Request&);
+  void process_deregister_task(int sock, const Request&);
+
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
+
+  void check_tasks_lifetime();
+  uint32_t declare_task_dead(uint32_t);
 
   /**
    * Compute the initial loglikelihood;
@@ -342,7 +350,12 @@ class PSSparseServerTask : public MLTask {
   // threads to handle requests
   std::vector<std::unique_ptr<std::thread>> gradient_thread;
 
-  std::set<uint64_t> registered_tasks;  //< which tasks have registered
+  std::set<uint64_t> registered_tasks;  //< ids of registered tasks
+  // reamining time (sec) of each registered task
+  std::map<uint64_t, int64_t> task_to_remaining_time;
+  std::map<uint64_t, std::chrono::time_point<std::chrono::steady_clock>>
+      task_to_starttime;
+  std::mutex register_lock;  //< to coordinate access to reg. datastructures
 
   // thread to checkpoint model
   std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
@@ -394,6 +407,9 @@ class PSSparseServerTask : public MLTask {
 
   Configuration task_config;     //< config for parameter server
   uint32_t num_connections = 0;  //< number of current connections
+  Configuration task_config;                //< config for parameter server
+  uint32_t num_connections = 0;             //< num of current connections
+  uint32_t num_tasks = 0;                   //< num of currently reg. tasks
 
   std::map<int, bool> task_to_status;            //< keep track of task status
   std::map<int, std::string> operation_to_name;  //< request id to name
