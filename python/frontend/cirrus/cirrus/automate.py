@@ -8,14 +8,18 @@ import zipfile
 import pipes
 import json
 import threading
+import inspect
+import os
+import random
 
 import paramiko
 import boto3
 
+from . import handler
+from . import configuration
 
 # A configuration to use for EC2 instances that will be used to build Cirrus.
 BUILD_INSTANCE = {
-    "region": "us-west-1",
     "disk_size": 32,  # GB
     # This is amzn-ami-hvm-2017.03.1.20170812-x86_64-gp2, which is recommended
     #   by AWS as of Sep 27, 2018 for compiling executables for Lambda.
@@ -23,11 +27,6 @@ BUILD_INSTANCE = {
     "typ": "t3.xlarge",
     "username": "ec2-user"
 }
-BUILD_IMAGE_NAME = "cirrus_build_image"
-SERVER_IMAGE_NAME = "cirrus_server_image"
-EXECUTABLES_PATH = "s3://cirrus-public/executables"
-LAMBDA_PACKAGE_PATH = "s3://cirrus-public/lambda_package"
-LAMBDA_NAME = "cirrus_lambda"
 
 # The ARN of an IAM policy that allows full access to S3.
 S3_FULL_ACCESS_ARN = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
@@ -37,6 +36,9 @@ S3_READ_ONLY_ARN = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
 # The ARN of an IAM policy that allows write access to Cloudwatch logs.
 CLOUDWATCH_WRITE_ARN = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+
+# The base name of the bucket created by Cirrus in users' AWS accounts.
+BUCKET_BASE_NAME = "cirrus-bucket"
 
 # The estimated delay of IAM's eventual consistency, in seconds.
 IAM_CONSISTENCY_DELAY = 20
@@ -78,72 +80,7 @@ EXECUTABLES = ("parameter_server", "ps_test", "csv_to_libsvm")
 LAMBDA_COMPRESSION = zipfile.ZIP_DEFLATED
 
 # The name to give to the file containing the Lambda's handler code.
-LAMBDA_HANDLER_FILENAME = "main.py"
-
-# The Lambda's handler code.
-LAMBDA_HANDLER = r"""
-import json
-import os
-import subprocess
-import sys
-import logging
-import time
-
-CONFIG_PATH = "/tmp/config.cfg"
-EXIT_POLL_INTERVAL = 0.001
-
-
-def run(event, _):
-    log = logging.getLogger("main.run")
-    
-    log.debug("Starting.")
-    
-    try:
-        executable_path = os.path.join(os.environ["LAMBDA_TASK_ROOT"],
-                                       "parameter_server")
-        log.debug("Determined executable path to be %s." % executable_path)
-    
-        with open(CONFIG_PATH, "w+") as config_file:
-            config_file.write(event["config"])
-        log.debug("Wrote config to %s." % CONFIG_PATH)
-    
-        command = [
-            executable_path,
-            "--config", CONFIG_PATH,
-            "--nworkers", str(event["num_workers"]),
-            "--rank", str(3),
-            "--ps_ip", event["ps_ip"],
-            "--ps_port", str(event["ps_port"])
-        ]
-        log.debug("Starting worker.")
-        log.debug(" ".join(command))
-        process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        for c in iter(lambda: process.stdout.read(1), b''):
-            sys.stdout.write(c)
-        
-        while process.poll() is None:
-            time.sleep(EXIT_POLL_INTERVAL)
-            
-        if process.returncode >= 0:
-            msg = "The worker exited with code %d." % process.returncode
-        else:
-            msg = "The worker died with signal %d." % (-process.returncode)
-        log.debug(msg)
-        
-        if process.returncode != 0:
-            raise RuntimeError(msg)
-        
-        log.debug("Done.")
-        
-        return {
-            "statusCode": 200,
-            "body": json.dumps(msg)
-        }
-    except:
-        log.debug("The handler threw an error.")
-        raise
-"""
+LAMBDA_HANDLER_FILENAME = "handler.py"
 
 # The estimated delay of S3's eventual consistency, in seconds.
 S3_CONSISTENCY_DELAY = 20
@@ -152,7 +89,7 @@ S3_CONSISTENCY_DELAY = 20
 LAMBDA_RUNTIME = "python3.6"
 
 # The fully-qualified identifier of the handler of the worker Lambda.
-LAMBDA_HANDLER_FQID = "main.run"
+LAMBDA_HANDLER_FQID = "handler.run"
 
 # The maximum execution time to give the worker Lambda, in seconds. Capped by AWS at 5 minutes.
 LAMBDA_TIMEOUT = 5 * 60
@@ -160,11 +97,131 @@ LAMBDA_TIMEOUT = 5 * 60
 # The amount of memory (and in proportion, CPU/network) to give to the worker Lambda, in megabytes.
 LAMBDA_SIZE = 3008
 
+# The level of logs that the worker Lambda should write to CloudWatch.
+LAMBDA_LOG_LEVEL = "DEBUG"
 
-log = logging.getLogger("cirrus.automate")
-log.debug("automate: Initializing Lambda client.")
-# TODO: Pull out region as a configuration value.
-lamb = boto3.client("lambda", BUILD_INSTANCE["region"])
+# The maximum number of generations of Lambdas that will be invoked to serve as
+#   as the worker with a given ID.
+MAX_LAMBDA_GENERATIONS = 10000
+
+# The maximum number of workers that may work on a given experiment.
+MAX_WORKERS_PER_EXPERIMENT = 1000
+
+
+class ClientManager(object):
+    """A manager of cached AWS clients.
+    """
+
+    def __init__(self):
+        """Create a client manager.
+
+        Clients will not yet be initialized.
+        """
+        self.clear_cache()
+        self._log = logging.getLogger("cirrus.automate.ClientManager")
+
+
+    @property
+    def lamb(self):
+        """Get a Lambda client.
+
+        Initializes one if none is cached.
+
+
+        Returns:
+            botocore.client.BaseClient: The client.
+        """
+        if self._lamb is None:
+            self._log.debug("ClientManager: Initializing Lambda client.")
+            self._lamb = boto3.client(
+                "lambda",
+                configuration.config()["aws"]["region"]
+            )
+        return self._lamb
+
+
+    @property
+    def iam(self):
+        """Get an IAM resource.
+
+        Initializes one if none is cached.
+
+        Returns:
+            boto3.resources.base.ServiceResource: The resource.
+        """
+        if self._iam is None:
+            self._log.debug("ClientManager: Initializing IAM resource.")
+            self._iam = boto3.resource(
+                "iam",
+                configuration.config()["aws"]["region"]
+            )
+        return self._iam
+
+
+    @property
+    def ec2(self):
+        """Get an EC2 client.
+
+        Initializes one if none is cached.
+
+        Returns:
+            botocore.client.BaseClient: The client.
+        """
+        if self._ec2 is None:
+            self._log.debug("ClientManager: Initializing EC2 client.")
+            self._ec2 = boto3.client(
+                "ec2",
+                configuration.config()["aws"]["region"]
+            )
+        return self._ec2
+
+
+    @property
+    def cloudwatch_logs(self):
+        """Get a Cloudwatch Logs client.
+
+        Initializes one if none is cached.
+
+        Returns:
+            botocore.client.BaseClient: The client.
+        """
+        if self._cloudwatch_logs is None:
+            self._log.debug("ClientManager: Initializing Cloudwatch Logs "
+                            "client.")
+            self._cloudwatch_logs = boto3.client(
+                "logs",
+                configuration.config()["aws"]["region"]
+            )
+        return self._cloudwatch_logs
+
+
+    @property
+    def s3(self):
+        """Get an S3 resource.
+
+        Initializes one if none is cached.
+
+        Returns:
+            boto3.resources.base.ServiceResource: The resource."""
+        if self._s3 is None:
+            self._log.debug("ClientManager: Initializing S3 resource.")
+            self._s3 = boto3.resource(
+                "s3", configuration.config()["aws"]["region"])
+        return self._s3
+
+
+    def clear_cache(self):
+        """Clear any cached clients.
+        """
+        self._lamb = None
+        self._iam = None
+        self._ec2 = None
+        self._cloudwatch_logs = None
+        self._s3 = None
+
+
+# Cached AWS clients to be used throughout this module.
+clients = ClientManager()
 
 
 class Instance(object):
@@ -175,6 +232,20 @@ class Instance(object):
 
     # The maximum number of times to poll for an AMI becoming available.
     IMAGE_POLL_MAX = (5 * 60) // IMAGE_POLL_INTERVAL
+
+    # The name of the key pair used by Instances.
+    KEY_PAIR_NAME = "cirrus_key_pair"
+
+    # The path at which to save the private key to Instances. May begin with a
+    #   tilde.
+    PRIVATE_KEY_PATH = "~/.ssh/cirrus_key_pair.pem"
+
+    # The name of the security group used by Instances.
+    SECURITY_GROUP_NAME = "cirrus_security_group"
+
+    # The name of the role used by Instances.
+    ROLE_NAME = "cirrus_instance_role"
+
 
     @staticmethod
     def images_exist(name):
@@ -189,7 +260,7 @@ class Instance(object):
         """
         log = logging.getLogger("cirrus.automate.Instance")
 
-        ec2 = boto3.resource("ec2", BUILD_INSTANCE["region"])
+        ec2 = boto3.resource("ec2", configuration.config()["aws"]["region"])
 
         log.debug("images_exist: Describing images.")
         response = ec2.meta.client.describe_images(
@@ -210,7 +281,7 @@ class Instance(object):
         """
         log = logging.getLogger("cirrus.automate.Instance")
 
-        ec2 = boto3.resource("ec2", BUILD_INSTANCE["region"])
+        ec2 = boto3.resource("ec2", configuration.config()["aws"]["region"])
 
         log.debug("delete_images: Describing images.")
         response = ec2.meta.client.describe_images(
@@ -223,13 +294,133 @@ class Instance(object):
 
         log.debug("delete_images: Done.")
 
-    def __init__(self, name, region, disk_size, typ, username, ami_id=None, ami_name=None):
+
+    @classmethod
+    def set_up_key_pair(cls):
+        """Create a key pair for use by `Instance`s.
+
+        Deletes any existing key pair with the same name. Saves the private key
+            to `~/cirrus_key_pair.pem`.
+        """
+        log = logging.getLogger("automate.Instance.set_up_key_pair")
+
+        log.debug("set_up_key_pair: Checking for an existing key pair.")
+        filter = {"Name": "key-name", "Values": [cls.KEY_PAIR_NAME]}
+        response = clients.ec2.describe_key_pairs(Filters=[filter])
+        if len(response["KeyPairs"]) > 0:
+            log.debug("set_up_key_pair: Deleting an existing key pair.")
+            clients.ec2.delete_key_pair(KeyName=cls.KEY_PAIR_NAME)
+
+        log.debug("set_up_key_pair: Creating key pair.")
+        response = clients.ec2.create_key_pair(KeyName=cls.KEY_PAIR_NAME)
+
+        log.debug("set_up_key_pair: Saving private key.")
+        path = os.path.expanduser(cls.PRIVATE_KEY_PATH)
+        if not os.path.exists(os.path.dirname(path)):
+            os.path.makedirs(os.path.dirname(path))
+        with open(path, "w") as f:
+            f.write(response["KeyMaterial"])
+
+        log.debug("set_up_key_pair: Done.")
+
+
+    @classmethod
+    def set_up_security_group(cls):
+        """Create a security group for use by `Instance`s.
+
+        Deletes any existing security groups with the same name.
+        """
+        log = logging.getLogger("automate.Instance.set_up_security_group")
+
+        log.debug("set_up_security_group: Checking for existing security "
+                  "groups.")
+        filter = {"Name": "group-name", "Values": [cls.SECURITY_GROUP_NAME]}
+        response = clients.ec2.describe_security_groups(Filters=[filter])
+        for group_info in response["SecurityGroups"]:
+            log.debug("set_up_security_group: Deleting an existing security "
+                      "group.")
+            clients.ec2.delete_security_group(GroupId=group_info["GroupId"])
+
+        log.debug("set_up_security_group: Creating security group.")
+        group = clients.ec2.create_security_group(
+            GroupName=cls.SECURITY_GROUP_NAME,
+            Description="Generated by the Cirrus setup script. Lets all "
+                        "inbound and outbound traffic through."
+        )
+
+        # Allow all outbound traffic so that Instances will be able to fetch
+        #   software and data. Allow all inbound traffic so that we will be able
+        #   to send messages to programs on Instances.
+        log.debug("set_up_security_group: Configuring security group.")
+        # An IpProtocol of -1 means "all protocols" and additionally implies
+        #   "all ports".
+        clients.ec2.authorize_security_group_ingress(
+            GroupName=cls.SECURITY_GROUP_NAME, IpProtocol="-1",
+            CidrIp="0.0.0.0/0")
+
+        log.debug("set_up_security_group: Done.")
+
+
+    @classmethod
+    def set_up_role(cls):
+        """Create a role for use by `Instance`s.
+
+        Deletes any existing role with the same name.
+        """
+        log = logging.getLogger("automate.instance.set_up_role")
+
+        log.debug("set_up_role: Checking for an existing role.")
+        iam_client = clients.iam.meta.client
+        # TODO: Could cause a problem under rare circumstances. We are assuming
+        #   that there are less than 1000 roles in the account.
+        roles_response = iam_client.list_roles()
+        exists = False
+        for role_info in roles_response["Roles"]:
+            if role_info["RoleName"] == cls.ROLE_NAME:
+                exists = True
+                break
+        if exists:
+            log.debug("set_up_role: Listing the policies of existing role.")
+            role_policy_response = iam_client.list_attached_role_policies(
+                RoleName=cls.ROLE_NAME)
+            log.debug("set_up_role: Detaching policies from existing role.")
+            for policy_info in role_policy_response["AttachedPolicies"]:
+                iam_client.detach_role_policy(
+                    RoleName=cls.ROLE_NAME,
+                    PolicyArn=policy_info["PolicyArn"]
+                )
+            log.debug("set_up_role: Deleting an existing role.")
+            iam_client.delete_role(RoleName=cls.ROLE_NAME)
+
+        log.debug("set_up_role: Creating role.")
+        role = iam_client.create_role(
+            RoleName=cls.ROLE_NAME,
+            AssumeRolePolicyDocument="""{
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Service": "ec2.amazonaws.com"
+                      },
+                      "Action": "sts:AssumeRole"
+                    }
+                  ]
+            }"""
+        )
+
+        log.debug("set_up_role: Attaching policies to role.")
+        iam_client.attach_role_policy(RoleName=cls.ROLE_NAME,
+                                      PolicyArn=S3_FULL_ACCESS_ARN)
+        log.debug("set_up_role: Done.")
+
+
+    def __init__(self, name, disk_size, typ, username, ami_id=None, ami_name=None):
         """Define an EC2 instance.
 
         Args:
             name (str): Name for the instance. The same name will be used for
                 the key pair and security group that get created.
-            region (str): Region for the instance.
             disk_size (int): Disk space for the instance, in GB.
             typ (str): Type for the instance.
             username (str): SSH username for the AMI.
@@ -238,7 +429,6 @@ class Instance(object):
                 the name `ami_name` owned by the AWS account is used.
         """
         self._name = name
-        self._region = region
         self._disk_size = disk_size
         self._ami_id = ami_id
         self._type = typ
@@ -246,7 +436,7 @@ class Instance(object):
         self._log = logging.getLogger("cirrus.automate.Instance")
 
         self._log.debug("__init__: Initializing EC2.")
-        self._ec2 = boto3.resource("ec2", self._region)
+        self._ec2 = boto3.resource("ec2", configuration.config()["aws"]["region"])
 
         if self._ami_id is None:
             self._log.debug("__init__: Resolving AMI name to AMI ID.")
@@ -257,11 +447,7 @@ class Instance(object):
             else:
                 raise RuntimeError("No AMIs with the given name were found.")
 
-        self._role = None
         self._instance_profile = None
-        self._key_pair = None
-        self._private_key = None
-        self._security_group = None
         self.instance = None
         self._ssh_client = None
         self._sftp_client = None
@@ -283,12 +469,6 @@ class Instance(object):
 
         self._log.debug("start: Calling _make_instance_profile.")
         self._make_instance_profile()
-
-        self._log.debug("start: Calling _make_key_pair.")
-        self._make_key_pair()
-
-        self._log.debug("start: Calling _make_security_group.")
-        self._make_security_group()
 
         self._log.debug("start: Calling _start_and_wait.")
         self._start_and_wait()
@@ -446,24 +626,11 @@ class Instance(object):
                 self._log.debug("cleanup: Waiting for instance to terminate.")
                 self.instance.wait_until_terminated()
                 self.instance = None
-            if self._security_group is not None:
-                self._log.debug("cleanup: Deleting security group.")
-                self._security_group.delete()
-                self._security_group = None
-            if self._key_pair is not None:
-                self._log.debug("cleanup: Deleting key pair.")
-                self._key_pair.delete()
-                self._key_pair = None
             if self._instance_profile is not None:
                 self._log.debug("cleanup: Deleting instance profile.")
-                self._instance_profile.remove_role(RoleName=self._role.name)
+                self._instance_profile.remove_role(RoleName=self.ROLE_NAME)
                 self._instance_profile.delete()
                 self._instance_profile = None
-            if self._role is not None:
-                self._log.debug("cleanup: Deleting role.")
-                self._role.detach_policy(PolicyArn=S3_FULL_ACCESS_ARN)
-                self._role.delete()
-                self._role = None
             self._log.debug("cleanup: Done.")
         except:
             MESSAGE = "An error occured during cleanup. Some EC2 resources " \
@@ -475,37 +642,14 @@ class Instance(object):
 
 
     def _make_instance_profile(self):
-        self._log.debug("_make_instance_profile: Initializing IAM.")
-        iam = boto3.resource("iam", self._region)
-
-        self._log.debug("_make_instance_profile: Creating role.")
-        self._role = iam.create_role(
-            RoleName=self._name,
-            AssumeRolePolicyDocument="""{
-                  "Version": "2012-10-17",
-                  "Statement": [
-                    {
-                      "Effect": "Allow",
-                      "Principal": {
-                        "Service": "ec2.amazonaws.com"
-                      },
-                      "Action": "sts:AssumeRole"
-                    }
-                  ]
-            }"""
-        )
-
-        self._log.debug("_make_instance_profile: Attaching policy to role.")
-        self._role.attach_policy(PolicyArn=S3_FULL_ACCESS_ARN)
-
         self._log.debug("_make_instance_profile: Creating instance profile.")
-        self._instance_profile = iam.create_instance_profile(
-            InstanceProfileName=self._name
-        )
+        name = self._name + "_instance_profile"
+        self._instance_profile = clients.iam.create_instance_profile(
+            InstanceProfileName=name)
 
         self._log.debug("_make_instance_profile: Adding role to instance " \
                         "profile.")
-        self._instance_profile.add_role(RoleName=self._role.name)
+        self._instance_profile.add_role(RoleName=self.ROLE_NAME)
 
         self._log.debug("_make_instance_profile: Waiting for changes to take " \
                         "effect.")
@@ -514,40 +658,7 @@ class Instance(object):
         #   still error, rarely. The right way is to retry at an interval.
         time.sleep(IAM_CONSISTENCY_DELAY)
 
-
         self._log.debug("_make_instance_profile: Done.")
-
-
-    def _make_key_pair(self):
-        self._log.debug("_make_key_pair: Creating new key pair.")
-        response = self._ec2.meta.client.create_key_pair(
-                KeyName=self._name)
-
-        self._log.debug("_make_key_pair: Saving private key.")
-        self._private_key = response["KeyMaterial"]
-
-        self._log.debug("_make_key_pair: Fetching key metadata.")
-        self._key_pair = self._ec2.KeyPair(self._name)
-        self._key_pair.load()
-
-        self._log.debug("_make_key_pair: Done.")
-
-
-    def _make_security_group(self):
-        self._log.debug("_make_security_group: Creating new security group.")
-        self._security_group = self._ec2.create_security_group(
-            GroupName=self._name, Description="Auto-generated by Cirrus. "\
-                "Allows TCP traffic in on port 22.")
-
-        self._log.debug("_make_security_group: Configuring security group.")
-        # Allow access from anywhere so that we can communicate with programs
-        #   running on the instance.
-        self._security_group.authorize_ingress(
-            IpProtocol="-1",  # -1 means any protocols (and implies any port).
-            CidrIp="0.0.0.0/0"
-        )
-
-        self._log.debug("_make_security_group: Done.")
 
 
     def _start_and_wait(self):
@@ -564,12 +675,12 @@ class Instance(object):
                     }
                 },
             ],
-            KeyName=self._key_pair.name,
+            KeyName=self.KEY_PAIR_NAME,
             ImageId=self._ami_id,
             InstanceType=self._type,
             MinCount=1,
             MaxCount=1,
-            SecurityGroups=[self._security_group.group_name],
+            SecurityGroups=[self.SECURITY_GROUP_NAME],
             IamInstanceProfile={"Name": self._instance_profile.name}
         )
         self.instance = instances[0]
@@ -588,7 +699,9 @@ class Instance(object):
 
     def _connect_ssh(self, timeout=10, attempts=10):
         self._log.debug("_connect_ssh: Configuring.")
-        key = paramiko.RSAKey.from_private_key(io.StringIO(unicode(self._private_key, "utf-8")))
+
+        with open(os.path.expanduser(self.PRIVATE_KEY_PATH), "r") as f:
+            key = paramiko.RSAKey.from_private_key(f)
         self._ssh_client = paramiko.SSHClient()
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -625,6 +738,10 @@ class Instance(object):
 
 
 class ParameterServer(object):
+    # The maximum amount of time that a parameter server can take to start, in
+    #   seconds.
+    MAX_START_TIME = 60
+
     def __init__(self, instance, ps_port, error_port, num_workers):
         self._instance = instance
         self._ps_port = ps_port
@@ -721,6 +838,35 @@ class ParameterServer(object):
                                " error task.")
 
 
+    def wait_until_started(self):
+        """Block until this parameter server has started.
+
+        The parameter server is considered to have started once attempts to
+            connect to it begin succeeding.
+
+        Raises:
+            RuntimeError: If this parameter server takes too long to start (or,
+                presumably, crashes).
+        """
+        total_attempts = self.MAX_START_TIME // handler.PS_CONNECTION_TIMEOUT
+
+        for attempt in range(1, total_attempts + 1):
+            self._log.debug("start: Making connection attempt #%d to %s."
+                            % (attempt, self))
+            start = time.time()
+            if self.reachable():
+                self._log.debug("start: %s launched." % self)
+                return
+            elapsed = time.time() - start
+
+            remaining = handler.PS_CONNECTION_TIMEOUT - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
+
+        raise RuntimeError("%s appears not to have started successfully."
+                           % self)
+
+
     def stop(self):
         for task in ("error", "ps"):
             kill_command = "kill -9 $(cat %s_%d.pid)" % (task, self.ps_port())
@@ -753,12 +899,38 @@ class ParameterServer(object):
         return stdout
 
 
+    def reachable(self):
+        """Return whether this parameter server is reachable.
+
+        This parameter server is reachable if attempts to connect to it succeed.
+
+        Returns:
+            bool: Whether this parameter server is reachable.
+        """
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(handler.PS_CONNECTION_TIMEOUT)
+            sock.connect((self.public_ip(), self.ps_port()))
+            sock.close()
+            return True
+        except:
+            return False
+
+
+    def __str__(self):
+        """Return a string representation of this parameter server.
+
+        Returns:
+            str: The string representation.
+        """
+        return "ParameterServer@%s:%d" % (self.public_ip(), self.ps_port())
+
+
 def make_build_image(name, replace=False):
     """Make an AMI sutiable for compiling Cirrus on.
 
     Args:
         name (str): The name to give the AMI.
-        region (str): The region for the AMI.
         replace (bool): Whether to replace any existing AMI with the same name.
             If False or omitted and an AMI with the same name exists, nothing
             will be done.
@@ -766,7 +938,7 @@ def make_build_image(name, replace=False):
     log = logging.getLogger("cirrus.automate.make_build_image")
 
     log.debug("make_build_image: Initializing EC2.")
-    ec2 = boto3.resource("ec2", BUILD_INSTANCE["region"])
+    ec2 = boto3.resource("ec2", configuration.config()["aws"]["region"])
 
     log.debug("make_build_image: Checking for already-existent images.")
     if replace:
@@ -852,7 +1024,8 @@ def make_lambda_package(path, executables_path):
         log.debug("make_lambda_package: Writing handler.")
         info = zipfile.ZipInfo(LAMBDA_HANDLER_FILENAME)
         info.external_attr = 0o777 << 16  # Allow, in particular, execute permissions.
-        zip.writestr(info, LAMBDA_HANDLER)
+        handler_source = inspect.getsource(handler)
+        zip.writestr(info, handler_source)
 
         log.debug("make_lambda_package: Initializing S3.")
         s3_client = boto3.client("s3")
@@ -872,7 +1045,8 @@ def make_lambda_package(path, executables_path):
     log.debug("make_lambda_package: Uploading package.")
     file.seek(0)
     bucket, key = _split_s3_url(path)
-    s3_client.upload_fileobj(file, bucket, key)
+    s3_client.upload_fileobj(file, bucket, key,
+        ExtraArgs={"ACL": "bucket-owner-full-control"})
 
     log.debug("make_lambda_package: Waiting for changes to take effect.")
     # Waits for S3's eventual consistency to catch up. Ideally, something more sophisticated would be used since the
@@ -912,6 +1086,52 @@ def make_server_image(name, executables_path, instance):
     log.debug("make_server_image: Done.")
 
 
+def get_bucket_name():
+    """Get the name of Cirrus' S3 bucket in the user's AWS account.
+
+    Returns:
+        str: The name.
+    """
+    log = logging.getLogger("cirrus.automate.get_bucket_name")
+
+    log.debug("get_bucket_name: Retreiving account ID.")
+    account_id = boto3.client("sts").get_caller_identity().get("Account")
+
+    return BUCKET_BASE_NAME + "-" + account_id
+
+
+def set_up_bucket():
+    """Set up Cirrus' S3 bucket in the user's AWS account.
+    """
+    log = logging.getLogger("cirrus.automate.set_up_bucket")
+
+    log.debug("set_up_bucket: Checking for existing bucket.")
+    response = clients.s3.meta.client.list_buckets()
+    exists = False
+    bucket_name = get_bucket_name()
+    for bucket_info in response["Buckets"]:
+        if bucket_info["Name"] == bucket_name:
+            exists = True
+            break
+
+    if exists:
+        log.debug("set_up_bucket: Deleting contents of existing bucket.")
+        bucket = clients.s3.Bucket(bucket_name)
+        for obj in bucket.objects.all():
+            obj.delete()
+        log.debug("set_up_bucket: Deleting existing bucket.")
+        bucket.delete()
+
+    log.debug("set_up_bucket: Creating bucket.")
+    bucket_config = {
+        "LocationConstraint": configuration.config()["aws"]["region"]
+    }
+    clients.s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration=bucket_config
+    )
+
+
 def make_lambda(name, lambda_package_path, concurrency=-1):
     """Make a worker Lambda function.
 
@@ -928,16 +1148,13 @@ def make_lambda(name, lambda_package_path, concurrency=-1):
     assert isinstance(concurrency, (int, long))
     assert concurrency >= -1
 
-    # TODO: Make region an argument.
     log = logging.getLogger("cirrus.automate.make_lambda")
 
     log.debug("make_lambda: Initializing Lambda and IAM.")
-    lamb = boto3.client("lambda", BUILD_INSTANCE["region"])
-    iam = boto3.resource("iam", BUILD_INSTANCE["region"])
 
     log.debug("make_lambda: Deleting any existing Lambda.")
     try:
-        lamb.delete_function(FunctionName=name)
+        clients.lamb.delete_function(FunctionName=name)
     except Exception:
         # This is a hack. An error may be caused by something other than the
         #   Lambda not existing.
@@ -945,7 +1162,7 @@ def make_lambda(name, lambda_package_path, concurrency=-1):
 
     log.debug("make_lambda: Deleting any existing IAM role.")
     try:
-        role = iam.Role(name)
+        role = clients.iam.Role(name)
         for policy in role.attached_policies.all():
             role.detach_policy(PolicyArn=policy.arn)
         role.delete()
@@ -955,7 +1172,7 @@ def make_lambda(name, lambda_package_path, concurrency=-1):
         pass
 
     log.debug("make_lambda: Creating IAM role")
-    role = iam.create_role(
+    role = clients.iam.create_role(
         RoleName=name,
         AssumeRolePolicyDocument=\
         """{
@@ -980,16 +1197,22 @@ def make_lambda(name, lambda_package_path, concurrency=-1):
     #   heavy-tailed, so we actually need a retry mechanism.
     time.sleep(IAM_CONSISTENCY_DELAY)
 
-    log.debug("make_lambda: Uploading ZIP package and creating Lambda.")
-    bucket, key = _split_s3_url(lambda_package_path)
-    lamb.create_function(
+    log.debug("make_lambda: Copying package to user's bucket.")
+    bucket_name = get_bucket_name()
+    bucket = clients.s3.Bucket(bucket_name)
+    src_bucket, src_key = _split_s3_url(lambda_package_path)
+    src = {"Bucket": src_bucket, "Key": src_key}
+    bucket.copy(src, src_key)
+
+    log.debug("make_lambda: Creating Lambda.")
+    clients.lamb.create_function(
         FunctionName=name,
         Runtime=LAMBDA_RUNTIME,
         Role=role.arn,
         Handler=LAMBDA_HANDLER_FQID,
         Code={
-            "S3Bucket": bucket,
-            "S3Key": key
+            "S3Bucket": bucket_name,
+            "S3Key": src_key
         },
         Timeout=LAMBDA_TIMEOUT,
         MemorySize=LAMBDA_SIZE
@@ -998,7 +1221,7 @@ def make_lambda(name, lambda_package_path, concurrency=-1):
     if concurrency != -1:
         log.debug("make_lambda: Allocating reserved concurrent executions to "
                   "the Lambda.")
-        lamb.put_function_concurrency(
+        clients.lamb.put_function_concurrency(
             FunctionName=name,
             ReservedConcurrentExecutions=concurrency
         )
@@ -1019,19 +1242,40 @@ def concurrency_limit(lambda_name):
     log = logging.getLogger("cirrus.automate.concurrency_limit")
 
     log.debug("concurrency_limit: Querying the Lambda's concurrency limit.")
-    response = lamb.get_function(FunctionName=lambda_name)
+    response = clients.lamb.get_function(FunctionName=lambda_name)
 
     # TODO: This does not properly handle the case where there is no limit.
     return response["Concurrency"]["ReservedConcurrentExecutions"]
 
 
-def launch_worker(lambda_name, config, num_workers, ps):
+def clear_lambda_logs(lambda_name):
+    """Clear the Cloudwatch logs for a given Lambda function.
+
+    Args:
+        lambda_name (str): The name of the Lambda function.
+    """
+    log = logging.getLogger("cirrus.automate.clear_lambda_logs")
+
+    log.debug("clear_lambda_logs: Listing log groups.")
+    name = "/aws/lambda/%s" % lambda_name
+    response = clients.cloudwatch_logs.describe_log_groups(
+        logGroupNamePrefix=name)
+
+    log.debug("clear_lambda_logs: Deleting matching log groups.")
+    for group_info in response["logGroups"]:
+        clients.cloudwatch_logs.delete_log_group(
+            logGroupName=group_info["logGroupName"])
+
+
+def launch_worker(lambda_name, task_id, config, num_workers, ps):
     """Launch a worker.
 
     Blocks until the worker terminates.
 
     Args:
         lambda_name (str): The name of a worker Lambda function.
+        task_id (int): The ID number of the task, to be used by the worker to
+            register with the parameter server.
         config (str): A configuration for the worker.
         num_workers (int): The total number of workers that are being launched.
         ps (ParameterServer): The parameter server that the worker should use.
@@ -1041,28 +1285,32 @@ def launch_worker(lambda_name, config, num_workers, ps):
     """
     log = logging.getLogger("cirrus.automate.launch_worker")
 
-    log.debug("launch_worker: Invoking Lambda.")
+    log.debug("launch_worker: Launching Task %d." % task_id)
     payload = {
         "config": config,
         "num_workers": num_workers,
         "ps_ip": ps.public_ip(),
-        "ps_port": ps.ps_port()
+        "ps_port": ps.ps_port(),
+        "task_id": task_id,
+        "log_level": LAMBDA_LOG_LEVEL
     }
-    response = lamb.invoke(
+    response = clients.lamb.invoke(
         FunctionName=lambda_name,
         InvocationType="RequestResponse",
         LogType="Tail",
         Payload=json.dumps(payload)
     )
-    if response["StatusCode"] != 200:
-        # TODO: We should probably do something with the body of the response,
-        #   either print it or include it in the error.
-        raise RuntimeError("The invocation failed!")
 
-    log.debug("launch_worker: Done.")
+    status = response["StatusCode"]
+    message = "launch_worker: Task %d completed with status code %d." \
+              % (task_id, status)
+    if status == 200:
+        log.debug(message)
+    else:
+        raise RuntimeError(message)
 
 
-def maintain_workers(n, lambda_name, config, ps, stop_event):
+def maintain_workers(n, lambda_name, config, ps, stop_event, experiment_id):
     """Maintain a fixed-size fleet of workers.
 
     Args:
@@ -1070,54 +1318,53 @@ def maintain_workers(n, lambda_name, config, ps, stop_event):
         lambda_name (str): As for `launch_worker`.
         config (str): As for `launch_worker`.
         parameter_server (ParameterServer): As for `launch_worker`.
-        stop_event (threading.Event): An event indicating that the worker fleet
-            should no longer be refilled.
+        stop_event (threading.Event): An event indicating that no new
+            generations of the workers in the fleet should be launched.
+        experiment_id (int): The ID number of the experiment that these workers
+            will work on.
     """
-    def maintain_one():
+    assert n <= MAX_WORKERS_PER_EXPERIMENT
+
+    def maintain_one(worker_id):
+        """Maintain a single worker.
+
+        Launches generation after generation of Lambdas to serve as the
+            `worker_id`-th worker.
+
+        Args:
+            worker_id (int): The ID of the worker, in `[0, n)`.
+        """
+        generation = 0
+
+        elapsed_sec = 0
         while not stop_event.is_set():
-            launch_worker(lambda_name, config, n, ps)
+            assert generation < MAX_LAMBDA_GENERATIONS
 
+            # the 2nd time onwards we sleep until we complete 5mins
+            if elapsed_sec > 0 and elapsed_sec < 1 * 60:
+                time_to_wait = 2 * 60 - elapsed_sec
+                print("Sleeping for {}".format(time_to_wait))
+                time.sleep(time_to_wait)
 
-    def thread_name(i):
-        return "maintain_workers.maintain_one " \
-               "[ps_public_ip=%s, ps_port=%d, worker_index=%d]" \
-               % (ps.public_ip(), ps.ps_port(), i)
+            start = time.time()
 
+            task_id = worker_id * MAX_LAMBDA_GENERATIONS + generation
+            launch_worker(lambda_name, task_id, config, n, ps)
 
-    threads = [threading.Thread(target=maintain_one, name=thread_name(i))
-               for i in range(n)]
-    [thread.start() for thread in threads]
+            generation += 1
 
+            elapsed_sec = time.time() - start
 
-def launch_server(instance):
-    """Launch a parameter server.
-
-    Args:
-        instance (EC2Instance): The instance on which to launch the server.
-            Should use an AMI produced by `make_server_image`.
-    """
-    pass
-
-
-def build():
-    """Build Cirrus.
-
-    Publishes Cirrus' executables, a worker Lambda ZIP package, and a parameter
-        server AMI on S3.
-    """
-    make_build_image(BUILD_IMAGE_NAME)
-    with Instance(**BUILD_INSTANCE) as instance:  # FIXME
-        make_executables(EXECUTABLES_PATH, instance)
-        make_lambda_package(LAMBDA_PACKAGE_PATH, EXECUTABLES_PATH)
-        make_server_image(SERVER_IMAGE_NAME, EXECUTABLES_PATH, instance)
-
-
-def deploy():
-    """Deploy Cirrus.
-
-    Creates a worker Lambda function.
-    """
-    make_lambda(LAMBDA_NAME, LAMBDA_PACKAGE_PATH)
+    base_id = experiment_id * MAX_WORKERS_PER_EXPERIMENT
+    threads = []
+    for worker_id in range(base_id, base_id + n):
+        thread = threading.Thread(
+            target=maintain_one,
+            name="Worker %d" % worker_id,
+            args=(worker_id,)
+        )
+        threads.append(thread)
+        thread.start()
 
 
 def _split_s3_url(url):

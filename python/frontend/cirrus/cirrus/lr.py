@@ -26,7 +26,7 @@ class LogisticRegressionTask(BaseTask):
                  "limit_cols: 14 \n" + \
                  "normalize: 0 \n" + \
                  "limit_samples: 10000 \n" + \
-                 "s3_size: 10 \n" + \
+                 "s3_size: 50000 \n" + \
                  "use_bias: 1 \n" + \
                  "model_type: LogisticRegression \n" + \
                  "minibatch_size: %d \n" % self.minibatch_size + \
@@ -60,7 +60,8 @@ def LogisticRegression(
             use_grad_threshold=False,
             grad_threshold=0.001,
             timeout=60,
-            threshold_loss=0
+            threshold_loss=0,
+            experiment_id=0
             ):
     return LogisticRegressionTask(
             n_workers=n_workers,
@@ -80,7 +81,8 @@ def LogisticRegression(
             grad_threshold=grad_threshold,
             timeout=timeout,
             threshold_loss=threshold_loss,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            experiment_id=experiment_id
            )
 
 

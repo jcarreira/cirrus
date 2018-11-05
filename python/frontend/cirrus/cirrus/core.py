@@ -7,8 +7,8 @@ import boto3
 
 import messenger
 from CostModel import CostModel
-import automate
-import setup
+from . import automate
+from . import setup
 
 
 # Code shared by all Cirrus experiments
@@ -34,7 +34,8 @@ class BaseTask(object):
             grad_threshold,
             timeout,
             threshold_loss,
-            progress_callback
+            progress_callback,
+            experiment_id=0
             ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
@@ -55,6 +56,7 @@ class BaseTask(object):
         self.timeout=timeout
         self.threshold_loss=threshold_loss
         self.progress_callback=progress_callback
+        self.experiment_id=experiment_id
         self.dead = False
         self.cost_model = None
         self.total_cost = 0
@@ -148,15 +150,28 @@ class BaseTask(object):
         else:
             return self.time_loss_lst
 
-    def run(self):
+    def run(self, delete_logs=True):
         """Run this task.
+
+        Args:
+            delete_logs (bool): Whether to delete the worker Lambda function's
+                Cloudwatch logs before starting the experiment.
 
         Starts a parameter server and launches a fleet of workers.
         """
+        if delete_logs:
+            automate.clear_lambda_logs(setup.LAMBDA_NAME)
+
         self.ps.start(self.define_config())
         self.stop_event.clear()
-        automate.maintain_workers(self.n_workers, setup.LAMBDA_NAME,
-            self.define_config(), self.ps, self.stop_event)
+
+        def wait_then_maintain_workers():
+            self.ps.wait_until_started()
+            automate.maintain_workers(self.n_workers, setup.LAMBDA_NAME,
+                self.define_config(), self.ps, self.stop_event,
+                self.experiment_id)
+
+        threading.Thread(target=wait_then_maintain_workers).start()
 
     def kill(self):
         """Kill this task.

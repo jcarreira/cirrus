@@ -6,8 +6,8 @@ import time
 
 import graph
 from utils import *
-import automate
-import setup
+from . import automate
+from . import setup
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
 
@@ -55,7 +55,7 @@ class GridSearch:
         base_port = 1337
         index = 0
         num_machines = len(instances)
-        for p in possibilities:
+        for i, p in enumerate(possibilities):
             configuration = zip(hyper_vars, p)
             modified_config = param_base.copy()
             for var_name, var_value in configuration:
@@ -64,6 +64,8 @@ class GridSearch:
                                                              modified_config["n_workers"] * 2)
             index = (index + 1) % num_machines
             base_port += 2
+
+            modified_config["experiment_id"] = i
 
             c = task(**modified_config)
             self.cirrus_objs.append(c)
@@ -176,7 +178,7 @@ class GridSearch:
             instance.buffer_commands(True)
 
         for cirrus_obj in self.cirrus_objs:
-            cirrus_obj.run()
+            cirrus_obj.run(False)
 
         threads = []
         for instance in self.instances:
@@ -193,9 +195,7 @@ class GridSearch:
             p = threading.Thread(target=custodian, args=(self.cirrus_objs, i, self.num_jobs))
             p.start()
 
-    def get_number_experiments(self, metric=None):
-        if metric == "CPS":
-            return 1
+    def get_number_experiments(self):
         return len(self.cirrus_objs)
 
     def set_threads(self, n):
@@ -206,6 +206,8 @@ class GridSearch:
 
     # Start threads to maintain all experiments
     def run(self, UI=False):
+        automate.clear_lambda_logs(setup.LAMBDA_NAME)
+
         self.start_queue_threads()
 
         if UI:

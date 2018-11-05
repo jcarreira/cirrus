@@ -1,4 +1,7 @@
-"""Utilities for setting up an installation of Cirrus."""
+"""Utilities for setting up an installation of Cirrus.
+
+Run this using `python -m cirrus.setup`! It uses relative imports.
+"""
 
 import textwrap
 import os
@@ -7,9 +10,8 @@ import sys
 import boto3
 import botocore.exceptions
 
-sys.path.insert(0, os.path.dirname(__file__))
-import configuration
-import automate
+from . import configuration
+from . import automate
 
 
 # The path at which boto3 expects the user's AWS credentials. Must be passed
@@ -19,7 +21,7 @@ AWS_CREDENTIALS_PATH = "~/.aws/credentials"
 
 # An S3 URL where a worker Lambda package has been published by the maintainers
 #   of Cirrus.
-LAMBDA_PACKAGE_URL = "s3://cirrus-public/0/lambda-package"
+LAMBDA_PACKAGE_URL = "s3://cirrus-builds/0/lambda-package"
 
 
 # The name to give to the worker Lambda.
@@ -29,13 +31,17 @@ LAMBDA_NAME = "cirrus_worker"
 def run_interactive_setup():
     """Run an interactive command-line setup process.
     """
-    configuration.config["aws"] = {}
+    configuration.config(False)["aws"] = {}
 
-    _setup_aws_credentials()
+    _set_up_aws_credentials()
 
-    _setup_region()
+    _set_up_region()
+
+    _set_up_bucket()
 
     _make_lambda()
+
+    _set_up_instance_resources()
 
     _save_config()
 
@@ -44,7 +50,7 @@ def run_interactive_setup():
     print("Done.")
 
 
-def _setup_aws_credentials():
+def _set_up_aws_credentials():
     """If the user does not already have functioning AWS credentials in place,
         prompt for AWS credentials and obtain permission to save them to
         AWS_CREDENTIALS_PATH.
@@ -113,7 +119,7 @@ def _aws_authorized(id=None, secret=None):
         return True
 
 
-def _setup_region():
+def _set_up_region():
     """Prompt the user for their preferred AWS region and add it to the
         configuration.
     """
@@ -124,26 +130,31 @@ def _setup_region():
 
     region = prompt(EXPLANATION, PROMPTS, validator)
 
-    configuration.config["aws"]["region"] = region
+    configuration.config(False)["aws"]["region"] = region
+
+    # Refresh cached AWS clients, so that clients are bound to the updated
+    #   region.
+    automate.clients.clear_cache()
 
 
 def _make_lambda():
     """Make the worker Lambda, prompting the user for permission.
     """
-    explanation = ("Can we create a Lambda function named %s in your AWS" 
+    explanation = ("Can we create a Lambda function named '%s' in your AWS" 
                    " account?") % LAMBDA_NAME
     PROMPTS = ("y/n",)
     validator = lambda c: c in ("y", "n")
     postprocess = lambda c: c == "y"
     if not prompt(explanation, PROMPTS, validator, postprocess):
-        print("Cirrus will not be usable without this Lambda.")
+        print("Exiting. Cirrus will not be usable. Re-run the setup script to "
+              "complete setup.")
         return
 
     explanation = "How many concurrent executions, at maximum, should the " \
                   "Lambda function be limited to? Your AWS account must have " \
                   "at least this many unreserved concurrent executions " \
                   "available in the %s region." \
-                  % configuration.config["aws"]["region"]
+                  % configuration.config(False)["aws"]["region"]
     PROMPTS = ("Executions",)
     # TODO: Actually check that the chosen number is valid. It should be less
     #   than the account's limit - 100.
@@ -156,14 +167,71 @@ def _make_lambda():
     concurrency = prompt(explanation, PROMPTS, validator, postprocess)
 
     print("Creating the Lambda function. This may take a minute.")
-    automate.make_lambda(LAMBDA_NAME, LAMBDA_PACKAGE_URL, concurrency)
+    # TODO: Temporary hack.
+    package_url = LAMBDA_PACKAGE_URL.replace(
+        "cirrus-public",
+        "-".join(("cirrus-public", configuration.config(False)["aws"]["region"]))
+    )
+    automate.make_lambda(LAMBDA_NAME, package_url, concurrency)
+
+
+def _set_up_instance_resources():
+    """Set up resources that are needed by `automate.Instance`.
+    """
+    explanation = ("Can we create an IAM role named '%s' in your AWS account?"
+                   % automate.Instance.ROLE_NAME)
+    PROMPTS = ("y/n",)
+    validator = lambda c: c in ("y", "n")
+    postprocess = lambda c: c == "y"
+    if not prompt(explanation, PROMPTS, validator, postprocess):
+        print("Exiting. Cirrus will not be usable. Re-run the setup script to "
+              "complete setup.")
+        return
+    automate.Instance.set_up_role()
+
+    explanation = ("Can we create a key pair named '%s' in your AWS account?"
+                   % automate.Instance.KEY_PAIR_NAME)
+    PROMPTS = ("y/n",)
+    validator = lambda c: c in ("y", "n")
+    postprocess = lambda c: c == "y"
+    if not prompt(explanation, PROMPTS, validator, postprocess):
+        print("Exiting. Cirrus will not be usable. Re-run the setup script to "
+              "complete setup.")
+        return
+    automate.Instance.set_up_key_pair()
+
+    explanation = ("Can we create a security group named '%s' in your AWS "
+                   "account?" % automate.Instance.SECURITY_GROUP_NAME)
+    PROMPTS = ("y/n",)
+    validator = lambda c: c in ("y", "n")
+    postprocess = lambda c: c == "y"
+    if not prompt(explanation, PROMPTS, validator, postprocess):
+        print("Exiting. Cirrus will not be usable. Re-run the setup script to "
+              "complete setup.")
+        return
+    automate.Instance.set_up_security_group()
+
+
+def _set_up_bucket():
+    """Set up Cirrus' bucket in the user's AWS account.
+    """
+    explanation = ("Can we create an S3 bucket named '%s' in your AWS account?"
+                   % automate.get_bucket_name())
+    PROMPTS = ("y/n",)
+    validator = lambda c: c in ("y", "n")
+    postprocess = lambda c: c == "y"
+    if not prompt(explanation, PROMPTS, validator, postprocess):
+        print("Exiting. Cirrus will not be usable. Re-run the setup script to "
+              "complete setup.")
+        return
+    automate.set_up_bucket()
 
 
 def _save_config():
     """Save the configuration.
     """
     with open(os.path.expanduser(configuration.CONFIGURATION_PATH), "w+") as f:
-        configuration.config.write(f)
+        configuration.config(False).write(f)
 
 
 def prompt(explanation, prompts, validator=None, postprocess=None):
