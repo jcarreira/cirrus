@@ -50,7 +50,6 @@ tests/test_travis_mf_multiplePS/test_ps
 tests/test_travis_mf_multiplePS/worker
 tests/test_travis_mf_multiplePS/error
 tests/test_travis_mf_multiplePS/test_ps2
-tests/test_data/*.csv
 tests/test_data/*.xls
 tests/iterator/test_libsvm_iterator
 third_party/kerberos/
