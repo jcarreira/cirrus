@@ -14,6 +14,7 @@
 #include <chrono>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -272,6 +273,8 @@ class PSSparseServerTask : public MLTask {
   void loop(int id);                         //< listen for requests
   bool process(struct pollfd&, int id);      //< process a request
 
+  void set_operation_maps();  //< set maps related to requests
+
   /**
     * Model/ML related methods
     */
@@ -287,26 +290,37 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-  bool process_get_mf_sparse_model(const Request& req,
+  bool process_get_lr_sparse_model(int,
+                                   const Request&,
                                    std::vector<char>&,
-                                   int tn);
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  void process_register_task(int sock, const Request&);
-  void process_deregister_task(int sock, const Request&);
+                                   int);
+  bool process_get_mf_sparse_model(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_send_lr_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_send_mf_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_get_lr_full_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_mf_full_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_task_status(int, const Request&, std::vector<char>&, int);
+  bool process_set_task_status(int, const Request&, std::vector<char>&, int);
+  bool process_get_num_conns(int, const Request&, std::vector<char>&, int);
+  bool process_get_num_updates(int, const Request&, std::vector<char>&, int);
+  bool process_get_last_time_error(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_get_value(int, const Request&, std::vector<char>&, int);
+  bool process_set_value(int, const Request&, std::vector<char>&, int);
+  bool process_register_task(int, const Request&, std::vector<char>&, int);
+  bool process_deregister_task(int, const Request&, std::vector<char>&, int);
 
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
 
   void check_tasks_lifetime();
-  void declare_task_dead(uint32_t);
+  uint32_t declare_task_dead(uint32_t);
 
   /**
     * Attributes
@@ -322,12 +336,12 @@ class PSSparseServerTask : public MLTask {
   // threads to handle requests
   std::vector<std::unique_ptr<std::thread>> gradient_thread;
 
-  // ids of registered tasks
-  std::set<uint64_t> registered_tasks;
+  std::set<uint64_t> registered_tasks;  //< ids of registered tasks
   // reamining time (sec) of each registered task
   std::map<uint64_t, int64_t> task_to_remaining_time;
   std::map<uint64_t, std::chrono::time_point<std::chrono::steady_clock>>
       task_to_starttime;
+  std::mutex register_lock;  //< to coordinate access to reg. datastructures
 
   // thread to checkpoint model
   std::vector<std::unique_ptr<std::thread>> checkpoint_thread;
@@ -371,6 +385,14 @@ class PSSparseServerTask : public MLTask {
   // barrier to synchronize threads init
   std::unique_ptr<pthread_barrier_t, void (*)(pthread_barrier_t*)>
       threads_barrier;
+
+  std::unordered_map<
+      uint32_t,
+      std::function<bool(int, const Request&, std::vector<char>&, int)>>
+      operation_to_f;
+
+  std::unordered_map<std::string, std::pair<uint32_t, std::shared_ptr<char>>>
+      key_value_map;
 };
 
 class MFNetflixTask : public MLTask {

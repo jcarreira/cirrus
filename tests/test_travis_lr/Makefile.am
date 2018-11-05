@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign
 CXX=g++
 CXXFLAGS=-Wall -ansi -O3 -std=c++17 -ggdb
 
-bin_PROGRAMS = test_register_worker test_keyvalue
+bin_PROGRAMS = test_lr test_ps worker error
 
 TOP_DIR=../../../..
 THIRD_PARTY_DIR=../../third_party
@@ -58,8 +58,13 @@ AM_CPPFLAGS=-I$(CIRRUS_SRC_DIR) \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-core/include/ \
 	 -I$(THIRD_PARTY_DIR)/eigen_source/
 
-test_register_worker_SOURCES = test_register_worker.cpp $(CIRRUS_SRC_FILES)
-test_keyvalue_SOURCES = test_keyvalue.cpp $(CIRRUS_SRC_FILES)
+test_lr_SOURCES = check_correctness_cirrus_sgd.cpp $(CIRRUS_SRC_FILES)
+
+test_ps_SOURCES = ps_test.cpp $(CIRRUS_SRC_FILES)
+
+worker_SOURCES = worker.cpp $(CIRRUS_SRC_FILES)
+
+error_SOURCES = error.cpp $(CIRRUS_SRC_FILES)
 
 clean:
-	rm -rf a.out
+	rm -rf a.out test_iterator
