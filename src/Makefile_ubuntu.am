@@ -62,10 +62,10 @@ ps_test_SOURCES = PSSparseServerTaskTest.cpp $(CPP_SOURCES)
 
 csv_to_libsvm_SOURCES = CriteoCsvToLibSVM.cpp $(CPP_SOURCES)
 
-__TOP_DIR__tests_test_travis_test_lr_SOURCES = $(TOP_DIR)/tests/test_travis_lr/check_correctness_cirrus_sgd.cpp $(CPP_SOURCES)
+__TOP_DIR__tests_test_travis_lr_test_lr_SOURCES = $(TOP_DIR)/tests/test_travis_lr/check_correctness_cirrus_sgd.cpp $(CPP_SOURCES)
 
-__TOP_DIR__tests_test_travis_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis_lr/ps_test.cpp $(CPP_SOURCES)
+__TOP_DIR__tests_test_travis_lr_test_ps_SOURCES = $(TOP_DIR)/tests/test_travis_lr/ps_test.cpp $(CPP_SOURCES)
 
-__TOP_DIR__tests_test_travis_worker_SOURCES = $(TOP_DIR)/tests/test_travis_lr/worker.cpp $(CPP_SOURCES)
+__TOP_DIR__tests_test_travis_lr_worker_SOURCES = $(TOP_DIR)/tests/test_travis_lr/worker.cpp $(CPP_SOURCES)
 
-__TOP_DIR__tests_test_travis_error_SOURCES = $(TOP_DIR)/tests/test_travis_lr/error.cpp $(CPP_SOURCES)
+__TOP_DIR__tests_test_travis_lr_error_SOURCES = $(TOP_DIR)/tests/test_travis_lr/error.cpp $(CPP_SOURCES)

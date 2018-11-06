@@ -10,8 +10,8 @@
 namespace cirrus {
 
 MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
-    std::vector<std::string> param_ips,
-    std::vector<uint64_t> ps_ports) {
+    const std::vector<std::string>& param_ips,
+    const std::vector<uint64_t>& ps_ports) {
   std::cout << "Starting Multiple PS " << param_ips.size() << std::endl;
   for (int i = 0; i < param_ips.size(); i++) {  // replace 2 with num_servers
     std::cout << "Attempting connection to " << param_ips[i] << ":"
@@ -31,8 +31,8 @@ MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
 }
 
 MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
-    std::vector<std::string> param_ips,
-    std::vector<uint64_t> ps_ports,
+    std::vector<std::string>& param_ips,
+    std::vector<uint64_t>& ps_ports,
     uint32_t mb_size) {
   std::cout << "Starting Multiple PS " << param_ips.size() << std::endl;
   for (int i = 0; i < param_ips.size(); i++) {  // replace 2 with num_servers

@@ -152,8 +152,9 @@ void LRSparseGradient::serialize(void* mem) const {
 }
 
 /**
- * Method will serialize like this [version(int), num_weights, data to send ps1,
- * version(int), num_weights, data to send ps2, ... data to send ps_parts]
+ * Given a pointer to memory, method will serialize gradient into 'parts' number of parts
+ * Method returns vector of size parts containing tuples of <a, b> such that for the ith tuple mem + a
+ * is the start of the ith serialized gradient and mem + a + b is the end of that serialized gradient
  *
  */
 
@@ -171,15 +172,13 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
   // starts[i] = number of items behind partition i
   int count = starts[0];
   int count_next = 0;
+  count_next = starts[1];
+  starts[1] = count;
+  starts[0] = 0;
   for (int i = 0; i < parts; i++) {
-    if (i == 0) {
-      count_next = starts[1];
-      starts[1] = count;
-      starts[0] = 0;
-    } else if (i != (parts - 1)) {
+    if (i != (parts - 1)) {
       count_next = starts[i + 1];
       starts[i + 1] = starts[i] + count;
-    } else {
     }
 
     // Shorten this. Makes a tuple out of position + size
