@@ -10,8 +10,7 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
-
-static const float LOSS_THRESHOLD = 0.66;
+#define LOSS_THRESHOLD (0.66)
 
 using namespace cirrus;
 
@@ -88,4 +87,6 @@ int main() {
   } else {
     exit(EXIT_FAILURE);
   }
+
+  return 0;
 }
