@@ -75,18 +75,19 @@ void PSSparseServerTask::set_operation_maps() {
   operation_to_name[GET_VALUE] = "GET_VALUE";
 
   using namespace std::placeholders;
+  /*
   operation_to_f[SEND_LR_GRADIENT] = std::bind(
-      &PSSparseServerTask::process_send_lr_gradient, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_send_lr_gradient, this, _1);
   operation_to_f[SEND_MF_GRADIENT] = std::bind(
-      &PSSparseServerTask::process_send_mf_gradient, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_send_mf_gradient, this, _1);
   operation_to_f[GET_LR_SPARSE_MODEL] = std::bind(
-      &PSSparseServerTask::process_get_lr_sparse_model, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_get_lr_sparse_model, this, _1, _2, _3);
   operation_to_f[GET_MF_SPARSE_MODEL] = std::bind(
-      &PSSparseServerTask::process_get_mf_sparse_model, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_get_mf_sparse_model, this, _1, _2, _3);
   operation_to_f[GET_MF_FULL_MODEL] = std::bind(
-      &PSSparseServerTask::process_get_mf_full_model, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_get_mf_full_model, this, _1, _2);
   operation_to_f[GET_LR_FULL_MODEL] = std::bind(
-      &PSSparseServerTask::process_get_lr_full_model, this, _1, _2, _3, _4);
+      &PSSparseServerTask::process_get_lr_full_model, this, _1, _2);
   operation_to_f[SET_TASK_STATUS] = std::bind(
       &PSSparseServerTask::process_set_task_status, this, _1, _2, _3, _4);
   operation_to_f[GET_TASK_STATUS] = std::bind(
@@ -103,6 +104,7 @@ void PSSparseServerTask::set_operation_maps() {
       std::bind(&PSSparseServerTask::process_set_value, this, _1, _2, _3, _4);
   operation_to_f[GET_VALUE] =
       std::bind(&PSSparseServerTask::process_get_value, this, _1, _2, _3, _4);
+  */
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -605,7 +607,6 @@ void PSSparseServerTask::gradient_f() {
       continue;
     }
 
-<<<<<<< HEAD
     if (msg_size > thread_buffer.size()) {
       throw std::runtime_error("Not enough buffer");
     }
