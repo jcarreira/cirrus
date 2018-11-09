@@ -31,8 +31,8 @@ MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
 }
 
 MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
-    std::vector<std::string>& param_ips,
-    std::vector<uint64_t>& ps_ports,
+    const std::vector<std::string>& param_ips,
+    const std::vector<uint64_t>& ps_ports,
     uint32_t mb_size) {
   std::cout << "Starting Multiple PS " << param_ips.size() << std::endl;
   for (int i = 0; i < param_ips.size(); i++) {  // replace 2 with num_servers
@@ -146,11 +146,12 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
 
   // Split the dataset based on which server data belongs to.
   // XXX consider optimizing this
-
+  std::hash<uint32_t> hash;
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      uint32_t server_index = w.first % num_servers;
-      uint32_t data_index = (w.first - server_index) / num_servers;
+      uint32_t server_index = hash(w.first) % num_servers;
+      //uint32_t data_index = (w.first - server_index) / num_servers;
+      uint32_t data_index = w.first;
       store_value<uint32_t>(msg_lst[server_index], data_index);
       num_weights_lst[server_index]++;
     }
@@ -224,10 +225,15 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     // user_base += minibatch_size / num_servers;
   }
 
+  std::hash<uint32_t> hash_func;
+
+  std::vector<std::vector<uint32_t>> movie_memory(num_servers);
+
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      uint32_t server_num = w.first % num_servers;
-      uint32_t movieId = w.first / num_servers;
+      uint32_t server_num = hash_func(w.first) % num_servers;
+	  movie_memory[server_num].push_back(w.first);
+      uint32_t movieId = w.first;
       if (seen[server_num][movieId])
         continue;
       store_value<uint32_t>(msg_lst[server_num], movieId);
@@ -236,6 +242,8 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     }
   }
 
+
+  // Send requests to all parameter servers
   for (int i = 0; i < num_servers; i++) {
     char* msg = msg_begin_lst[i];
     store_value<uint32_t>(msg, item_ids_count_lst[i]);
@@ -254,6 +262,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     }
   }
 
+  // Receive responses from PS 
   for (int i = 0; i < num_servers; i++) {
     psints[i]->get_mf_sparse_model_inplace_sharded(
         model, config, msg_begin_lst[i], minibatch_size / num_servers,

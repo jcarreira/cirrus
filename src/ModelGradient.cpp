@@ -163,10 +163,10 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
     uint32_t parts) const {
   std::vector<int> starts(parts, 0);
   std::vector<std::tuple<int, int>> starts_out(parts);
-  std::hash<int> hashfunc;
+  std::hash<uint32_t> hash;
   // Perform count
   for (const auto& w : weights) {
-    starts[hashfunc(w.first) % parts]++;
+    starts[hash(w.first) % parts]++;
   }
 
   // starts[i] = number of items behind partition i
@@ -176,7 +176,7 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
   starts[1] = count;
   starts[0] = 0;
   for (int i = 0; i < parts; i++) {
-    if (i != (parts - 1)) {
+    if (i != (parts - 1) and i != 0) {
       count_next = starts[i + 1];
       starts[i + 1] = starts[i] + count;
     }
@@ -201,15 +201,14 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
   for (const auto& w : weights) {
     int index = w.first;
     FEATURE_TYPE v = w.second;
-
-    int ps_num = hashfunc(index) % parts;
+    int ps_num = hash(index) % parts;
     int position = starts[ps_num];
 
     uint64_t offset =
         ((ps_num + 1) *
          (sizeof(int) + sizeof(int))) +  // Number of (version, count) variables
         position * (sizeof(int) + sizeof(FEATURE_TYPE));  //
-    put_value<int>(mem, index / parts, offset);
+    put_value<uint32_t>(mem, index, offset);
     put_value<FEATURE_TYPE>(mem, v, offset + sizeof(int));
     starts[ps_num]++;
   }

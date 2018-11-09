@@ -145,7 +145,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
 
     if (user_models.size() < 480189)
       user_models.resize(480189);
-
+    
     for (uint64_t i = 0; i < nusers_; ++i) {
       uint32_t user_id = (i % (minibatch_size / num_ps)) +
                          (minibatch_size / num_ps) * server_id +
@@ -158,8 +158,6 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
       std::get<0>(user_models[user_id]) = user_id;
       std::get<1>(user_models[user_id]) = user_bias;
       std::get<2>(user_models[user_id]).resize(NUM_FACTORS);
-      // user_models[i] = user_model;
-      // std::cout << "saw " << user_id << " " << i << std::endl;
     }
 
     for (uint64_t i = 0; i < nitems_; ++i) {
@@ -248,6 +246,9 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
 #endif
   }
 
+  /**
+   * This is used to unserialize for sharded PS
+   */
   void SparseMFModel::loadSerializedSparse(const void* data,
                                            uint64_t num_users,
                                            uint64_t num_items,
@@ -256,9 +257,11 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
                                            int num_ps) {
     int minibatch_size = 20;
     nfactors_ = NUM_FACTORS;
-    for (int i = 0; i < num_users; i++) {
+    global_bias_ = 3.604;  // TODO: Fix the global bias away from hardcode
+    
+	// Unload user data from serialization. User data is contiguous.
+	for (int i = 0; i < num_users; i++) {
       std::tuple<int, FEATURE_TYPE, std::vector<FEATURE_TYPE>> user_model;
-      // uint32_t user_id = load_value<uint32_t>(data) * num_ps + server_id;
       uint32_t raw_id = load_value<uint32_t>(data);
       uint32_t user_id = (raw_id % (minibatch_size / num_ps)) +
                          (minibatch_size / num_ps) * server_id +
@@ -274,10 +277,11 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
       user_models.push_back(user_model);
     }
 
-    global_bias_ = 3.604;
+
+	// Load out item data. Item data is sparse
     for (uint64_t i = 0; i < num_items; i++) {
       std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
-      uint32_t item_id = load_value<uint32_t>(data) * num_ps + server_id;
+      uint32_t item_id = load_value<uint32_t>(data);
       FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
       std::get<0>(item_model) = item_bias;
       std::get<1>(item_model).resize(NUM_FACTORS);

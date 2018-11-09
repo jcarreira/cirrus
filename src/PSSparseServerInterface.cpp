@@ -397,10 +397,13 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
     uint32_t num_items,
     int server_id,
     int num_ps) {
+  // Read incoming data from PS
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
   char* buffer = new char[to_receive_size];
   read_all(sock, buffer, to_receive_size);
+ 
+  // Serialize data recieved into MF Model
   mf_model.loadSerializedSparse(buffer, num_users, num_items, config, server_id,
                                 num_ps);
 
