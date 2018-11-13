@@ -1284,7 +1284,7 @@ void PSSparseServerTask::run(const Configuration& config) {
                 << std::endl;
       gradientUpdatesCount = 0;
 
-      if (task_config.get_model_type() == cirrus::Configuration::LDA ) {
+      if (task_config.get_model_type() == cirrus::Configuration::LDA) {
         if ((int) since_start_sec % 10 == 0) {
           compute_loglikelihood();
         }
