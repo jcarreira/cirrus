@@ -18,6 +18,7 @@
 #include <deque>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -276,6 +277,8 @@ class PSSparseServerTask : public MLTask {
   void loop(int id);                         //< listen for requests
   bool process(struct pollfd&, int id);      //< process a request
 
+  void set_operation_maps();  //< set maps related to requests
+
   /**
     * Model/ML related methods
     */
@@ -291,29 +294,38 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(const Request& req, std::vector<char>&);
-  bool process_send_lr_gradient(const Request& req, std::vector<char>&);
-  bool process_get_mf_sparse_model(const Request& req,
+  bool process_get_lr_sparse_model(int,
+                                   const Request&,
                                    std::vector<char>&,
-                                   int tn);
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_lda_update(const Request& req,
-                               std::vector<char>& thread_buffer);
-  bool process_get_lda_model(const Request& req,
-                             std::vector<char>& thread_buffer);
-  bool process_get_slices_indices(const Request& req,
-                                  std::vector<char>& thread_buffer);
-  bool process_send_ll_update(const Request& req,
-                              std::vector<char>& thread_buffer);
-  bool process_send_time(const Request& req, std::vector<char>& thread_buffer);
-
-  void process_register_task(int sock, const Request&);
-  void process_deregister_task(int sock, const Request&);
+                                   int);
+  bool process_get_mf_sparse_model(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_send_lr_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_send_mf_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_get_lr_full_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_mf_full_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_task_status(int, const Request&, std::vector<char>&, int);
+  bool process_set_task_status(int, const Request&, std::vector<char>&, int);
+  bool process_get_num_conns(int, const Request&, std::vector<char>&, int);
+  bool process_get_num_updates(int, const Request&, std::vector<char>&, int);
+  bool process_get_last_time_error(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_send_lda_update(int, const Request&, std::vector<char>&, int);
+  bool process_get_lda_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_slices_indices(int, 
+                                  const Request&, 
+                                  std::vector<char>&, 
+                                  int);
+  bool process_send_ll_update(int, const Request&, std::vector<char>&, int);
+  bool process_send_time(int, const Request&, std::vector<char>&, int);
+  bool process_get_value(int, const Request&, std::vector<char>&, int);
+  bool process_set_value(int, const Request&, std::vector<char>&, int);
+  bool process_register_task(int, const Request&, std::vector<char>&, int);
+  bool process_deregister_task(int, const Request&, std::vector<char>&, int);
 
   void kill_server();
 
@@ -424,6 +436,14 @@ class PSSparseServerTask : public MLTask {
   // barrier to synchronize threads init
   std::unique_ptr<pthread_barrier_t, void (*)(pthread_barrier_t*)>
       threads_barrier;
+
+  std::unordered_map<
+      uint32_t,
+      std::function<bool(int, const Request&, std::vector<char>&, int)>>
+      operation_to_f;
+
+  std::unordered_map<std::string, std::pair<uint32_t, std::shared_ptr<char>>>
+      key_value_map;
 };
 
 class MFNetflixTask : public MLTask {

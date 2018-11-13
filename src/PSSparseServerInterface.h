@@ -55,6 +55,21 @@ class PSSparseServerInterface {
          time_whole = 0.0, time_create_model = 0.0, time_receive_size = 0.0;
   int slice_id = -1;
   /*
+   * Set key-value pair
+   * @param key Key name
+   * @param value Value is a blob of bytes
+   * @param size Size of value in bytes
+   */
+  void set_value(const std::string& key, char* data, uint32_t size);
+
+  /*
+   * Get key-value pair
+   * @param key Key name
+   * @return Returns pointer to raw value
+   */
+  std::pair<std::shared_ptr<char>, uint32_t> get_value(const std::string& key);
+
+  /*
    * Marks task as running on the parameter server
    * Used to guarantee there are no duplicate tasks
    * @param id Unique id of task
