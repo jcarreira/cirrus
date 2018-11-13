@@ -372,7 +372,6 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
                                                const Request& req,
                                                std::vector<char>& thread_buffer,
                                                int) {
-
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
     handle_failed_read(&req.poll_fd);
@@ -519,7 +518,6 @@ bool PSSparseServerTask::process_send_time(int sock,
                                            const Request& req,
                                            std::vector<char>& thread_buffer,
                                            int) {
-
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
     handle_failed_read(&req.poll_fd);
