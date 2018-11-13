@@ -39,7 +39,8 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 				$(CIRRUS_SRC_DIR)/LoadingLDATaskS3.cpp \
 				$(CIRRUS_SRC_DIR)/LDATaskS3.cpp \
 				$(CIRRUS_SRC_DIR)/LDADataset.cpp \
-				$(CIRRUS_SRC_DIR)/LDAModel.cpp
+				$(CIRRUS_SRC_DIR)/LDAModel.cpp \
+				$(CIRRUS_SRC_DIR)/gamma.cpp
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \

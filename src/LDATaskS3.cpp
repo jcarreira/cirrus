@@ -99,7 +99,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   std::cout << "[WORKER] "
             << "num s3 batches: " << num_s3_batches << std::endl;
-  wait_for_start(worker, nworkers);
+  // wait_for_start(worker, nworkers);
 
   // pre-assign the documents for workers
   auto train_range = config.get_train_range();
