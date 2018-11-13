@@ -204,7 +204,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   char* msg = new char[MAX_MSG_SIZE];
   char* msg_begin = msg; // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
-  store_value<uint32_t>(msg, 0); // we will write this value later
+  store_value<uint32_t>(msg, 1); // we will write this value later
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   store_value<uint32_t>(msg, MAGIC_NUMBER); // magic value
