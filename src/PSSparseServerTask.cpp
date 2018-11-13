@@ -1284,9 +1284,12 @@ void PSSparseServerTask::run(const Configuration& config) {
                 << std::endl;
       gradientUpdatesCount = 0;
 
-      if ((int) since_start_sec % 10 == 0) {
-        compute_loglikelihood();
+      if (task_config.get_model_type() == cirrus::Configuration::LDA ) {
+        if ((int) since_start_sec % 10 == 0) {
+          compute_loglikelihood();
+        }
       }
+
       register_lock.lock();
       check_tasks_lifetime();
       register_lock.unlock();
