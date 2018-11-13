@@ -34,7 +34,6 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
-				$(CIRRUS_SRC_DIR)/gamma.cpp \
 				$(CIRRUS_SRC_DIR)/LDAStatistics.cpp \
 				$(CIRRUS_SRC_DIR)/LoadingLDATaskS3.cpp \
 				$(CIRRUS_SRC_DIR)/LDATaskS3.cpp \
