@@ -116,10 +116,10 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_send_lda_update, this, _1, _2, _3, _4);
   operation_to_f[GET_LDA_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lda_model, this, _1, _2, _3, _4);
-  operation_to_f[GET_LDA_SLICES_IDX] =
-      std::bind(&PSSparseServerTask::process_get_slices_indices, this, _1, _2, _3, _4);
-  operation_to_f[SEND_LL_NDT] =
-      std::bind(&PSSparseServerTask::process_send_ll_update, this, _1, _2, _3, _4);
+  operation_to_f[GET_LDA_SLICES_IDX] = std::bind(
+      &PSSparseServerTask::process_get_slices_indices, this, _1, _2, _3, _4);
+  operation_to_f[SEND_LL_NDT] = std::bind(
+      &PSSparseServerTask::process_send_ll_update, this, _1, _2, _3, _4);
   operation_to_f[SEND_TIME] =
       std::bind(&PSSparseServerTask::process_send_time, this, _1, _2, _3, _4);
 }
@@ -226,7 +226,6 @@ bool PSSparseServerTask::process_send_lda_update(
     const Request& req,
     std::vector<char>& thread_buffer,
     int) {
-
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
     handle_failed_read(&req.poll_fd);
@@ -369,11 +368,10 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   return true;
 }
 
-bool PSSparseServerTask::process_get_lda_model(
-    int sock,
-    const Request& req,
-    std::vector<char>& thread_buffer,
-    int) {
+bool PSSparseServerTask::process_get_lda_model(int sock,
+                                               const Request& req,
+                                               std::vector<char>& thread_buffer,
+                                               int) {
 
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
@@ -463,7 +461,6 @@ bool PSSparseServerTask::process_get_slices_indices(
     const Request& req,
     std::vector<char>& thread_buffer,
     int) {
-
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
     handle_failed_read(&req.poll_fd);
@@ -494,7 +491,6 @@ bool PSSparseServerTask::process_send_ll_update(
     const Request& req,
     std::vector<char>& thread_buffer,
     int) {
-
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
     handle_failed_read(&req.poll_fd);
@@ -519,11 +515,10 @@ bool PSSparseServerTask::process_send_ll_update(
   return true;
 }
 
-bool PSSparseServerTask::process_send_time(
-    int sock,
-    const Request& req,
-    std::vector<char>& thread_buffer,
-    int) {
+bool PSSparseServerTask::process_send_time(int sock,
+                                           const Request& req,
+                                           std::vector<char>& thread_buffer,
+                                           int) {
 
   uint32_t incoming_size = 0;
   if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {

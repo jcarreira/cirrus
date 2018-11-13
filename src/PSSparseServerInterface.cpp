@@ -538,5 +538,5 @@ std::pair<std::shared_ptr<char>, uint32_t> PSSparseServerInterface::get_value(
 
   return std::make_pair(value_data, size);
 }
-  
+
 }  // namespace cirrus

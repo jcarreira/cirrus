@@ -316,10 +316,7 @@ class PSSparseServerTask : public MLTask {
                                    int);
   bool process_send_lda_update(int, const Request&, std::vector<char>&, int);
   bool process_get_lda_model(int, const Request&, std::vector<char>&, int);
-  bool process_get_slices_indices(int, 
-                                  const Request&, 
-                                  std::vector<char>&, 
-                                  int);
+  bool process_get_slices_indices(int, const Request&, std::vector<char>&, int);
   bool process_send_ll_update(int, const Request&, std::vector<char>&, int);
   bool process_send_time(int, const Request&, std::vector<char>&, int);
   bool process_get_value(int, const Request&, std::vector<char>&, int);
