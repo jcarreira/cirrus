@@ -222,9 +222,16 @@ bool PSSparseServerTask::process_send_lr_gradient(
 }
 
 bool PSSparseServerTask::process_send_lda_update(
+    int sock,
     const Request& req,
-    std::vector<char>& thread_buffer) {
-  uint32_t incoming_size = req.incoming_size;
+    std::vector<char>& thread_buffer,
+    int) {
+
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
 #ifdef DEBUG
   std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
             << std::endl;
@@ -363,8 +370,17 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 }
 
 bool PSSparseServerTask::process_get_lda_model(
+    int sock,
     const Request& req,
-    std::vector<char>& thread_buffer) {
+    std::vector<char>& thread_buffer,
+    int) {
+
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
   auto start_time_benchmark = get_time_ms();
   auto start_time_temp = get_time_ms();
 
@@ -443,8 +459,16 @@ bool PSSparseServerTask::process_get_lda_model(
 }
 
 bool PSSparseServerTask::process_get_slices_indices(
+    int sock,
     const Request& req,
-    std::vector<char>& thread_buffer) {
+    std::vector<char>& thread_buffer,
+    int) {
+
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
   int local_model_id;
   read_all(req.sock, &local_model_id, sizeof(int));
 
@@ -466,8 +490,17 @@ bool PSSparseServerTask::process_get_slices_indices(
 }
 
 bool PSSparseServerTask::process_send_ll_update(
+    int sock,
     const Request& req,
-    std::vector<char>& thread_buffer) {
+    std::vector<char>& thread_buffer,
+    int) {
+
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
   int bucket_id;
   if (read_all(req.sock, &bucket_id, sizeof(int)) == -1) {
     return false;
@@ -486,8 +519,18 @@ bool PSSparseServerTask::process_send_ll_update(
   return true;
 }
 
-bool PSSparseServerTask::process_send_time(const Request& req,
-                                           std::vector<char>& thread_buffer) {
+bool PSSparseServerTask::process_send_time(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
   double comm_time, sampling_time;
   if (read_all(req.sock, &comm_time, sizeof(double)) == -1) {
     return false;
@@ -881,7 +924,7 @@ void PSSparseServerTask::gradient_f() {
     std::cout << "Operation: " << operation << " - "
               << operation_to_name[operation] << std::endl;
 #endif
-    
+
     if (operation_to_f.find(operation) == operation_to_f.end()) {
       throw std::runtime_error("Unknown operation");
     }
