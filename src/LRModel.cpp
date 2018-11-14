@@ -54,6 +54,29 @@ uint64_t LRModel::getSerializedSize() const {
     return size() * sizeof(FEATURE_TYPE);
 }
 
+/*
+ * serialize to assuming hashing shard
+ */
+uint64_t LRModel::serializeTo(void* mem, int server_number, int num_ps) const {
+	uint32_t size = 0;
+	void* mem_begin = mem;
+	store_value<uint32_t>(mem, -1);
+	store_value<uint32_t>(mem, -1);
+	std::hash<uint32_t> hash;
+	int largest_weight = -1;
+	for (int i = 0; i < weights_.size(); i++) {
+		if ((hash(i) % num_ps) == server_number) {
+			store_value<FEATURE_TYPE>(mem, weights_[i]);	
+			size++;
+			largest_weight = i;
+		}
+	}
+	store_value<int>(mem_begin, size);
+	store_value<int>(mem_begin, largest_weight);
+	uint32_t to_send_size = size * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
+	return to_send_size;
+}
+
 void LRModel::loadSerialized(const void* data) {
     const FEATURE_TYPE* v = reinterpret_cast<const FEATURE_TYPE*>(data);
     std::copy(v, v + size(), weights_.begin());

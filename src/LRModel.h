@@ -52,6 +52,8 @@ class LRModel : public CirrusModel {
       */
     void serializeTo(void* mem) const;
 
+	uint64_t serializeTo(void* mem, int server_number, int num_ps) const;
+
     /**
      * Create new model from serialized weights
      * @param data Memory where the serialized model lives

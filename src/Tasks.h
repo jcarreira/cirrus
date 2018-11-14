@@ -365,7 +365,8 @@ class PSSparseServerTask : public MLTask {
                                 std::vector<char>& thread_buffer);
   bool process_get_mf_full_model(const Request& req,
                                  std::vector<char>& thread_buffer);
-
+  bool process_get_lr_full_sparse_model(const Request& req,
+		  						 std::vector<char>& thread_buffer);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);

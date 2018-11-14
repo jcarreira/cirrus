@@ -284,6 +284,7 @@ std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
   } else {
     std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);
     for (int i = 0; i < psints.size(); i++) {
+	  std::cout << "[ERROR_TASK] Calling inplace full model get" << std::endl;
       psints[i]->get_full_model_inplace(model, i, psints.size());
     }
     return std::move(model);

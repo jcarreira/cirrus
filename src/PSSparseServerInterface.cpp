@@ -246,22 +246,40 @@ void PSSparseServerInterface::get_full_model_inplace(
     int server_id,
     int num_ps) {
   // 1. Send operation
-  uint32_t operation = GET_LR_FULL_MODEL;
+  std::cout << "[ERROR_TASK] Sending OP" << std::endl;
+  uint32_t operation = GET_LR_FULL_SPARSE_MODEL;
   send_all(sock, &operation, sizeof(uint32_t));
-  // 2. receive size from PS
+
+  // 2. Send data to PS
+  std::cout << "[ERROR_TASK] Got back data" << std::endl;
+  char* server_data = new char[sizeof(int) * 2];
+  char* server_data_ptr = server_data;
+  store_value<int>(server_data_ptr, server_id);
+  store_value<int>(server_data_ptr, num_ps);
+  if (send_all(sock, server_data, sizeof(int) * 2) == 0) {
+    throw std::runtime_error("Error talking to PS");
+  }
+
+
+  // 3. receive size from PS
+  std::cout << "[ERROR_TASK] Parsing" << std::endl;
   int model_size;
   if (read_all(sock, &model_size, sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
+  std::cout << "[ERROR_TASK] Got model size" << std::endl;
   char* model_data = new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)];
   char* model_data_ptr = model_data;
   store_value<int>(model_data_ptr, model_size);
 
-  if (read_all(sock, model_data_ptr, model_size * sizeof(FEATURE_TYPE)) == 0) {
+  std::cout << "[ERROR_TASK] Reading" << std::endl;
+  if (read_all(sock, model_data_ptr, model_size * sizeof(FEATURE_TYPE) + sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
+  std::cout << "[ERROR_TASK] Reading done!" << std::endl;
   model->loadSerialized(model_data, server_id, num_ps);
 
+  std::cout << "[ERROR_TASK] Finished " << server_id << std::endl;
   delete[] model_data;
 }
 

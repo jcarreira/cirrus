@@ -52,6 +52,7 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
   operation_to_name[7] = "GET_TASK_STATUS";
   operation_to_name[8] = "REGISTER_TASK";
   operation_to_name[9] = "GET_NUM_CONNS";
+  operation_to_name[10] = "GET_LR_FULL_SPARSE_MODEL";
 
   for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
     thread_msg_buffer[i].reset(new char[THREAD_MSG_BUFFER_SIZE]);
@@ -286,6 +287,35 @@ bool PSSparseServerTask::process_get_lr_full_model(
   return true;
 }
 
+bool PSSparseServerTask::process_get_lr_full_sparse_model(
+		const Request& req, std::vector<char>& thread_buffer) {
+  
+  model_lock.lock();
+  auto lr_model_copy = *lr_model;
+  model_lock.unlock();
+
+  int server_id = -1;
+  int num_ps = -1;
+  std::cout << "About to read server_id, num_ps" << std::endl;
+  try {
+    if (read_all(req.sock, &server_id, sizeof(int)) == 0) {
+      return false;
+    }
+    if (read_all(req.sock, &num_ps, sizeof(int)) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
+  }
+  
+  std::cout << "Got read server_id, num_ps" << std::endl;
+  uint32_t send_size = lr_model_copy.serializeTo(thread_buffer.data(), server_id, num_ps);
+  std::cout << "Send size" << send_size << std::endl;
+  if (send_all(req.sock, thread_buffer.data(), send_size) == -1)
+	  return false;
+  return true;
+}
+
 void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
   if (close(pfd->fd) != 0) {
     std::cout << "Error closing socket. errno: " << errno << std::endl;
@@ -332,10 +362,8 @@ void PSSparseServerTask::gradient_f() {
       continue;
     }
 
-#ifdef DEBUG
     std::cout << "Operation: " << operation << " - "
-              << operation_to_name[operation] << std::endl;
-#endif
+              << operation_to_name[operation] << " " << GET_LR_FULL_SPARSE_MODEL << std::endl;
 
     if (operation == REGISTER_TASK) {
       // read the task id
@@ -392,7 +420,11 @@ void PSSparseServerTask::gradient_f() {
     } else if (operation == GET_LR_FULL_MODEL) {
       if (!process_get_lr_full_model(req, thread_buffer))
         break;
-    } else if (operation == GET_MF_FULL_MODEL) {
+    } else if (operation == GET_LR_FULL_SPARSE_MODEL) {
+      std::cout << "GET_LR_FULL_SPARSE_MODEL" << std::endl;
+      if (!process_get_lr_full_sparse_model(req, thread_buffer))
+        break;
+	} else if (operation == GET_MF_FULL_MODEL) {
       if (!process_get_mf_full_model(req, thread_buffer))
         break;
     } else if (operation == GET_TASK_STATUS) {
