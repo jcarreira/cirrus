@@ -18,6 +18,7 @@ It has been tested with the following environment / dependencies:
 In the Amazon AMI please do:
 
     $ sudo yum install glibc-static openssl-static.x86_64 zlib-static.x86_64 byacc libcurl-devel.x86_64
+    $ # download and install cmake 3.X
 
 In Ubuntu please do:
 
