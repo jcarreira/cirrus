@@ -17,9 +17,7 @@ It has been tested with the following environment / dependencies:
 
 In the Amazon AMI please do:
 
-    $ sudo yum install glibc-static
-    $ sudo yum install openssl-static.x86_64
-    $ sudo yum install zlib-static.x86_64
+    $ sudo yum install glibc-static openssl-static.x86_64 zlib-static.x86_64 byacc libcurl-devel.x86_64
 
 In Ubuntu please do:
 
