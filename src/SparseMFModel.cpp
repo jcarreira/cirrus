@@ -135,6 +135,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
   void SparseMFModel::loadSerializedShard(const void* data,
                                           int server_id,
                                           int num_ps) {
+	std::hash<int> hash;
     uint64_t nusers_ = load_value<uint64_t>(data);
     uint64_t nitems_ = load_value<uint64_t>(data);
     load_value<uint64_t>(data);
@@ -162,8 +163,8 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
 
     for (uint64_t i = 0; i < nitems_; ++i) {
       std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
-      uint32_t item_id = i * num_ps + server_id;
-      if (item_id >= 17770) {
+      uint32_t item_id = i;
+      if (item_id >= 17770 or hash(item_id) % num_ps != server_id) {
         FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -189,8 +190,8 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
 
     for (uint32_t i = 0; i < nitems_; ++i) {
       for (uint32_t j = 0; j < nfactors_; ++j) {
-        uint32_t item_id = i * num_ps + server_id;
-        if (item_id >= 17770) {
+        uint32_t item_id = i;
+        if (item_id >= 17770 or hash(item_id) % num_ps != server_id) {
           FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
           continue;
         }
@@ -266,7 +267,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
       uint32_t user_id = (raw_id % (minibatch_size / num_ps)) +
                          (minibatch_size / num_ps) * server_id +
                          (raw_id / (minibatch_size / num_ps)) * minibatch_size;
-
+      std::cout << "Got back user: " << user_id << std::endl;
       FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
       std::get<0>(user_model) = user_id;
       std::get<1>(user_model) = user_bias;
@@ -282,6 +283,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
     for (uint64_t i = 0; i < num_items; i++) {
       std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
       uint32_t item_id = load_value<uint32_t>(data);
+      std::cout << "Got back item: " << item_id << std::endl;
       FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
       std::get<0>(item_model) = item_bias;
       std::get<1>(item_model).resize(NUM_FACTORS);

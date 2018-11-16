@@ -78,7 +78,7 @@ uint64_t SparseLRModel::serializeTo(void* mem, int server_number, int num_ps) co
 	store_value<uint32_t>(mem, -1);
 	std::hash<uint32_t> hash;
 	int largest_weight = -1;
-	for (int i = 0; i < weights_.size() / num_ps; i++) {
+	for (int i = 0; i < weights_.size(); i++) {
 		if ((hash(i) % num_ps) == server_number) {
 			store_value<FEATURE_TYPE>(mem, weights_[i]);
 			size++;

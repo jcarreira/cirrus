@@ -415,6 +415,8 @@ uint64_t MFSparseGradient::getShardSerializedSize(int num_shards) const {
              (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
 }
 
+
+
 std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     void* mem,
     uint32_t minibatch_size,
@@ -436,9 +438,9 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   }
 
   for (const auto& item_bias : items_bias_grad) {
-    starts[item_bias.first % parts] +=
+    starts[hashfunc(item_bias.first) % parts] +=
         2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
-    icnts[item_bias.first % parts]++;
+    icnts[hashfunc(item_bias.first) % parts]++;
   }
 
   // starts[i] = number of items behind partition i
@@ -480,6 +482,7 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     // that lie previous
     uint64_t offset = starts[i];
     std::cout << "OFF " << offset << std::endl;
+	// Insert Magic value and counts at the beginning of the gradient
     put_value<uint32_t>(mem, MAGIC_NUMBER, offset);
     put_value<int>(mem, ucnt, offset + sizeof(int));
     put_value<int>(mem, icnt, offset + 2 * sizeof(int));
@@ -506,9 +509,9 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   for (const auto& bias_grad : items_bias_grad) {
     int index = bias_grad.first;
     FEATURE_TYPE v = bias_grad.second;
-    int ps_num = index % parts;
+    int ps_num = hashfunc(index) % parts;
     int position = starts[ps_num];
-    put_value<int>(mem, index / parts, position);
+    put_value<int>(mem, index, position);
     put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
     starts[ps_num] += sizeof(int) + sizeof(FEATURE_TYPE);
   }
@@ -535,9 +538,9 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   assert(items_weights_grad.size() == items_bias_grad.size());
   for (const auto& item : items_weights_grad) {
     int index = item.first;
-    int ps_num = index % parts;
+    int ps_num = hashfunc(index) % parts;
     int position = starts[ps_num];
-    put_value<int>(mem, index / parts, position);
+    put_value<int>(mem, index, position);
     starts[ps_num] += sizeof(int);
     assert(item.second.size() == NUM_FACTORS);
     for (const auto& item_grad : item.second) {
@@ -546,8 +549,9 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
     }
   }
 
+  // Put the magic value in the front of every gradient
   for (int i = 0; i < parts; i++)
-    put_value<uint32_t>(mem, MAGIC_NUMBER, starts[i]);
+    put_value<uint32_t>(mem, 0x1338, starts[i]);
 
   return starts_out;
 }

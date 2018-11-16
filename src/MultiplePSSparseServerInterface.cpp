@@ -100,7 +100,7 @@ void MultiplePSSparseServerInterface::send_mf_gradient(
 
   uint32_t size = gradient.getShardSerializedSize(num_ps);
   char data[size];
-  auto starts_and_size = gradient.shard_serialize(data, num_ps, minibatch_size);
+  auto starts_and_size = gradient.shard_serialize(data, minibatch_size, num_ps);
 
   for (int i = 0; i < num_ps; i++) {
     auto psint = psints[i];
@@ -222,20 +222,22 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     store_value<uint32_t>(msg_lst[i], user_base);
     store_value<uint32_t>(msg_lst[i], minibatch_size / num_servers);
     store_value<uint32_t>(msg_lst[i], MAGIC_NUMBER);
-    // user_base += minibatch_size / num_servers;
   }
 
   std::hash<uint32_t> hash_func;
-
   std::vector<std::vector<uint32_t>> movie_memory(num_servers);
+
+  for (int i = user_base; i < user_base + minibatch_size; i++)
+	  std::cout << "Request users: " << i << std::endl;
 
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t server_num = hash_func(w.first) % num_servers;
-	  movie_memory[server_num].push_back(w.first);
       uint32_t movieId = w.first;
       if (seen[server_num][movieId])
         continue;
+	  std::cout << "Request movie: " << movieId << std::endl;
+	  movie_memory[server_num].push_back(w.first);
       store_value<uint32_t>(msg_lst[server_num], movieId);
       seen[server_num][movieId] = true;
       item_ids_count_lst[server_num]++;
