@@ -17,9 +17,9 @@ std::pair<double, double> SparseMFModel::calc_loss(SparseDataset& dataset,
 
   for (uint64_t userId = 0; userId < dataset.data_.size(); ++userId) {
     uint64_t off_userId = userId + start_index;
-    for (uint64_t j = 0; j < dataset.data_.at(userId).size(); ++j) {
-      uint64_t movieId = dataset.data_.at(userId).at(j).first;
-      FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
+    for (uint64_t j = 0; j < dataset.data_[userId].size(); ++j) {
+      uint64_t movieId = dataset.data_[userId][j].first;
+      FEATURE_TYPE rating = dataset.data_[userId][j].second;
 
       FEATURE_TYPE prediction = predict(off_userId, movieId);
       FEATURE_TYPE e = rating - prediction;
@@ -57,7 +57,7 @@ void SparseMFModel::initialize_weights(uint64_t users,
 
   user_bias_reg_ = 0.05;
   item_bias_reg_ = 0.05;
-  global_bias_ = 3.604;
+  global_bias_ = GLOBAL_BIAS;
 
   nusers_ = users;
   nitems_ = items;
@@ -140,18 +140,18 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
     uint64_t nitems_ = load_value<uint64_t>(data);
     load_value<uint64_t>(data);
     uint64_t nfactors_ = NUM_FACTORS;
-    global_bias_ = 3.604;
-    int minibatch_size = 20;
+    global_bias_ = GLOBAL_BIAS;
+    int minibatch_size = NETFLIX_MB_SIZE;
     uint64_t user_base = (minibatch_size / num_ps) * server_id;
 
-    if (user_models.size() < 480189)
-      user_models.resize(480189);
+    if (user_models.size() < NUM_USERS)
+      user_models.resize(NUM_USERS);
     
     for (uint64_t i = 0; i < nusers_; ++i) {
       uint32_t user_id = (i % (minibatch_size / num_ps)) +
                          (minibatch_size / num_ps) * server_id +
                          (i / (minibatch_size / num_ps)) * minibatch_size;
-      if (user_id >= 480189) {
+      if (user_id >= NUM_USERS) {
         FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -164,7 +164,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
     for (uint64_t i = 0; i < nitems_; ++i) {
       std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
       uint32_t item_id = i;
-      if (item_id >= 17770 or hash(item_id) % num_ps != server_id) {
+      if (item_id >= NUM_ITEMS or hash(item_id) % num_ps != server_id) {
         FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -179,7 +179,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
         uint32_t user_id = (i % (minibatch_size / num_ps)) +
                            (minibatch_size / num_ps) * server_id +
                            (i / (minibatch_size / num_ps)) * minibatch_size;
-        if (user_id >= 480189) {
+        if (user_id >= NUM_USERS) {
           FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
           continue;
         }
@@ -191,7 +191,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
     for (uint32_t i = 0; i < nitems_; ++i) {
       for (uint32_t j = 0; j < nfactors_; ++j) {
         uint32_t item_id = i;
-        if (item_id >= 17770 or hash(item_id) % num_ps != server_id) {
+        if (item_id >= NUM_ITEMS or hash(item_id) % num_ps != server_id) {
           FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
           continue;
         }
@@ -225,7 +225,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
       user_models.push_back(user_model);
     }
     // XXX: We need to remove this hardcode. This only works for Netflix dataset
-    global_bias_ = 3.604;
+    global_bias_ = GLOBAL_BIAS;
     // now we read the item vectors
     for (uint64_t i = 0; i < num_item_ids; ++i) {
       std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
@@ -238,8 +238,6 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
         std::get<1>(item_model)[j] = item_weight;
       }
       item_models[item_id] = item_model;
-      // std::cout << "item_id: " << item_id << " model size: " <<
-      // item_model.second.size() << std::endl;
     }
 
 #ifdef DEBUG
@@ -258,7 +256,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
                                            int num_ps) {
     int minibatch_size = 20;
     nfactors_ = NUM_FACTORS;
-    global_bias_ = 3.604;  // TODO: Fix the global bias away from hardcode
+    global_bias_ = GLOBAL_BIAS;  // TODO: Fix the global bias away from hardcode
     
 	// Unload user data from serialization. User data is contiguous.
 	for (int i = 0; i < num_users; i++) {
@@ -386,9 +384,6 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
           }
 #endif
         }
-        // XXX moving this after this inner loop
-        // gradient->users_weights_grad.push_back(std::make_pair(real_user_id,
-        // std::move(user_weights_grad)));
 
         // update item latent factors
         for (uint64_t k = 0; k < nfactors_; ++k) {
@@ -420,15 +415,9 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
           }
 #endif
         }
-        // gradient->items_weights_grad.push_back(
-        //    std::make_pair(itemId, std::move(item_weights_grad)));
       }
       gradient->users_weights_grad.push_back(
           std::make_pair(real_user_id, std::move(user_weights_grad)));
-      // std::cout
-      //  << "user weights size: " << gradient->users_weights_grad.size()
-      //  << " user bias size: " << gradient->users_bias_grad.size() <<
-      //  std::endl;
     }
 
     for (const auto& item_id : item_weights_lst) {
@@ -496,7 +485,6 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
             (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
         k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
-    // std::vector<char> buffer(to_send_size);
     char* data_to_send_ptr = holder;
 
     // first we store data about users

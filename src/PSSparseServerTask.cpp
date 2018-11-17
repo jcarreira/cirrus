@@ -24,19 +24,23 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
                                        uint64_t features_per_sample,
                                        uint64_t nworkers,
                                        uint64_t worker_id,
-                                       const std::string& ps_ip,
-                                       uint64_t ps_port)
+                                       const Configuration& config, 
+                                       const std::vector<std::string>& ps_ips,
+                                       const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
              batch_size,
              samples_per_batch,
              features_per_sample,
              nworkers,
              worker_id,
-             ps_ip,
-             ps_port),
+             config, 
+             ps_ips,
+             ps_ports),
       kill_signal(false),
       main_thread(0),
       threads_barrier(new pthread_barrier_t, destroy_pthread_barrier) {
+
+  assert(ps_ports.size() == 1);      
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
@@ -554,6 +558,7 @@ void PSSparseServerTask::kill_server() {
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   // id=0 -> poll thread responsible for handling new connections
   if (poll_id == 0) {
+    int ps_port = ps_ports[0];
     pthread_barrier_wait(threads_barrier.get());
     std::cout << "Starting server, poll id " << poll_id << std::endl;
 

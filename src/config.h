@@ -39,4 +39,11 @@ using FEATURE_TYPE = float;
 #define NUM_POLL_THREADS 4
 
 // define number of parameter server working threads
-# define NUM_PS_WORK_THREADS 4
+#define NUM_PS_WORK_THREADS 4
+
+// Special params for Netflix Task
+#define GLOBAL_BIAS 3.604
+#define NUM_USERS 480189
+#define NUM_ITEMS 17770
+#define NETFLIX_MB_SIZE 20
+

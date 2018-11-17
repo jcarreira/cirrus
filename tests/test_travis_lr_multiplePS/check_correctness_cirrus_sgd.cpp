@@ -14,6 +14,13 @@
 
 using namespace cirrus;
 
+cirrus::Configuration config = cirrus::Configuration("configs/test_config.cfg");
+std::mutex model_lock;
+std::unique_ptr<SparseLRModel> model;
+double learning_rate = 0.00001;
+std::unique_ptr<OptimizationMethod> opt_method =
+    std::make_unique<SGD>(learning_rate);
+
 void print_info(const auto& samples) {
   std::cout << "Number of samples: " << samples.size() << std::endl;
   std::cout << "Number of cols: " << samples[0].size() << std::endl;
@@ -26,13 +33,6 @@ double check_error(SparseLRModel* model, SparseDataset& dataset) {
   std::cout << "total loss: " << loss << " avg loss: " << avg_loss << std::endl;
   return avg_loss;
 }
-
-cirrus::Configuration config = cirrus::Configuration("configs/test_config.cfg");
-std::mutex model_lock;
-std::unique_ptr<SparseLRModel> model;
-double learning_rate = 0.00001;
-std::unique_ptr<OptimizationMethod> opt_method =
-    std::make_unique<SGD>(learning_rate);
 
 void learning_function(const SparseDataset& dataset) {
   for (uint64_t i = 0; 20; ++i) {

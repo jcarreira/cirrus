@@ -24,29 +24,7 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
                                  uint64_t features_per_sample,
                                  uint64_t nworkers,
                                  uint64_t worker_id,
-                                 const std::string& ps_ip,
-                                 uint64_t ps_port)
-    : MLTask(model_size,
-             batch_size,
-             samples_per_batch,
-             features_per_sample,
-             nworkers,
-             worker_id,
-             ps_ip,
-             ps_port) {
-  ps_port = ps_port;
-  ps_ips.push_back(ps_ip);
-  ps_ports.push_back(ps_port);
-  std::atomic_init(&curr_error, 0.0);
-  port_num = ps_port + 1;
-}
-
-ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
-                                 uint64_t batch_size,
-                                 uint64_t samples_per_batch,
-                                 uint64_t features_per_sample,
-                                 uint64_t nworkers,
-                                 uint64_t worker_id,
+                                 const Configuration& config, 
                                  const std::vector<std::string>& ps_ips,
                                  const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
@@ -55,8 +33,11 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              features_per_sample,
              nworkers,
              worker_id,
+             config, 
              ps_ips,
              ps_ports) {
+  
+      std::atomic_init(&curr_error, 0.0);
   port_num = ps_ports.at(ps_ports.size() - 1) + 1;
   std::atomic_init(&curr_error, 0.0);
 }
@@ -69,7 +50,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   if (first_time) {
     first_time = false;
     if (ps_ips.size() > 1) {
-      psi = new MultiplePSSparseServerInterface(ps_ips, ps_ports);
+      psi = new MultiplePSSparseServerInterface(config, ps_ips, ps_ports);
     } else {
       psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
 

@@ -87,7 +87,6 @@ uint64_t SparseLRModel::serializeTo(void* mem, int server_number, int num_ps) co
 	}
 	store_value<int>(mem_begin, size);
 	store_value<int>(mem_begin, largest_weight);
-	std::cout << "Size: " << size << " largest_weight: " << largest_weight << std::endl;
 	uint32_t to_send_size = size * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
 	return to_send_size;
 }
@@ -104,9 +103,7 @@ void SparseLRModel::loadSerialized(const void* data,
   std::hash<uint32_t> hash;
   int num_weights = load_value<int>(data);
   int largest_weight = load_value<int>(data);
-  std::cout << "num_weights: " << num_weights << "largest weight:" << largest_weight << "size: " << weights_.size() << std::endl;
-  std::cout << "max_weights: " << weights_.max_size() << std::endl;
-  //assert(num_weights > 0 && num_weights < 10000000);
+  assert(num_weights > 0 && num_weights < 10000000);
   
   if (weights_.size() < largest_weight) {
     weights_.resize(largest_weight);
@@ -129,7 +126,7 @@ void SparseLRModel::loadSerialized(const void* data) {
   assert(num_weights > 0 && num_weights < 10000000);
 
   int size = num_weights * sizeof(FEATURE_TYPE) + sizeof(int);
-  char* data_begin = (char*)data;
+  void* data_begin = const_cast<void*>(data);
 
   weights_.resize(num_weights);
   std::copy(reinterpret_cast<FEATURE_TYPE*>(data_begin),

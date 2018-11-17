@@ -23,11 +23,11 @@ class PSSparseServerInterface {
   friend class MultiplePSSparseServerInterface;
 
  public:
-  PSSparseServerInterface(){};
+  PSSparseServerInterface() = default;
   PSSparseServerInterface(const std::string& ip, int port);
   virtual ~PSSparseServerInterface();
 
-  void connect();
+  virtual void connect();
 
   virtual void send_lr_gradient(const LRSparseGradient&);
   virtual void send_mf_gradient(const MFSparseGradient&);
@@ -75,8 +75,7 @@ class PSSparseServerInterface {
                               int server_id,
                               int num_ps);
 
-  int send_wrapper(uint32_t num, std::size_t size);
-  int send_all_wrapper(char* data, uint32_t size);
+  int send_all_wrapper(void* data, uint32_t size);
 
   std::string ip;
   int port;

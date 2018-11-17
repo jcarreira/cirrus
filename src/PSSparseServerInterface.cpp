@@ -76,11 +76,7 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
   }
 }
 
-int PSSparseServerInterface::send_wrapper(uint32_t num, std::size_t size) {
-  return send(sock, &num, size, 0);
-}
-
-int PSSparseServerInterface::send_all_wrapper(char* data, uint32_t size) {
+int PSSparseServerInterface::send_all_wrapper(void* data, uint32_t size) {
   return send_all(sock, data, size);
 }
 
@@ -130,11 +126,10 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   store_value<uint32_t>(msg, MAGIC_NUMBER);  // magic value
-  bool seen[17770] = {false};
+  bool seen[NUM_ITEMS] = {false};
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
-      std::cout << "Asked for " << movieId << std::endl;
       if (seen[movieId])
         continue;
       store_value<uint32_t>(msg, movieId);
@@ -145,11 +140,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
   msg = msg_begin;
   store_value<uint32_t>(msg, item_ids_count);  // store correct value here
   uint32_t operation = GET_MF_SPARSE_MODEL;
-  int ret;
-  std::cout << "SOCK " << sock << std::endl;
-  ret = send_all(sock, &operation, sizeof(uint32_t));
-  if (ret == -1)
-    std::cout << "ERROR ERROR ERROR" << std::endl;
+  int ret = send_all(sock, &operation, sizeof(uint32_t));
   uint32_t msg_size = sizeof(uint32_t) * 4 + sizeof(uint32_t) * item_ids_count;
   send_all(sock, &msg_size, sizeof(uint32_t));
   std::cout << msg_size << std::endl;
@@ -246,12 +237,10 @@ void PSSparseServerInterface::get_full_model_inplace(
     int server_id,
     int num_ps) {
   // 1. Send operation
-  std::cout << "[ERROR_TASK] Sending OP" << std::endl;
   uint32_t operation = GET_LR_FULL_SPARSE_MODEL;
   send_all(sock, &operation, sizeof(uint32_t));
 
   // 2. Send data to PS
-  std::cout << "[ERROR_TASK] Got back data" << std::endl;
   char* server_data = new char[sizeof(int) * 2];
   char* server_data_ptr = server_data;
   store_value<int>(server_data_ptr, server_id);
@@ -262,24 +251,19 @@ void PSSparseServerInterface::get_full_model_inplace(
 
 
   // 3. receive size from PS
-  std::cout << "[ERROR_TASK] Parsing" << std::endl;
   int model_size;
   if (read_all(sock, &model_size, sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
-  std::cout << "[ERROR_TASK] Got model size" << std::endl;
   char* model_data = new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)];
   char* model_data_ptr = model_data;
   store_value<int>(model_data_ptr, model_size);
 
-  std::cout << "[ERROR_TASK] Reading" << std::endl;
   if (read_all(sock, model_data_ptr, model_size * sizeof(FEATURE_TYPE) + sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
-  std::cout << "[ERROR_TASK] Reading done!" << std::endl;
   model->loadSerialized(model_data, server_id, num_ps);
 
-  std::cout << "[ERROR_TASK] Finished " << server_id << std::endl;
   delete[] model_data;
 }
 
