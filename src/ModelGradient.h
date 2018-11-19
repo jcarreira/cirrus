@@ -106,8 +106,9 @@ class LRSparseGradient : public ModelGradient {
 
     void loadSerialized(const void*);
     void serialize(void*) const override;
-    std::array<std::tuple<int, int>, MAX_NUM_PS> shard_serialize(void* mem,
-                                                      uint32_t parts) const;
+    std::array<std::tuple<int, int>, MAX_NUM_PS> shard_serialize(
+        void* mem,
+        uint32_t parts) const;
     uint64_t getSerializedSize() const override;
     uint64_t getShardSerializedSize(int num_ps) const;
 
@@ -169,9 +170,8 @@ class MFSparseGradient : public ModelGradient {
     uint64_t getSerializedSize() const override;
 
     uint64_t getShardSerializedSize(int num_shards) const;
-    std::array<std::tuple<int, int>, MAX_NUM_PS> shard_serialize(void* mem,
-                                                      uint32_t minibatch_size,
-                                                      uint32_t parts) const;
+    std::array<std::tuple<int, int>, MAX_NUM_PS>
+    shard_serialize(void* mem, uint32_t minibatch_size, uint32_t parts) const;
 
     void print() const {
       std::cout << users_bias_grad.size() << " / " << users_weights_grad.size() << std::endl;

@@ -45,15 +45,15 @@ void run_tasks(int rank,
      * Number of tasks is determined by the value of nworkers
      */
     if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION) {
-        cirrus::LogisticSparseTaskS3 lt(features_per_sample, batch_size,
-                                        samples_per_batch, features_per_sample,
-                                        nworkers, rank, config, ps_ips, ps_ports);
-        lt.run(config, rank - WORKERS_BASE);
+      cirrus::LogisticSparseTaskS3 lt(features_per_sample, batch_size,
+                                      samples_per_batch, features_per_sample,
+                                      nworkers, rank, config, ps_ips, ps_ports);
+      lt.run(config, rank - WORKERS_BASE);
     } else if (config.get_model_type()
             == cirrus::Configuration::COLLABORATIVE_FILTERING) {
       cirrus::MFNetflixTask lt(0, batch_size, samples_per_batch,
-                               features_per_sample, nworkers, rank, config, ps_ips,
-                               ps_ports);
+                               features_per_sample, nworkers, rank, config,
+                               ps_ips, ps_ports);
       lt.run(config, rank - WORKERS_BASE);
     } else {
       exit(-1);
@@ -63,8 +63,8 @@ void run_tasks(int rank,
     */
   } else if (rank == ERROR_SPARSE_TASK_RANK) {
     cirrus::ErrorSparseTask et((1 << config.get_model_bits()), batch_size,
-                               samples_per_batch, features_per_sample,
-                               nworkers, rank, config, ps_ips, ps_ports);
+                               samples_per_batch, features_per_sample, nworkers,
+                               rank, config, ps_ips, ps_ports);
     et.run(config);
     cirrus::sleep_forever();
 

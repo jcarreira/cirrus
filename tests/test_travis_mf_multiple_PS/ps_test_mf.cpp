@@ -11,6 +11,7 @@ int main(int argc, char* argv[]) {
 
   cirrus::PSSparseServerTask st(
       (1 << config.get_model_bits()) + 1, config.get_minibatch_size(),
-      config.get_minibatch_size(), config.get_num_features(), 2, 1, config, ips, ports);
+      config.get_minibatch_size(), config.get_num_features(), 2, 1, config, ips,
+      ports);
   st.run(config);
 }

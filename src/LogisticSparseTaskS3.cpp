@@ -12,13 +12,11 @@
 
 namespace cirrus {
 
-void LogisticSparseTaskS3::get_new_model_inplace(const SparseDataset& ds, 
-    SparseLRModel& model, const Configuration& config) {
-  
+void LogisticSparseTaskS3::get_new_model_inplace(const SparseDataset& ds,
+                                                 SparseLRModel& model,
+                                                 const Configuration& config) {
   psint->get_lr_sparse_model_inplace(ds, model, config);
-
 }
-
 
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
   auto before_push_us = get_time_us();
@@ -92,11 +90,12 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   uint64_t version = 1;
   SparseLRModel model(1 << config.get_model_bits());
-  
+
   if (ps_ips.size() > 1) {
     psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
   } else {
-    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips, ps_ports);
+    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
+                                                              ps_ports);
   }
   while (true) {
     try {

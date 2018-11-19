@@ -12,15 +12,13 @@
 
 namespace cirrus {
 
-
 void MFNetflixTask::get_new_model_inplace(const SparseDataset& ds,
-    SparseMFModel& model,
-    const Configuration& config,
-    uint64_t user_base_index,
-    uint64_t mb_size) {
-
-  psint->get_mf_sparse_model_inplace(ds, model, config, user_base_index, mb_size);
-
+                                          SparseMFModel& model,
+                                          const Configuration& config,
+                                          uint64_t user_base_index,
+                                          uint64_t mb_size) {
+  psint->get_mf_sparse_model_inplace(ds, model, config, user_base_index,
+                                     mb_size);
 }
 
 void MFNetflixTask::push_gradient(MFSparseGradient* mfg) {
@@ -118,9 +116,10 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
   S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
                            config.get_minibatch_size(), false, worker, false,
                            false);
-  
+
   if (ps_ips.size() > 1) {
-    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips, ps_ports);
+    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
+                                                              ps_ports);
   } else {
     psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
 
@@ -156,8 +155,9 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    get_new_model_inplace(*dataset, model, config, sample_index, config.get_minibatch_size());
-    
+    get_new_model_inplace(*dataset, model, config, sample_index,
+                          config.get_minibatch_size());
+
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;

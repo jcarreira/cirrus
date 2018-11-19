@@ -24,7 +24,7 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
                                  uint64_t features_per_sample,
                                  uint64_t nworkers,
                                  uint64_t worker_id,
-                                 const Configuration& config, 
+                                 const Configuration& config,
                                  const std::vector<std::string>& ps_ips,
                                  const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
@@ -33,11 +33,10 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              features_per_sample,
              nworkers,
              worker_id,
-             config, 
+             config,
              ps_ips,
              ps_ports) {
-  
-      std::atomic_init(&curr_error, 0.0);
+  std::atomic_init(&curr_error, 0.0);
   port_num = ps_ports.at(ps_ports.size() - 1) + 1;
   std::atomic_init(&curr_error, 0.0);
 }
@@ -171,7 +170,7 @@ void ErrorSparseTask::run(const Configuration& config) {
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
 
-    //  try {
+//  try {
 // first we get the model
 #ifdef DEBUG
     std::cout << "[ERROR_TASK] getting the full model"

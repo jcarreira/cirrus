@@ -87,8 +87,7 @@ class LogisticSparseTaskS3 : public MLTask {
                 worker_id,
                 config,
                 ps_ips,
-                ps_ports) {
-   }
+                ps_ports) {}
 
    /**
     * Worker here is a value 0..nworkers - 1
@@ -100,7 +99,9 @@ class LogisticSparseTaskS3 : public MLTask {
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                                S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
-    void get_new_model_inplace(const SparseDataset& ds, SparseLRModel& model, const Configuration& config);
+    void get_new_model_inplace(const SparseDataset& ds,
+                               SparseLRModel& model,
+                               const Configuration& config);
 
     std::mutex redis_lock;
     std::unique_ptr<PSSparseServerInterface> psint;
@@ -108,16 +109,17 @@ class LogisticSparseTaskS3 : public MLTask {
 
 class PSSparseTask : public MLTask {
   public:
-    PSSparseTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, 
-        const Configuration& config,
-        const std::string& ps_ip,
-        uint64_t ps_port);
+   PSSparseTask(uint64_t model_size,
+                uint64_t batch_size,
+                uint64_t samples_per_batch,
+                uint64_t features_per_sample,
+                uint64_t nworkers,
+                uint64_t worker_id,
+                const Configuration& config,
+                const std::string& ps_ip,
+                uint64_t ps_port);
 
-    void run(const Configuration& config);
+   void run(const Configuration& config);
 
   private:
     void put_model(const SparseLRModel& model);
@@ -142,7 +144,6 @@ class PSSparseTask : public MLTask {
 
 class ErrorSparseTask : public MLTask {
   public:
-
    ErrorSparseTask(uint64_t model_size,
                    uint64_t batch_size,
                    uint64_t samples_per_batch,
@@ -167,46 +168,58 @@ class ErrorSparseTask : public MLTask {
 
 class PerformanceLambdaTask : public MLTask {
   public:
-    PerformanceLambdaTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, 
-        const Configuration& config,
-        const std::vector<std::string>& ps_ips,
-        const std::vector<uint64_t>& ps_ports) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, config, ps_ips, ps_ports)
-  {}
+   PerformanceLambdaTask(uint64_t model_size,
+                         uint64_t batch_size,
+                         uint64_t samples_per_batch,
+                         uint64_t features_per_sample,
+                         uint64_t nworkers,
+                         uint64_t worker_id,
+                         const Configuration& config,
+                         const std::vector<std::string>& ps_ips,
+                         const std::vector<uint64_t>& ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config);
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config);
 
   private:
 };
 
 class LoadingSparseTaskS3 : public MLTask {
   public:
-    LoadingSparseTaskS3(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, 
-        const Configuration& config,
-        const std::vector<std::string>& ps_ips,
-        const std::vector<uint64_t>& ps_ports) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, config, ps_ips, ps_ports)
-  {}
-    void run(const Configuration& config);
-    SparseDataset read_dataset(const Configuration& config);
-    void check_loading(const Configuration&,
-                       std::unique_ptr<S3Client>& s3_client);
-    void check_label(FEATURE_TYPE label);
+   LoadingSparseTaskS3(uint64_t model_size,
+                       uint64_t batch_size,
+                       uint64_t samples_per_batch,
+                       uint64_t features_per_sample,
+                       uint64_t nworkers,
+                       uint64_t worker_id,
+                       const Configuration& config,
+                       const std::vector<std::string>& ps_ips,
+                       const std::vector<uint64_t>& ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
+   void run(const Configuration& config);
+   SparseDataset read_dataset(const Configuration& config);
+   void check_loading(const Configuration&,
+                      std::unique_ptr<S3Client>& s3_client);
+   void check_label(FEATURE_TYPE label);
 
   private:
 };
@@ -326,7 +339,7 @@ class PSSparseServerTask : public MLTask {
   bool process_get_mf_full_model(const Request& req,
                                  std::vector<char>& thread_buffer);
   bool process_get_lr_full_sparse_model(const Request& req,
-		  						 std::vector<char>& thread_buffer);
+                                        std::vector<char>& thread_buffer);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
@@ -426,8 +439,7 @@ class MFNetflixTask : public MLTask {
                 worker_id,
                 config,
                 ps_ips,
-                ps_ports) {
-   }
+                ps_ports) {}
 
    /**
     * Worker here is a value 0..nworkers - 1
@@ -439,10 +451,10 @@ class MFNetflixTask : public MLTask {
                               S3SparseIterator& s3_iter);
    void push_gradient(MFSparseGradient*);
    void get_new_model_inplace(const SparseDataset& ds,
-                                SparseMFModel& model,
-                                const Configuration& config,
-                                uint64_t user_base_index,
-                                uint64_t mb_size);
+                              SparseMFModel& model,
+                              const Configuration& config,
+                              uint64_t user_base_index,
+                              uint64_t mb_size);
 
    std::unique_ptr<PSSparseServerInterface> psint;
 };

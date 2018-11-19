@@ -26,7 +26,7 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
                                        uint64_t features_per_sample,
                                        uint64_t nworkers,
                                        uint64_t worker_id,
-                                       const Configuration& config, 
+                                       const Configuration& config,
                                        const std::vector<std::string>& ps_ips,
                                        const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
@@ -35,14 +35,13 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
              features_per_sample,
              nworkers,
              worker_id,
-             config, 
+             config,
              ps_ips,
              ps_ports),
       main_thread(0),
       kill_signal(false),
       threads_barrier(new pthread_barrier_t, destroy_pthread_barrier) {
-
-  assert(ps_ports.size() == 1);      
+  assert(ps_ports.size() == 1);
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
@@ -73,7 +72,6 @@ void PSSparseServerTask::set_operation_maps() {
   operation_to_name[SET_VALUE] = "SET_VALUE";
   operation_to_name[GET_VALUE] = "GET_VALUE";
   operation_to_name[GET_LR_FULL_SPARSE_MODEL] = "GET_LR_FULL_SPARSE_MODEL";
-
 
   using namespace std::placeholders;
   operation_to_f[SEND_LR_GRADIENT] = std::bind(
@@ -369,8 +367,8 @@ bool PSSparseServerTask::process_get_lr_full_model(
 }
 
 bool PSSparseServerTask::process_get_lr_full_sparse_model(
-		const Request& req, std::vector<char>& thread_buffer) {
-  
+    const Request& req,
+    std::vector<char>& thread_buffer) {
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
@@ -388,12 +386,13 @@ bool PSSparseServerTask::process_get_lr_full_sparse_model(
   } catch (...) {
     throw std::runtime_error("Unhandled error");
   }
-  
+
   std::cout << "Got read server_id, num_ps" << std::endl;
-  uint32_t send_size = lr_model_copy.serializeTo(thread_buffer.data(), server_id, num_ps);
+  uint32_t send_size =
+      lr_model_copy.serializeTo(thread_buffer.data(), server_id, num_ps);
   std::cout << "Send size" << send_size << std::endl;
   if (send_all(req.sock, thread_buffer.data(), send_size) == -1)
-	  return false;
+    return false;
   return true;
 }
 
@@ -685,7 +684,8 @@ void PSSparseServerTask::gradient_f() {
     }
 
     std::cout << "Operation: " << operation << " - "
-              << operation_to_name[operation] << " " << GET_LR_FULL_SPARSE_MODEL << std::endl;
+              << operation_to_name[operation] << " " << GET_LR_FULL_SPARSE_MODEL
+              << std::endl;
 
     if (operation_to_f.find(operation) == operation_to_f.end()) {
       throw std::runtime_error("Unknown operation");

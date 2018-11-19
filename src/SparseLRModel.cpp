@@ -71,27 +71,27 @@ uint64_t SparseLRModel::getSerializedSize() const {
 /*
  * serialize to assuming hashing shard
  */
-uint64_t SparseLRModel::serializeTo(void* mem, int server_number, int num_ps) const {
-	uint32_t size = 0;
-	void* mem_begin = mem;
-	store_value<uint32_t>(mem, -1);
-	store_value<uint32_t>(mem, -1);
-	std::hash<uint32_t> hash;
-	int largest_weight = -1;
-	for (int i = 0; i < weights_.size(); i++) {
-		if ((hash(i) % num_ps) == server_number) {
-			store_value<FEATURE_TYPE>(mem, weights_[i]);
-			size++;
-			largest_weight = i;
-		}
-	}
-	store_value<int>(mem_begin, size);
-	store_value<int>(mem_begin, largest_weight);
-	uint32_t to_send_size = size * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
-	return to_send_size;
+uint64_t SparseLRModel::serializeTo(void* mem,
+                                    int server_number,
+                                    int num_ps) const {
+  uint32_t size = 0;
+  void* mem_begin = mem;
+  store_value<uint32_t>(mem, -1);
+  store_value<uint32_t>(mem, -1);
+  std::hash<uint32_t> hash;
+  int largest_weight = -1;
+  for (int i = 0; i < weights_.size(); i++) {
+    if ((hash(i) % num_ps) == server_number) {
+      store_value<FEATURE_TYPE>(mem, weights_[i]);
+      size++;
+      largest_weight = i;
+    }
+  }
+  store_value<int>(mem_begin, size);
+  store_value<int>(mem_begin, largest_weight);
+  uint32_t to_send_size = size * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
+  return to_send_size;
 }
-
-
 
 /** FORMAT
   * number of weights (int)
@@ -104,17 +104,17 @@ void SparseLRModel::loadSerialized(const void* data,
   int num_weights = load_value<int>(data);
   int largest_weight = load_value<int>(data);
   assert(num_weights > 0 && num_weights < 10000000);
-  
+
   if (weights_.size() < largest_weight) {
     weights_.resize(largest_weight);
   }
 
   for (int i = 0; i < largest_weight; i++) {
-	if (hash(i) % num_ps == server_id) {
-		uint32_t new_index = i;
-		FEATURE_TYPE w = load_value<FEATURE_TYPE>(data);
-		weights_[new_index] = w;
-	}
+    if (hash(i) % num_ps == server_id) {
+      uint32_t new_index = i;
+      FEATURE_TYPE w = load_value<FEATURE_TYPE>(data);
+      weights_[new_index] = w;
+    }
   }
 }
 

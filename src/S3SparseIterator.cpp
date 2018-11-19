@@ -235,8 +235,8 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
 
     std::string obj_id_str =
         std::string("CIRRUS") + std::to_string(getObjId(left_id, right_id));
-    
-	//std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
+
+    // std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
 
     std::ostringstream* s3_obj;
 try_start:

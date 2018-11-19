@@ -28,8 +28,8 @@ std::pair<double, double> SparseMFModel::calc_loss(SparseDataset& dataset,
       error += e_pow_2;
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") +
-                            std::to_string(rating) +
-                            " prediction: " + std::to_string(prediction);
+                            std::to_string(rating) + " prediction: " +
+                            std::to_string(prediction);
         throw std::runtime_error(error);
       }
       count++;
@@ -116,7 +116,7 @@ void SparseMFModel::randomize() {
 
 std::unique_ptr<CirrusModel> SparseMFModel::copy() const {
   std::unique_ptr<SparseMFModel> new_model =
-    std::make_unique<SparseMFModel>(nusers_, nitems_, nfactors_);
+      std::make_unique<SparseMFModel>(nusers_, nitems_, nfactors_);
   return new_model;
 }
 
@@ -126,8 +126,8 @@ uint64_t SparseMFModel::getSerializedSize() const {
 }
 
 void SparseMFModel::loadSerializedShard(const void* data,
-    int server_id,
-    int num_ps) {
+                                        int server_id,
+                                        int num_ps) {
   std::hash<int> hash;
   uint64_t nusers_ = load_value<uint64_t>(data);
   uint64_t nitems_ = load_value<uint64_t>(data);
@@ -142,8 +142,8 @@ void SparseMFModel::loadSerializedShard(const void* data,
 
   for (uint64_t i = 0; i < nusers_; ++i) {
     uint32_t user_id = (i % (minibatch_size / num_ps)) +
-      (minibatch_size / num_ps) * server_id +
-      (i / (minibatch_size / num_ps)) * minibatch_size;
+                       (minibatch_size / num_ps) * server_id +
+                       (i / (minibatch_size / num_ps)) * minibatch_size;
     if (user_id >= NUM_USERS) {
       FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
       continue;
@@ -170,8 +170,8 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint32_t i = 0; i < nusers_; ++i) {
     for (uint32_t j = 0; j < nfactors_; ++j) {
       uint32_t user_id = (i % (minibatch_size / num_ps)) +
-        (minibatch_size / num_ps) * server_id +
-        (i / (minibatch_size / num_ps)) * minibatch_size;
+                         (minibatch_size / num_ps) * server_id +
+                         (i / (minibatch_size / num_ps)) * minibatch_size;
       if (user_id >= NUM_USERS) {
         FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
         continue;
@@ -195,12 +195,12 @@ void SparseMFModel::loadSerializedShard(const void* data,
 }
 
 void SparseMFModel::loadSerialized(const void* data,
-    uint64_t minibatch_size,
-    uint64_t num_item_ids) {
+                                   uint64_t minibatch_size,
+                                   uint64_t num_item_ids) {
 #ifdef DEBUG
   std::cout << "SparseMFModel::loadSerialized nusers: " << nusers_
-    << " nitems_: " << nitems_ << " nfactors_: " << nfactors_
-    << std::endl;
+            << " nitems_: " << nitems_ << " nfactors_: " << nfactors_
+            << std::endl;
 #endif
   // data has minibatch_size vectors of size NUM_FACTORS (user weights)
   // followed by the same (item weights)
@@ -242,11 +242,11 @@ void SparseMFModel::loadSerialized(const void* data,
  * This is used to unserialize for sharded PS
  */
 void SparseMFModel::loadSerializedSparse(const void* data,
-    uint64_t num_users,
-    uint64_t num_items,
-    const Configuration& config,
-    int server_id,
-    int num_ps) {
+                                         uint64_t num_users,
+                                         uint64_t num_items,
+                                         const Configuration& config,
+                                         int server_id,
+                                         int num_ps) {
   int minibatch_size = 20;
   nfactors_ = NUM_FACTORS;
   global_bias_ = GLOBAL_BIAS;  // TODO: Fix the global bias away from hardcode
@@ -256,8 +256,8 @@ void SparseMFModel::loadSerializedSparse(const void* data,
     std::tuple<int, FEATURE_TYPE, std::vector<FEATURE_TYPE>> user_model;
     uint32_t raw_id = load_value<uint32_t>(data);
     uint32_t user_id = (raw_id % (minibatch_size / num_ps)) +
-      (minibatch_size / num_ps) * server_id +
-      (raw_id / (minibatch_size / num_ps)) * minibatch_size;
+                       (minibatch_size / num_ps) * server_id +
+                       (raw_id / (minibatch_size / num_ps)) * minibatch_size;
     std::cout << "Got back user: " << user_id << std::endl;
     FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(user_model) = user_id;
@@ -268,7 +268,6 @@ void SparseMFModel::loadSerializedSparse(const void* data,
     }
     user_models.push_back(user_model);
   }
-
 
   // Load out item data. Item data is sparse
   for (uint64_t i = 0; i < num_items; i++) {
@@ -296,15 +295,14 @@ FEATURE_TYPE SparseMFModel::predict(uint32_t userId, uint32_t itemId) const {
   FEATURE_TYPE res = global_bias_ + user_bias + item_bias;
 
   for (uint32_t i = 0; i < nfactors_; ++i) {
-    res +=
-      std::get<2>(user_models[userId])[i] * item_models[itemId].second[i];
+    res += std::get<2>(user_models[userId])[i] * item_models[itemId].second[i];
 #ifdef DEBUG
     if (std::isnan(res) || std::isinf(res)) {
       std::cout << "userId: " << userId << " itemId: " << itemId
-        << " get_user_weights(userId, i): "
-        << get_user_weights(userId, i)
-        << " get_item_weights(itemId, i): "
-        << get_item_weights(itemId, i) << std::endl;
+                << " get_user_weights(userId, i): "
+                << get_user_weights(userId, i)
+                << " get_item_weights(itemId, i): "
+                << get_item_weights(itemId, i) << std::endl;
       throw std::runtime_error("nan error in predict");
     }
 #endif
@@ -325,7 +323,7 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
 
   // iterate all pairs user rating
   for (uint64_t user_from_0 = 0; user_from_0 < dataset.data_.size();
-      ++user_from_0) {
+       ++user_from_0) {
     std::vector<FEATURE_TYPE> user_weights_grad(NUM_FACTORS);
     uint64_t real_user_id = base_user + user_from_0;
 
@@ -365,9 +363,8 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
       // update user latent factors
       for (uint64_t k = 0; k < nfactors_; ++k) {
         FEATURE_TYPE delta_user_w =
-          learning_rate *
-          (error * get_item_weights(itemId, k) -
-           user_fact_reg_ * get_user_weights(user_from_0, k));
+            learning_rate * (error * get_item_weights(itemId, k) -
+                             user_fact_reg_ * get_user_weights(user_from_0, k));
         user_weights_grad[k] += delta_user_w;
         std::get<2>(user_models[user_from_0])[k] += delta_user_w;
 #ifdef DEBUG
@@ -382,8 +379,8 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
       for (uint64_t k = 0; k < nfactors_; ++k) {
         // std::cout << "k: " << k << std::endl;
         FEATURE_TYPE delta_item_w =
-          learning_rate * (error * get_user_weights(user_from_0, k) -
-              item_fact_reg_ * get_item_weights(itemId, k));
+            learning_rate * (error * get_user_weights(user_from_0, k) -
+                             item_fact_reg_ * get_item_weights(itemId, k));
         item_models[itemId].second[k] += delta_item_w;
 
         if (item_weights_grad_map[itemId].size() == 0) {
@@ -400,9 +397,9 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
           std::cout << "pred: " << pred << std::endl;
           std::cout << "delta_item_w: " << delta_item_w << std::endl;
           std::cout << "user weight: " << get_user_weights(user_from_0, k)
-            << std::endl;
+                    << std::endl;
           std::cout << "item weight: " << get_item_weights(itemId, k)
-            << std::endl;
+                    << std::endl;
           std::cout << "learning_rate: " << learning_rate << std::endl;
           throw std::runtime_error("nan in item weight");
         }
@@ -420,10 +417,10 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
   }
 
   std::cout << "Training rmse: "
-    << std::sqrt(training_rmse / training_rmse_count) << std::endl;
+            << std::sqrt(training_rmse / training_rmse_count) << std::endl;
 #ifdef DEBUG
   std::cout << "Training rmse: "
-    << std::sqrt(training_rmse / training_rmse_count) << std::endl;
+            << std::sqrt(training_rmse / training_rmse_count) << std::endl;
   gradient->print();
   gradient->check();
 #endif
@@ -432,12 +429,12 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
 }
 
 FEATURE_TYPE& SparseMFModel::get_user_weights(uint64_t userId,
-    uint64_t factor) {
+                                              uint64_t factor) {
   return std::get<2>(user_models[userId])[factor];
 }
 
 FEATURE_TYPE& SparseMFModel::get_item_weights(uint64_t itemId,
-    uint64_t factor) {
+                                              uint64_t factor) {
   return item_models[itemId].second[factor];
 }
 
@@ -455,7 +452,7 @@ std::unique_ptr<ModelGradient> SparseMFModel::loadGradient(void* mem) const {
 
 double SparseMFModel::checksum() const {
   return 0;
-  //return crc32(user_weights_, nusers_ * nfactors_ * sizeof(FEATURE_TYPE));
+  // return crc32(user_weights_, nusers_ * nfactors_ * sizeof(FEATURE_TYPE));
 }
 
 void SparseMFModel::print() const {
@@ -468,15 +465,15 @@ void SparseMFModel::check() const {
 }
 
 void SparseMFModel::serializeFromDense(MFModel& mf_model,
-    uint32_t base_user_id,
-    uint32_t minibatch_size,
-    uint32_t k_items,
-    const char* item_data_ptr,
-    char* holder) const {
+                                       uint32_t base_user_id,
+                                       uint32_t minibatch_size,
+                                       uint32_t k_items,
+                                       const char* item_data_ptr,
+                                       char* holder) const {
   uint32_t to_send_size =
-    minibatch_size *
-    (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-    k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
+      minibatch_size *
+          (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
+      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
   char* data_to_send_ptr = holder;
 
@@ -484,10 +481,10 @@ void SparseMFModel::serializeFromDense(MFModel& mf_model,
   for (uint32_t i = base_user_id; i < base_user_id + minibatch_size; ++i) {
     store_value<uint32_t>(data_to_send_ptr, i);  // user id
     store_value<FEATURE_TYPE>(data_to_send_ptr,
-        mf_model.get_user_bias(i));  // bias
+                              mf_model.get_user_bias(i));  // bias
     for (uint32_t j = 0; j < NUM_FACTORS; ++j) {
       store_value<FEATURE_TYPE>(data_to_send_ptr,
-          mf_model.get_user_weights(i, j));
+                                mf_model.get_user_weights(i, j));
     }
   }
 
@@ -496,10 +493,10 @@ void SparseMFModel::serializeFromDense(MFModel& mf_model,
     uint32_t item_id = load_value<uint32_t>(item_data_ptr);
     store_value<uint32_t>(data_to_send_ptr, item_id);
     store_value<FEATURE_TYPE>(data_to_send_ptr,
-        mf_model.get_item_bias(item_id));
+                              mf_model.get_item_bias(item_id));
     for (uint32_t j = 0; j < NUM_FACTORS; ++j) {
       store_value<FEATURE_TYPE>(data_to_send_ptr,
-          mf_model.get_item_weights(item_id, j));
+                                mf_model.get_item_weights(item_id, j));
     }
   }
 }

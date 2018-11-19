@@ -22,10 +22,9 @@ MultiplePSSparseServerInterface::MultiplePSSparseServerInterface(
 }
 
 void MultiplePSSparseServerInterface::connect() {
-
   for (auto ptr : psints) {
-    std::cout << "Attempting connection to " << ptr->ip << ":"
-              << ptr->port << std::endl;
+    std::cout << "Attempting connection to " << ptr->ip << ":" << ptr->port
+              << std::endl;
     while (true) {
       try {
         ptr->connect();
@@ -117,16 +116,16 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
   // Initialize variables
 
   int num_servers = psints.size();
-  
+
   std::unique_ptr<char*> msg_lst_ptr(new char*[num_servers]);
   char** msg_lst = msg_lst_ptr.get();
-  
-  std::unique_ptr<char*> msg_begin_lst_ptr(new char*[num_servers]); 
+
+  std::unique_ptr<char*> msg_begin_lst_ptr(new char*[num_servers]);
   char** msg_begin_lst = msg_begin_lst_ptr.get();
 
   std::unique_ptr<uint32_t[]> num_weights_lst(new uint32_t[num_servers]);
 
-  std::array<std::unique_ptr<char>, MAX_NUM_PS> msg_lst_i_ptr; 
+  std::array<std::unique_ptr<char>, MAX_NUM_PS> msg_lst_i_ptr;
   for (int i = 0; i < num_servers; i++) {
     msg_lst_i_ptr[i] = std::unique_ptr<char>(new char[MAX_MSG_SIZE]);
     msg_lst[i] = msg_lst_i_ptr[i].get();
@@ -143,7 +142,7 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t server_index = hash(w.first) % num_servers;
-      //uint32_t data_index = (w.first - server_index) / num_servers;
+      // uint32_t data_index = (w.first - server_index) / num_servers;
       uint32_t data_index = w.first;
       store_value<uint32_t>(msg_lst[server_index], data_index);
       num_weights_lst[server_index]++;
@@ -174,9 +173,8 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
   for (int i = 0; i < num_servers; i++) {
     psints[i]->get_lr_sparse_model_inplace_sharded(
         model, config, msg_begin_lst[i], num_weights_lst[i], i, num_servers);
-    //delete[] msg_begin_lst[i];
+    // delete[] msg_begin_lst[i];
   }
-
 }
 
 void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
@@ -186,13 +184,13 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     uint32_t user_base,
     uint32_t minibatch_size) {
   int num_servers = psints.size();
-  
+
   std::unique_ptr<char*> msg_lst_ptr(new char*[num_servers]);
   std::unique_ptr<char*> msg_begin_lst_ptr(new char*[num_servers]);
-  
+
   char** msg_lst = msg_lst_ptr.get();
   char** msg_begin_lst = msg_begin_lst_ptr.get();
-  
+
   std::unique_ptr<uint32_t[]> item_ids_count_lst(new uint32_t[num_servers]);
   std::unique_ptr<bool[]> seen(new bool[num_servers]);
 
@@ -219,13 +217,12 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
       uint32_t movieId = w.first;
       if (seen[movieId])
         continue;
-	  movie_memory[server_num].push_back(w.first);
+      movie_memory[server_num].push_back(w.first);
       store_value<uint32_t>(msg_lst[server_num], movieId);
       seen[movieId] = true;
       item_ids_count_lst[server_num]++;
     }
   }
-
 
   // Send requests to all parameter servers
   for (int i = 0; i < num_servers; i++) {
@@ -246,12 +243,12 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     }
   }
 
-  // Receive responses from PS 
+  // Receive responses from PS
   for (int i = 0; i < num_servers; i++) {
     psints[i]->get_mf_sparse_model_inplace_sharded(
         model, config, msg_begin_lst[i], minibatch_size / num_servers,
         item_ids_count_lst[i], i, num_servers);
-    //delete[] msg_begin_lst[i];
+    // delete[] msg_begin_lst[i];
   }
 }
 
@@ -268,7 +265,7 @@ std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
   } else {
     std::unique_ptr<SparseLRModel> model = std::make_unique<SparseLRModel>(0);
     for (int i = 0; i < psints.size(); i++) {
-	  std::cout << "[ERROR_TASK] Calling inplace full model get" << std::endl;
+      std::cout << "[ERROR_TASK] Calling inplace full model get" << std::endl;
       psints[i]->get_full_model_inplace(model, i, psints.size());
     }
     return std::move(model);
