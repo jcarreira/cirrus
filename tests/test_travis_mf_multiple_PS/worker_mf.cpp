@@ -32,15 +32,11 @@ int main() {
 
   SparseMFModel model(nusers, njokes, nfactors);
 
-  std::vector<std::string> ps_ips;
-  ps_ips.push_back("127.0.0.1");
-  ps_ips.push_back("127.0.0.1");
+  std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
 
-  std::vector<uint64_t> ps_ports;
-  ps_ports.push_back(1338);
-  ps_ports.push_back(1340);
+  std::vector<uint64_t> ps_ports{1338, 1340};
 
-  MultiplePSSparseServerInterface psi(ps_ips, ps_ports);
+  MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
 
   int version = 0;
   while (1) {

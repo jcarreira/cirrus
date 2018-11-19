@@ -27,17 +27,11 @@ int main() {
   train_dataset.check();
   train_dataset.print_info();
 
-  std::vector<std::string> ps_ips;
-  std::vector<uint64_t> ps_ports;
-
-  ps_ips.push_back("127.0.0.1");
-  ps_ips.push_back("127.0.0.1");
-
-  ps_ports.push_back(1337);
-  ps_ports.push_back(1339);
+  std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
+  std::vector<uint64_t> ps_ports{1337, 1339};
 
   SparseLRModel model(1 << config.get_model_bits());
-  MultiplePSSparseServerInterface psi(ps_ips, ps_ports);
+  MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
   int version = 0;
   while (1) {
     SparseDataset minibatch = train_dataset.random_sample(20);

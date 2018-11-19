@@ -10,6 +10,7 @@
 
 //#define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
+#define LOSS_THRESHOLD (0.6)  // A value that the code should converge below
 
 using namespace cirrus;
 
@@ -30,7 +31,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
 }
 
 void signal_callback_handler(int signum) {
-  if (avg_loss < 0.6) {
+  if (avg_loss < LOSS_THRESHOLD) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
@@ -81,7 +82,7 @@ int main() {
                 << avg_loss << " time(us): " << get_time_us()
                 << " time from start (sec): "
                 << (get_time_us() - start_time) / 1000000.0 << std::endl;
-      if (avg_loss < 0.6) {
+      if (avg_loss < LOSS_THRESHOLD) {
         break;
       }
     } catch (...) {
@@ -89,7 +90,7 @@ int main() {
       // throw std::runtime_error("Error");
     }
   }
-  if (avg_loss < 0.6) {
+  if (avg_loss < LOSS_THRESHOLD) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);

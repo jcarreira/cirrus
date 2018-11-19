@@ -40,8 +40,8 @@ AC_CONFIG_FILES([Makefile
                  tests/iterator/Makefile
                  tests/test_s3/Makefile
                  tests/test_travis_lr/Makefile
-                 tests/test_travis_lr_multiplePS/Makefile
+                 tests/test_travis_lr_multiple_PS/Makefile
                  tests/test_travis_mf/Makefile
-                 tests/test_travis_mf_multiplePS/Makefile])
+                 tests/test_travis_mf_multiple_PS/Makefile])
 
 AC_OUTPUT

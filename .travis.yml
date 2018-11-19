@@ -25,10 +25,10 @@ script:
    - g++ --version
    - make -j 10
    - for i in "./tests/test_travis_lr/test.sh & sleep 1" "./tests/test_travis_lr/error"; do eval ${i}; done
-   - for i in "./tests/test_travis_lr_multiplePS/test.sh & sleep 1" "./tests/test_travis_lr_multiplePS/error"; do eval ${i}; done
+   - for i in "./tests/test_travis_lr_multiple_PS/test.sh & sleep 1" "./tests/test_travis_lr_multiple_PS/error"; do eval ${i}; done
    - ./tests/test_data/jester.sh
    - for i in "./tests/test_travis_mf/test.sh & sleep 1" "./tests/test_travis_mf/error"; do eval ${i}; done
-   - for i in "./tests/test_travis_mf_multiplePS/test.sh & sleep 1" "./tests/test_travis_mf_multiplePS/error"; do eval ${i}; done
+   - for i in "./tests/test_travis_mf_multiple_PS/test.sh & sleep 1" "./tests/test_travis_mf_multiple_PS/error"; do eval ${i}; done
 
 env:
   global:
