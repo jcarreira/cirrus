@@ -118,13 +118,19 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
 
   int num_servers = psints.size();
   
-  char** msg_lst = new char*[num_servers];
-  char** msg_begin_lst = new char*[num_servers];
+  std::unique_ptr<char*> msg_lst_ptr(new char*[num_servers]);
+  char** msg_lst = msg_lst_ptr.get();
+  
+  std::unique_ptr<char*> msg_begin_lst_ptr(new char*[num_servers]); 
+  char** msg_begin_lst = msg_begin_lst_ptr.get();
+
   std::unique_ptr<uint32_t[]> num_weights_lst(new uint32_t[num_servers]);
- 
+
+  std::array<std::unique_ptr<char>, MAX_NUM_PS> msg_lst_i_ptr; 
   for (int i = 0; i < num_servers; i++) {
-    msg_lst[i] = new char[MAX_MSG_SIZE];
-    msg_begin_lst[i] = msg_lst[i];
+    msg_lst_i_ptr[i] = std::unique_ptr<char>(new char[MAX_MSG_SIZE]);
+    msg_lst[i] = msg_lst_i_ptr[i].get();
+    msg_begin_lst[i] = msg_lst_i_ptr[i].get();
     num_weights_lst[i] = 0;
     store_value<uint32_t>(
         msg_lst[i],
@@ -171,8 +177,6 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
     //delete[] msg_begin_lst[i];
   }
 
-  delete[] msg_begin_lst;
-  delete[] msg_lst;
 }
 
 void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
@@ -182,16 +186,22 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     uint32_t user_base,
     uint32_t minibatch_size) {
   int num_servers = psints.size();
-  char** msg_lst = new char*[num_servers];
-  char** msg_begin_lst = new char*[num_servers];
-  uint32_t* item_ids_count_lst = new uint32_t[num_servers];
-  bool** seen = new bool*[num_servers];
+  
+  std::unique_ptr<char*> msg_lst_ptr(new char*[num_servers]);
+  std::unique_ptr<char*> msg_begin_lst_ptr(new char*[num_servers]);
+  
+  char** msg_lst = msg_lst_ptr.get();
+  char** msg_begin_lst = msg_begin_lst_ptr.get();
+  
+  std::unique_ptr<uint32_t[]> item_ids_count_lst(new uint32_t[num_servers]);
+  std::unique_ptr<bool[]> seen(new bool[num_servers]);
 
   user_base /= num_servers;
 
+  std::array<std::unique_ptr<char>, MAX_NUM_PS> msg_lst_i_ptr;
   for (int i = 0; i < num_servers; i++) {
-    seen[i] = new bool[NUM_ITEMS]();
-    msg_lst[i] = new char[MAX_MSG_SIZE];
+    msg_lst_i_ptr[i] = std::unique_ptr<char>(new char[MAX_MSG_SIZE]);
+    msg_lst[i] = msg_lst_i_ptr[i].get();
     msg_begin_lst[i] = msg_lst[i];
     item_ids_count_lst[i] = 0;
     store_value<uint32_t>(msg_lst[i], 0);  // We will write this value later
@@ -207,11 +217,11 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     for (const auto& w : sample) {
       uint32_t server_num = hash_func(w.first) % num_servers;
       uint32_t movieId = w.first;
-      if (seen[server_num][movieId])
+      if (seen[movieId])
         continue;
 	  movie_memory[server_num].push_back(w.first);
       store_value<uint32_t>(msg_lst[server_num], movieId);
-      seen[server_num][movieId] = true;
+      seen[movieId] = true;
       item_ids_count_lst[server_num]++;
     }
   }
@@ -241,7 +251,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     psints[i]->get_mf_sparse_model_inplace_sharded(
         model, config, msg_begin_lst[i], minibatch_size / num_servers,
         item_ids_count_lst[i], i, num_servers);
-    delete[] msg_begin_lst[i];
+    //delete[] msg_begin_lst[i];
   }
 }
 

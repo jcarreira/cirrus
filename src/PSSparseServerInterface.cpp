@@ -98,8 +98,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace_sharded(
 #ifdef DEBUG
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
-  char* buffer = new char[to_receive_size];
-  read_all(sock, buffer,
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(),
            to_receive_size);  // XXX this takes 2ms once every 5 runs
 
 #ifdef DEBUG
@@ -107,10 +107,9 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace_sharded(
 #endif
   // build a truly sparse model and return
   // XXX this copy could be avoided
-  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer, (uint32_t*) msg,
+  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer.get(), (uint32_t*) msg,
                                 num_weights, config, server_id, num_ps);
 
-  delete[] buffer;
 }
 
 void PSSparseServerInterface::get_mf_sparse_model_inplace(
@@ -119,7 +118,8 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
     const Configuration& config,
     uint32_t user_base,
     uint32_t minibatch_size) {
-  char* msg = new char[MAX_MSG_SIZE];
+  std::unique_ptr<char> msg_ptr(new char[MAX_MSG_SIZE]);
+  char* msg = msg_ptr.get();
   char* msg_begin = msg;  // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, 0);  // we will write this value later
@@ -150,17 +150,15 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
 
-  char* buffer = new char[to_receive_size];
-  if (read_all(sock, buffer, to_receive_size) == 0) {
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  if (read_all(sock, buffer.get(), to_receive_size) == 0) {
     throw std::runtime_error("Error reading sparse mf model");
   }
 
   // build a sparse model and return
   model.initialize_weights(0, 0, 0);
-  model.loadSerialized((FEATURE_TYPE*) buffer, minibatch_size, item_ids_count);
+  model.loadSerialized((FEATURE_TYPE*) buffer.get(), minibatch_size, item_ids_count);
 
-  delete[] msg_begin;
-  delete[] buffer;
 }
 
 void PSSparseServerInterface::get_lr_sparse_model_inplace(
@@ -171,7 +169,8 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
   std::cout << "Getting LR sparse model inplace" << std::endl;
 #endif
   // we don't know the number of weights to start with
-  char* msg = new char[MAX_MSG_SIZE];
+  std::unique_ptr<char> msg_ptr(new char[MAX_MSG_SIZE]);
+  char* msg = msg_ptr.get();
   char* msg_begin = msg; // need to keep this pointer to delete later
 
   uint32_t num_weights = 0;
@@ -211,19 +210,17 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(
 #ifdef DEBUG
   std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
 #endif
-  char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(), to_receive_size); //XXX this takes 2ms once every 5 runs
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
 #endif
   // build a truly sparse model and return
   // XXX this copy could be avoided
-  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer, (uint32_t*) msg_begin,
+  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer.get(), (uint32_t*) msg_begin,
                                 num_weights, config);
 
-  delete[] msg_begin;
-  delete[] buffer;
 }
 
 SparseLRModel PSSparseServerInterface::get_lr_sparse_model(const SparseDataset& ds, const Configuration& config) {
@@ -255,7 +252,8 @@ void PSSparseServerInterface::get_full_model_inplace(
   if (read_all(sock, &model_size, sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
-  char* model_data = new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)];
+  std::unique_ptr<char> model_data_smart_ptr(new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)]);
+  char* model_data = model_data_smart_ptr.get();
   char* model_data_ptr = model_data;
   store_value<int>(model_data_ptr, model_size);
 
@@ -264,7 +262,6 @@ void PSSparseServerInterface::get_full_model_inplace(
   }
   model->loadSerialized(model_data, server_id, num_ps);
 
-  delete[] model_data;
 }
 
 void PSSparseServerInterface::get_full_model_inplace(
@@ -277,15 +274,14 @@ void PSSparseServerInterface::get_full_model_inplace(
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
 
-  char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size);
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(), to_receive_size);
 
-  std::cout << " buffer checksum: " << crc32(buffer, to_receive_size)
+  std::cout << " buffer checksum: " << crc32(buffer.get(), to_receive_size)
             << std::endl;
 
   // build a sparse model and return
-  model->loadSerializedShard(buffer, server_id, num_ps);
-  delete[] buffer;
+  model->loadSerializedShard(buffer.get(), server_id, num_ps);
 }
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
@@ -300,17 +296,17 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     uint32_t to_receive_size;
     read_all(sock, &to_receive_size, sizeof(uint32_t));
 
-    char* buffer = new char[to_receive_size];
-    read_all(sock, buffer, to_receive_size);
+    std::unique_ptr<char> buffer(new char[to_receive_size]);
+    read_all(sock, buffer.get(), to_receive_size);
     
     std::cout
-      << " buffer checksum: " << crc32(buffer, to_receive_size)
+      << " buffer checksum: " << crc32(buffer.get(), to_receive_size)
       << std::endl;
 
     // build a sparse model and return
     std::unique_ptr<CirrusModel> model = std::make_unique<MFModel>(
-        (FEATURE_TYPE*)buffer, 0, 0, 0); //XXX fix this
-    delete[] buffer;
+        (FEATURE_TYPE*) buffer.get(), 0, 0, 0); //XXX fix this
+    
     return model;
   } else {
     uint32_t operation = GET_LR_FULL_MODEL;
@@ -319,17 +315,16 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
     if (read_all(sock, &model_size, sizeof(int)) == 0) {
       throw std::runtime_error("Error talking to PS");
     }
-    char* model_data = new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)];
-    char*model_data_ptr = model_data;
+    std::unique_ptr<char> model_data(new char[sizeof(int) + model_size * sizeof(FEATURE_TYPE)]);
+    char* model_data_ptr = model_data.get();
     store_value<int>(model_data_ptr, model_size);
 
     if (read_all(sock, model_data_ptr, model_size * sizeof(FEATURE_TYPE)) == 0) {
       throw std::runtime_error("Error talking to PS");
     }
     std::unique_ptr<CirrusModel> model = std::make_unique<SparseLRModel>(0);
-    model->loadSerialized(model_data);
+    model->loadSerialized(model_data.get());
 
-    delete[] model_data;
     return model;
   }
 }
@@ -347,7 +342,8 @@ std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
   */
 SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
     const SparseDataset& ds, uint32_t user_base, uint32_t minibatch_size) {
-  char* msg = new char[MAX_MSG_SIZE];
+  std::unique_ptr<char> msg_ptr(new char[MAX_MSG_SIZE]);
+  char* msg = msg_ptr.get();
   char* msg_begin = msg; // need to keep this pointer to delete later
   uint32_t item_ids_count = 0;
   store_value<uint32_t>(msg, 0); // we will write this value later
@@ -377,17 +373,14 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
 
-  char* buffer = new char[to_receive_size];
-  if (read_all(sock, buffer, to_receive_size) == 0) {
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  if (read_all(sock, buffer.get(), to_receive_size) == 0) {
     throw std::runtime_error("");
   }
 
   // build a sparse model and return
-  SparseMFModel model((FEATURE_TYPE*)buffer, minibatch_size, item_ids_count);
+  SparseMFModel model((FEATURE_TYPE*)buffer.get(), minibatch_size, item_ids_count);
   
-  delete[] msg_begin;
-  delete[] buffer;
-
   return std::move(model);
 }
 
@@ -402,14 +395,13 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
   // Read incoming data from PS
   uint32_t to_receive_size;
   read_all(sock, &to_receive_size, sizeof(uint32_t));
-  char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size);
+  std::unique_ptr<char> buffer(new char[to_receive_size]);
+  read_all(sock, buffer.get(), to_receive_size);
  
   // Serialize data recieved into MF Model
-  mf_model.loadSerializedSparse(buffer, num_users, num_items, config, server_id,
+  mf_model.loadSerializedSparse(buffer.get(), num_users, num_items, config, server_id,
                                 num_ps);
 
-  delete[] buffer;
 }
 
 void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient) {
@@ -423,12 +415,11 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
     throw std::runtime_error("Error sending grad size");
   }
   
-  char* data = new char[size];
-  gradient.serialize(data);
-  if (send_all(sock, data, size) == 0) {
+  std::unique_ptr<char> data(new char[size]);
+  gradient.serialize(data.get());
+  if (send_all(sock, data.get(), size) == 0) {
     throw std::runtime_error("Error sending grad");
   }
-  delete[] data;
 }
   
 void PSSparseServerInterface::set_status(uint32_t id, uint32_t status) {

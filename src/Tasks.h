@@ -86,7 +86,6 @@ class LogisticSparseTaskS3 : public MLTask {
                 config,
                 ps_ips,
                 ps_ports) {
-     sparse_model_get = std::make_unique<SparseModelGet>(config, ps_ips, ps_ports);
    }
 
    /**
@@ -96,56 +95,13 @@ class LogisticSparseTaskS3 : public MLTask {
    void run(const Configuration& config, int worker);
 
   private:
-    class SparseModelGet {
-      public:
-       SparseModelGet(const Configuration& config, const std::string& ps_ip, uint64_t ps_port) {
-         psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-         while (true) {
-           try {
-             psi->connect();
-             break;
-           } catch (const std::exception& exc) {
-             std::cout << exc.what();
-           }
-         }
-       }
-
-       SparseModelGet(const Configuration& config,
-                      const std::vector<std::string> ps_ips,
-                      std::vector<uint64_t> ps_ports) {
-         psi = std::make_unique<MultiplePSSparseServerInterface>(config,
-                                                                 ps_ips,
-                                                                 ps_ports);
-         while (true) {
-           try {
-             psi->connect();
-             break;
-           } catch (const std::exception& exc) {
-             std::cout << exc.what();
-           }
-         }
-        }
-
-        SparseLRModel get_new_model(const SparseDataset& ds,
-                                    const Configuration& config) {
-          return std::move(psi->get_lr_sparse_model(ds, config));
-        }
-        void get_new_model_inplace(const SparseDataset& ds,
-                                   SparseLRModel& model,
-                                   const Configuration& config) {
-          psi->get_lr_sparse_model_inplace(ds, model, config);
-        }
-
-        std::unique_ptr<PSSparseServerInterface> psi;
-    };
-
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                                S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
+    void get_new_model_inplace(const SparseDataset& ds, SparseLRModel& model, const Configuration& config);
 
     std::mutex redis_lock;
-    std::unique_ptr<PSSparseServerInterface> psi;
-    std::unique_ptr<SparseModelGet> sparse_model_get;
+    std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class PSSparseTask : public MLTask {
@@ -430,8 +386,6 @@ class MFNetflixTask : public MLTask {
                 config,
                 ps_ips,
                 ps_ports) {
-     mf_model_get =
-         std::make_unique<MFModelGet>(config, ps_ips, ps_ports);
    }
 
    /**
@@ -440,54 +394,15 @@ class MFNetflixTask : public MLTask {
    void run(const Configuration& config, int worker);
 
   private:
-   class MFModelGet {
-    public:
-
-     MFModelGet(
-         const Configuration& config,
-         const std::vector<std::string>& ps_ips,
-         const std::vector<uint64_t>& ps_ports
-                ) {
-       if (ps_ips.size() > 1) {
-        psi = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips, ps_ports);
-       } else {
-        psi = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
-
-       }
-         while (true) {
-           try {
-             psi->connect();
-             break;
-           } catch (const std::exception& exc) {
-             std::cout << exc.what();
-           }
-         }
-     }
-
-     SparseMFModel get_new_model(const SparseDataset& ds,
-                                 uint64_t user_base_index,
-                                 uint64_t mb_size) {
-       return std::move(psi->get_sparse_mf_model(ds, user_base_index, mb_size));
-     }
-
-     void get_new_model_inplace(const SparseDataset& ds,
-                                SparseMFModel& model,
-                                const Configuration& config,
-                                uint64_t user_base_index,
-                                uint64_t mb_size) {
-       psi->get_mf_sparse_model_inplace(ds, model, config, user_base_index,
-                                        mb_size);
-     }
-
-     std::unique_ptr<PSSparseServerInterface> psi;
-    };
-
-  private:
    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                               S3SparseIterator& s3_iter);
    void push_gradient(MFSparseGradient*);
+   void get_new_model_inplace(const SparseDataset& ds,
+                                SparseMFModel& model,
+                                const Configuration& config,
+                                uint64_t user_base_index,
+                                uint64_t mb_size);
 
-   std::unique_ptr<MFModelGet> mf_model_get;
    std::unique_ptr<PSSparseServerInterface> psint;
 };
 

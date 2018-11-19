@@ -158,15 +158,15 @@ void LRSparseGradient::serialize(void* mem) const {
  *
  */
 
-std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
+std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
     void* mem,
     uint32_t parts) const {
 
 
 
-  std::vector<int> starts(parts, 0); // First will store how many tuples per shard, ie starts[i] is the number
-                                     // of gradient weights going to server number i
-  std::vector<std::tuple<int, int>> starts_out(parts); // starts_out[i] stores <starting_offset(bytes), size(bytes)> of where the ith gradient 
+  std::array<int, MAX_NUM_PS> starts; // First will store how many tuples per shard, ie starts[i] is the number
+  starts.fill(0);                     // of gradient weights going to server number i
+  std::array<std::tuple<int, int>, MAX_NUM_PS> starts_out; // starts_out[i] stores <starting_offset(bytes), size(bytes)> of where the ith gradient 
                                                        // serialize starts and its size relative to mem.
   // TODO: Change to murmurhash
   std::hash<uint32_t> hash;  // hash function
@@ -227,7 +227,7 @@ std::vector<std::tuple<int, int>> LRSparseGradient::shard_serialize(
     starts[ps_num]++;
   }
 
-  return starts_out;
+  return std::move(starts_out);
 }
 
 uint64_t LRSparseGradient::getSerializedSize() const {
@@ -431,7 +431,7 @@ uint64_t MFSparseGradient::getShardSerializedSize(int num_shards) const {
 
 
 
-std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
+std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
     void* mem,
     uint32_t minibatch_size,
     uint32_t num_ps) const {
@@ -439,10 +439,14 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   // TODO: use murmur hash
   std::hash<int> hashfunc;
   
-  std::vector<int> starts(num_ps, 4 * sizeof(int)); // stores the size (bytes) per gradient shard.
-  std::vector<int> icnts(num_ps, 0);  // icnts[i] stores the number of items of the ith gradient shard
-  std::vector<int> ucnts(num_ps, 0);  // ucnts[i] stores the number of users of the ith gradient shard
-  std::vector<std::tuple<int, int>> starts_out(num_ps);
+  std::array<int, MAX_NUM_PS> starts; // stores the size (bytes) per gradient shard.
+  starts.fill(4 * sizeof(int));
+  std::array<int, MAX_NUM_PS> icnts;  // icnts[i] stores the number of items of the ith gradient shard
+  icnts.fill(0);
+  std::array<int, MAX_NUM_PS> ucnts;  // ucnts[i] stores the number of users of the ith gradient shard
+  ucnts.fill(0);
+  // TODO: Change this to std::array
+  std::array<std::tuple<int, int>, MAX_NUM_PS> starts_out;
 
   // Perform count of users
   uint32_t bias_grad_size = 2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
@@ -566,7 +570,7 @@ std::vector<std::tuple<int, int>> MFSparseGradient::shard_serialize(
   for (int i = 0; i < num_ps; i++)
     put_value<uint32_t>(mem, 0x1338, starts[i]);
 
-  return starts_out;
+  return std::move(starts_out);
 }
 
 void MFSparseGradient::serialize(void *mem) const {

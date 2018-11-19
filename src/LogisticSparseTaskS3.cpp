@@ -12,10 +12,18 @@
 
 namespace cirrus {
 
+void LogisticSparseTaskS3::get_new_model_inplace(const SparseDataset& ds, 
+    SparseLRModel& model, const Configuration& config) {
+  
+  psint->get_lr_sparse_model_inplace(ds, model, config);
+
+}
+
+
 void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
   auto before_push_us = get_time_us();
 
-  sparse_model_get->psi->send_lr_gradient(*lrg);
+  psint->send_lr_gradient(*lrg);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -84,6 +92,20 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   uint64_t version = 1;
   SparseLRModel model(1 << config.get_model_bits());
+  
+  if (ps_ips.size() > 1) {
+    psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
+  } else {
+    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips, ps_ports);
+  }
+  while (true) {
+    try {
+      psint->connect();
+      break;
+    } catch (const std::exception& exc) {
+      std::cout << exc.what();
+    }
+  }
 
   bool printed_rate = false;
   int count = 0;
@@ -107,7 +129,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(*dataset, model, config);
+    get_new_model_inplace(*dataset, model, config);
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
     std::cout << "Checking model" << std::endl;
