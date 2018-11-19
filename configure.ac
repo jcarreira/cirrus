@@ -16,7 +16,7 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AX_CXX_COMPILE_STDCXX_14
 
-CXXFLAGS="-O3 -fPIC -std=c++17 -Werror"
+CXXFLAGS="-O3 -fPIC -std=c++17"
 
 # Checks for header files.
 AC_CHECK_HEADERS([ arpa/inet.h netdb.h string.h stdint.h\
@@ -42,6 +42,7 @@ AC_CONFIG_FILES([Makefile
                  tests/test_travis_lr/Makefile
                  tests/test_travis_lr_multiple_PS/Makefile
                  tests/test_travis_mf/Makefile
-                 tests/test_travis_mf_multiple_PS/Makefile])
+                 tests/test_travis_mf_multiple_PS/Makefile
+                 tests/test_travis/Makefile])
 
 AC_OUTPUT

@@ -30,8 +30,6 @@ using FEATURE_TYPE = float;
 
 #define LIMIT_NUMBER_PASSES 3
 
-#define SYNC_N_STEPS (100)
-
 // number of factors for neflix workload
 #define NUM_FACTORS 10
 
@@ -47,3 +45,6 @@ using FEATURE_TYPE = float;
 #define NUM_ITEMS 17770
 #define NETFLIX_MB_SIZE 20
 #define MAX_NUM_PS 100
+
+// fixed size number of characters for key name
+#define KEY_SIZE (10)
