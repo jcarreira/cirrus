@@ -28,8 +28,8 @@ std::pair<double, double> SparseMFModel::calc_loss(SparseDataset& dataset,
       error += e_pow_2;
       if (std::isnan(e) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") +
-                            std::to_string(rating) + " prediction: " +
-                            std::to_string(prediction);
+                            std::to_string(rating) +
+                            " prediction: " + std::to_string(prediction);
         throw std::runtime_error(error);
       }
       count++;
