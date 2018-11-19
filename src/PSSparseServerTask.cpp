@@ -367,6 +367,7 @@ bool PSSparseServerTask::process_get_lr_full_model(
 }
 
 bool PSSparseServerTask::process_get_lr_full_sparse_model(
+    int sock,
     const Request& req,
     std::vector<char>& thread_buffer) {
   model_lock.lock();

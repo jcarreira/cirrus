@@ -331,14 +331,8 @@ class PSSparseServerTask : public MLTask {
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);
   bool process_deregister_task(int, const Request&, std::vector<char>&, int);
-
-  bool process_get_lr_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_send_mf_gradient(const Request& req,
-                                std::vector<char>& thread_buffer);
-  bool process_get_mf_full_model(const Request& req,
-                                 std::vector<char>& thread_buffer);
-  bool process_get_lr_full_sparse_model(const Request& req,
+  bool process_get_lr_full_sparse_model(int,
+                                        const Request& req,
                                         std::vector<char>& thread_buffer);
   void kill_server();
 
