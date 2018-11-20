@@ -688,9 +688,11 @@ void PSSparseServerTask::gradient_f() {
       continue;
     }
 
+#ifdef DEBUG
     std::cout << "Operation: " << operation << " - "
               << operation_to_name[operation] << " " << GET_LR_FULL_SPARSE_MODEL
               << std::endl;
+#endif
 
     if (operation_to_f.find(operation) == operation_to_f.end()) {
       throw std::runtime_error("Unknown operation");
