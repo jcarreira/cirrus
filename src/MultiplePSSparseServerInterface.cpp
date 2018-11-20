@@ -192,7 +192,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   char** msg_begin_lst = msg_begin_lst_ptr.get();
 
   std::unique_ptr<uint32_t[]> item_ids_count_lst(new uint32_t[num_servers]);
-  std::unique_ptr<bool[]> seen(new bool[num_servers]);
+  std::unique_ptr<bool[]> seen(new bool[NUM_ITEMS]);
 
   user_base /= num_servers;
 
@@ -248,7 +248,6 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     psints[i]->get_mf_sparse_model_inplace_sharded(
         model, config, msg_begin_lst[i], minibatch_size / num_servers,
         item_ids_count_lst[i], i, num_servers);
-    // delete[] msg_begin_lst[i];
   }
 }
 

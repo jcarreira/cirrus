@@ -9,7 +9,7 @@
 
 #include <Configuration.h>
 #include <InputReader.h>
-#include <PSSparseServerInterface.h>
+#include <MultiplePSSparseServerInterface.h>
 #include <SparseMFModel.h>
 #include <Tasks.h>
 #include "SGD.h"
@@ -30,23 +30,23 @@ int main() {
   int nfactors = 10;
   int batch_size = 200;
 
-  SparseMFModel model(nusers, njokes, nfactors);
 
   std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
 
   std::vector<uint64_t> ps_ports{1338, 1340};
 
   MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
-
+  psi.connect();
   int version = 0;
   while (1) {
-    for (uint64_t i = 0; i < nusers; i += batch_size) {
+    for (uint32_t i = 0; i < nusers; i += batch_size) {
+      SparseMFModel model(nusers, njokes, nfactors);
       int actual_batch_size = batch_size;
       if (i + batch_size >= nusers) {
         actual_batch_size = nusers - i - 1;
       }
       SparseDataset ds = train_dataset.sample_from(i, actual_batch_size);
-      model = psi.get_sparse_mf_model(ds, i, actual_batch_size);
+      psi.get_mf_sparse_model_inplace(ds, model, config, i, actual_batch_size);
       auto gradient = model.minibatch_grad(ds, config, i);
       gradient->setVersion(version++);
       MFSparseGradient* mfg = dynamic_cast<MFSparseGradient*>(gradient.get());

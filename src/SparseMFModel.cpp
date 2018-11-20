@@ -258,7 +258,6 @@ void SparseMFModel::loadSerializedSparse(const void* data,
     uint32_t user_id = (raw_id % (minibatch_size / num_ps)) +
                        (minibatch_size / num_ps) * server_id +
                        (raw_id / (minibatch_size / num_ps)) * minibatch_size;
-    std::cout << "Got back user: " << user_id << std::endl;
     FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(user_model) = user_id;
     std::get<1>(user_model) = user_bias;
@@ -273,7 +272,6 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = load_value<uint32_t>(data);
-    std::cout << "Got back item: " << item_id << std::endl;
     FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).resize(NUM_FACTORS);
