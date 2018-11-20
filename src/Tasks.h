@@ -332,8 +332,9 @@ class PSSparseServerTask : public MLTask {
   bool process_register_task(int, const Request&, std::vector<char>&, int);
   bool process_deregister_task(int, const Request&, std::vector<char>&, int);
   bool process_get_lr_full_sparse_model(int,
-                                        const Request& req,
-                                        std::vector<char>& thread_buffer);
+                                        const Request&,
+                                        std::vector<char>&,
+                                        int);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);

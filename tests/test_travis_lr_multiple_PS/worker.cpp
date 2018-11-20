@@ -32,6 +32,15 @@ int main() {
 
   SparseLRModel model(1 << config.get_model_bits());
   MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
+  while (true) {
+    try {
+      psi.connect();
+      break;
+    } catch (const std::exception& exc) {
+      std::cout << exc.what();
+    }
+  }
+
   int version = 0;
   while (1) {
     SparseDataset minibatch = train_dataset.random_sample(20);

@@ -102,6 +102,9 @@ void PSSparseServerTask::set_operation_maps() {
       std::bind(&PSSparseServerTask::process_set_value, this, _1, _2, _3, _4);
   operation_to_f[GET_VALUE] =
       std::bind(&PSSparseServerTask::process_get_value, this, _1, _2, _3, _4);
+  operation_to_f[GET_LR_FULL_SPARSE_MODEL] =
+      std::bind(&PSSparseServerTask::process_get_lr_full_sparse_model, this, _1,
+                _2, _3, _4);
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -369,7 +372,8 @@ bool PSSparseServerTask::process_get_lr_full_model(
 bool PSSparseServerTask::process_get_lr_full_sparse_model(
     int sock,
     const Request& req,
-    std::vector<char>& thread_buffer) {
+    std::vector<char>& thread_buffer,
+    int) {
   model_lock.lock();
   auto lr_model_copy = *lr_model;
   model_lock.unlock();
