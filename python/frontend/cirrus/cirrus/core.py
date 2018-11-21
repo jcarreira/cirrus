@@ -11,6 +11,8 @@ from CostModel import CostModel
 lambda_client = boto3.client('lambda', 'us-west-2')
 lambda_name = "testfunc1"
 
+import subprocess
+
 
 # Code shared by all Cirrus experiments
 # Contains all data for a single experiment
@@ -85,7 +87,7 @@ class BaseTask(object):
                     self.n_ps,
                     0,
                     self.n_workers,
-                    self.lambda_size)
+                    lambda_size)
 
         self.start_time = time.time()
 
@@ -189,7 +191,7 @@ class BaseTask(object):
             return self.time_loss_lst
 
     def run(self):
-        self.define_config(self.ps_ip_public)
+        self.define_config()
         self.launch_ps()
         self.relaunch_lambdas()
 
@@ -220,7 +222,8 @@ class BaseTask(object):
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
-            raise ValueError('SSH Copy config not implemented')
+            subprocess.call(cmd, shell=True)
+            # raise ValueError('SSH Copy config not implemented')
 
     def copy_config(self, command_dict=None):
         config = self.define_config()

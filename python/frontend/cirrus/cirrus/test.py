@@ -10,35 +10,23 @@ path_to_key = os.path.join(os.path.expanduser('~'),'jeff/joao_key.pem')
 data_bucket = 'nytimes-lda'
 model = 'model_v1'
 
-k, s3_size, slice_size
-n_workers,
-lambda_size,
-n_ps,
-dataset,
-key_name, key_path, # aws key
-ps_ip_public, # public parameter server ip
-ps_ip_private, # private parameter server ip
-ps_ip_port,
-ps_username, # parameter server VM username
-minibatch_size,
-progress_callback,
-
 lda_task = LDA(
              k = 20,
              s3_size = 9000,
              slice_size = 500,
              n_workers = 1,
+             lambda_size = 128,
              n_ps = 1,
-             worker_size = 128,
-             dataset = nytimes-lda,
+             dataset = "nytimes-lda",
              progress_callback = print,
              key_name='joao_key.pem',
              key_path=path_to_key,
-             ps_ip_public='ec2-34-212-6-172.us-west-2.compute.amazonaws.com',
-             ps_ip_private='172.31.5.74',
+             ps_ip_public='18.237.161.88',
+             ps_ip_private='172.31.11.53',
+             ps_ip_port = 1337,
              ps_username='ubuntu',
              minibatch_size=100,
-             train_set=(1,2),
+             train_set=(1,2)
              )
 
 try:

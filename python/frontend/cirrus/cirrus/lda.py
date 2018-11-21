@@ -7,7 +7,7 @@ class LDATask(BaseTask):
                  k, s3_size, slice_size,
                  *args, **kwargs):
         # pass all arguments of init to parent class
-        super(LogisticRegressionTask, self).__init__(*args, **kwargs)
+        super(LDATask, self).__init__(*args, **kwargs)
 
         self.k = k
         self.s3_size = s3_size
@@ -33,10 +33,39 @@ class LDATask(BaseTask):
                  "train_set: %d-%d \n" % self.train_set + \
                  "slice_size: %d" % self.slice_size
 
-         print (config)
+        print config
 
-         return config
+        return config
 
-def LDA(
-
-)
+def LDA(k,
+        s3_size,
+        slice_size,
+        n_workers,
+        lambda_size,
+        n_ps,
+        dataset,
+        progress_callback,
+        key_name,
+        key_path,
+        ps_ip_public,
+        ps_ip_private,
+        ps_ip_port,
+        ps_username,
+        minibatch_size,
+        train_set):
+        return LDATask(k = k,
+                   s3_size = s3_size,
+                   slice_size = slice_size,
+                   n_workers = n_workers,
+                   lambda_size = lambda_size,
+                   n_ps = n_ps,
+                   dataset = dataset,
+                   progress_callback = progress_callback,
+                   key_name = key_name,
+                   key_path = key_path,
+                   ps_ip_public = ps_ip_public,
+                   ps_ip_private = ps_ip_private,
+                   ps_ip_port = ps_ip_port,
+                   ps_username = ps_username,
+                   minibatch_size = minibatch_size,
+                   train_set = train_set)
