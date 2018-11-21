@@ -30,24 +30,24 @@ class BaseTask(object):
             lambda_size,
             n_ps,
             dataset,
-            learning_rate,
-            epsilon,
             key_name, key_path, # aws key
             ps_ip_public, # public parameter server ip
             ps_ip_private, # private parameter server ip
             ps_ip_port,
             ps_username, # parameter server VM username
-            opt_method, # adagrad, sgd, nesterov, momentum
-            checkpoint_model, # checkpoint model every x seconds
-            train_set,
-            test_set,
             minibatch_size,
-            model_bits,
-            use_grad_threshold,
-            grad_threshold,
-            timeout,
-            threshold_loss,
-            progress_callback
+            progress_callback,
+            learning_rate = None,
+            epsilon = None,
+            opt_method = None, # adagrad, sgd, nesterov, momentum
+            checkpoint_model = None, # checkpoint model every x seconds
+            train_set = None,
+            test_set = None,
+            model_bits = None,
+            use_grad_threshold = None,
+            grad_threshold = None,
+            timeout = None,
+            threshold_loss = None,
             ):
         self.thread = threading.Thread(target=self.run)
         self.n_workers = n_workers
@@ -100,6 +100,7 @@ class BaseTask(object):
 
         # Stored values
         self.last_num_lambdas = 0
+        self.num_task = 3
 
     def get_name(self):
         string = "Rate %f" % self.learning_rate
@@ -138,7 +139,6 @@ class BaseTask(object):
 
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
-        num_task = 3
 
         if num_lambdas == None:
             return
@@ -147,7 +147,7 @@ class BaseTask(object):
             shortage = self.n_workers - num_lambdas
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+                        % (self.num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
                     response = lambda_client.invoke(
@@ -234,7 +234,7 @@ class BaseTask(object):
     def define_config(self, fetch=False):
         pass
 
-    # This function is responsible for relaunching the lambdas as they die off. 
+    # This function is responsible for relaunching the lambdas as they die off.
     # It will poll the parameter server to determine how many lambdas are currently running
     # and relaunch self.n_workers - num_lambdas number of lambdas
     def relaunch_lambdas(self):
@@ -244,7 +244,6 @@ class BaseTask(object):
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
         self.get_cost_per_second()
-        num_task = 3
 
         if num_lambdas == None:
             return
@@ -253,7 +252,7 @@ class BaseTask(object):
             shortage = self.n_workers - num_lambdas
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+                        % (self.num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
                     response = lambda_client.invoke(

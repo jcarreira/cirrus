@@ -93,6 +93,7 @@ LDAModel::LDAModel(const char* info) {
         }
       }
     } else {
+      std::cout << store_type << " ++\n";
       throw std::runtime_error("Invalid store type");
     }
     ndt.push_back(nt_di);
@@ -174,6 +175,7 @@ void LDAModel::update_model(const char* buffer_to_decompress,
         }
       }
     } else {
+      std::cout << store_type << " **\n";
       throw std::runtime_error("Invalid store type");
     }
     nvt.push_back(nt_vi);
