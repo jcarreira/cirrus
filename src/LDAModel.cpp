@@ -267,17 +267,35 @@ LDAModel& LDAModel::operator=(LDAModel& model) {
   slice = std::move(model.slice);
 }
 
+// double LDAModel::compute_ll_ndt() {
+//   double ll = 0, lgamma_alpha = lda_lgamma(alpha);
+//   for (int j = 0; j < ndt.size(); ++j) {
+//     int ndj = 0;
+//     for (int k = 0; k < K_; ++k) {
+//       ndj += ndt[j][k];
+//       if (ndt[j][k] > 0) {
+//         ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+//       }
+//     }
+//     ll += lda_lgamma(alpha * K_) - lda_lgamma(alpha * K_ + ndj);
+//   }
+//   return ll;
+// }
+
 double LDAModel::compute_ll_ndt() {
-  double ll = 0, lgamma_alpha = lda_lgamma(alpha);
+  double ll = 0;
   for (int j = 0; j < ndt.size(); ++j) {
-    int ndj = 0;
+    double ll_single_doc = lda_lgamma(K_ * alpha) - K_ * lda_lgamma(alpha);
+    int ndj = 0, nz_num = 0;
     for (int k = 0; k < K_; ++k) {
       ndj += ndt[j][k];
       if (ndt[j][k] > 0) {
-        ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+        ll_single_doc += lda_lgamma(alpha + ndt[j][k]);
+        ++ nz_num;
       }
     }
-    ll += lda_lgamma(alpha * K_) - lda_lgamma(alpha * K_ + ndj);
+    ll_single_doc += (K_ - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K_ + ndj);
+    ll += ll_single_doc;
   }
   return ll;
 }

@@ -84,9 +84,9 @@ class LDAModel {
   int K_, V_, update_bucket, local_V;
   /**
    * Set to fixed constants:
-   * alpha = .1, eta = .01
+   * alpha = .05, eta = .01
    */
-  double alpha = .1, eta = .01;
+  double alpha = .05, eta = .01;
   /**
    * topic assignments
    */

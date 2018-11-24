@@ -40,18 +40,18 @@ void load_serialized_indices(char* mem_begin,
 }
 
 int main_worker(int worker_id) {
-
   // int worker_id = 1;
   cirrus::Configuration config = cirrus::Configuration("configs/lda_test.cfg");
 
   cirrus::s3_initialize_aws();
 
   // Download the LDAStatistics from S3
-  std::shared_ptr<cirrus::S3Client> s3_client = std::make_shared<cirrus::S3Client>();
+  std::shared_ptr<cirrus::S3Client> s3_client =
+      std::make_shared<cirrus::S3Client>();
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(worker_id).c_str())) + "-LDA";
-  std::ostringstream* s3_obj =
-      s3_client->S3Client::s3_get_object_ptr(obj_id_str, config.get_s3_bucket());
+  std::ostringstream* s3_obj = s3_client->S3Client::s3_get_object_ptr(
+      obj_id_str, config.get_s3_bucket());
 
   // initialize the model with LDAStatistics
   std::unique_ptr<LDAModel> model;
@@ -74,7 +74,6 @@ int main_worker(int worker_id) {
   int num_runs = 100000 / config.get_slice_size() + 1;
 
   while (1) {
-
     if (cur >= num_runs) {
       // send ll to server
       double ll_to_send = model->compute_ll_ndt();
@@ -97,7 +96,6 @@ int main_worker(int worker_id) {
     gradient_mem = model->sample_model(
         total_sampled_tokens, slice_indices[psi->slice_id], gradient_size);
     psi->send_lda_update(gradient_mem, total_sampled_tokens, gradient_size);
-
   }
 
   cirrus::s3_shutdown_aws();

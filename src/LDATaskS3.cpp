@@ -86,7 +86,7 @@ void LDATaskS3::load_serialized_indices(char* mem_begin) {
 }
 
 void LDATaskS3::run(const Configuration& config, int worker) {
-  double lambda_time_out = 300.0;  // 3 min currently
+  double lambda_time_out = 900.0;  // 15 min currently
   double time_download = 0.0, time_update = 0.0, time_get_model = 0.0,
          time_sample = 0.0, time_create_model = 0.0;
 

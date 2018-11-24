@@ -1210,8 +1210,8 @@ void PSSparseServerTask::check_tasks_lifetime() {
         std::chrono::duration_cast<std::chrono::seconds>(now - start_time)
             .count();
 
-    std::cout << "id " << task_id << " elapsed_sec " << elapsed_sec
-              << std::endl;
+    // std::cout << "id " << task_id << " elapsed_sec " << elapsed_sec
+    //           << std::endl;
 
     if (elapsed_sec > task_to_remaining_time[task_id] + TIMEOUT_THRESHOLD_SEC) {
       declare_task_dead(task_id);
@@ -1353,7 +1353,7 @@ void PSSparseServerTask::init_loglikelihood() {
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
 
-  double alpha = 0.1, eta = .01;
+  double alpha = 0.05, eta = .01;
 
   K = nt_ptr->size();
   V = nvt_ptr->size() / K;
@@ -1385,16 +1385,31 @@ void PSSparseServerTask::init_loglikelihood() {
 
   std::cout << "ndt size: " << ndt.size() << std::endl;
 
+  // for (int j = 0; j < ndt.size(); ++j) {
+  //   int ndj = 0;
+  //   for (int k = 0; k < K; ++k) {
+  //     ndj += ndt[j][k];
+  //     if (ndt[j][k] > 0) {
+  //       ll_temp += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+  //     }
+  //   }
+  //   ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+  // }
+
   for (int j = 0; j < ndt.size(); ++j) {
-    int ndj = 0;
+    double ll_single_doc = lda_lgamma(K * alpha) - K * lda_lgamma(alpha);
+    int ndj = 0, nz_num = 0;
     for (int k = 0; k < K; ++k) {
       ndj += ndt[j][k];
       if (ndt[j][k] > 0) {
-        ll_temp += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
+        ll_single_doc += lda_lgamma(alpha + ndt[j][k]);
+        ++ nz_num;
       }
     }
-    ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
+    ll_single_doc += (K - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K + ndj);
+    ll_temp += ll_single_doc;
   }
+
   ll_ndt.clear();
   ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
 
@@ -1410,7 +1425,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   lda_global_vars->get_nt_pointer(nt_ptr);
 
   double current_time = (get_time_ms() - start_time) / 1000.0;
-  double alpha = 0.1, eta = .01;
+  double alpha = 0.05, eta = .01;
 
   K = nt_ptr->size();
   V = nvt_ptr->size() / K;
@@ -1419,17 +1434,39 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
 
   double ll_word = 0.0;
 
-  for (int i = 0; i < K; ++i) {
-    ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
-    for (int v = 0; v < V; ++v) {
-      if (nvt_ptr->operator[](v* K + i) != 0) {
-        ll_word += lda_lgamma(eta + nvt_ptr->operator[](v* K + i)) - lgamma_eta;
+  // for (int i = 0; i < K; ++i) {
+  //   ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
+  //   for (int v = 0; v < V; ++v) {
+  //     if (nvt_ptr->operator[](v* K + i) != 0) {
+  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v* K + i)) - lgamma_eta;
+  //     }
+  //   }
+  // }
+
+  for (int v = 0; v < V; ++v) {
+    double ll_single_word = 0.;
+    int nz_num = 0;
+    for (int i = 0; i < K; ++i) {
+      auto cnt = nvt_ptr->operator[](v* K + i);
+      if (cnt != 0) {
+        nz_num ++;
+        ll_single_word += lda_lgamma(cnt + eta);
       }
     }
+    ll_single_word += (K - nz_num) * lda_lgamma(eta);
+    ll_word += ll_single_word;
+  }
+
+  double ll_norm = K * (lda_lgamma(eta * V) - V * lda_lgamma(eta));
+  for (int i = 0; i < K; ++i) {
+    ll_norm -= lda_lgamma(nt_ptr->operator[](i) + V * eta);
   }
 
   std::cout << "----------------------------------------------------------\n";
-  std::cout << "**log-likelihood: " << ll + ll_word << " "
+  std::cout << "doc-ll : " << ll << std::endl;
+  std::cout << "word-ll: " << ll_word << std::endl;
+  std::cout << "norm-ll: " << ll_norm << std::endl;
+  std::cout << "**log-likelihood: " << ll + ll_word + ll_norm << " "
             << (get_time_ms() - start_time) / 1000.0 << std::endl;
   std::cout << "word ll: " << ll_word << std::endl;
   std::cout << "doc ll" << ll << std::endl;

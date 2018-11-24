@@ -3,7 +3,6 @@
 #include "S3.h"
 
 int main() {
-
   cirrus::Configuration config = cirrus::Configuration("configs/lda_test.cfg");
 
   cirrus::s3_initialize_aws();
