@@ -47,21 +47,20 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
-    first_time = false;
-    if (ps_ips.size() > 1) {
-      psi = new MultiplePSSparseServerInterface(config, ps_ips, ps_ports);
-    } else {
-      psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
-
-      while (true) {
-        try {
-          psi->connect();
-          break;
-        } catch (const std::exception& exc) {
-          std::cout << exc.what();
-        }
-      }
-    }
+	first_time = false;
+	if (ps_ips.size() > 1) {
+	  psi = new MultiplePSSparseServerInterface(config, ps_ips, ps_ports);
+	} else {
+	   psi = new PSSparseServerInterface(ps_ips[0], ps_ports[0]);
+	}
+	while (true) {
+	  try {
+	    psi->connect();
+	    break;
+	  } catch (const std::exception& exc) {
+	    std::cout << exc.what();
+	  }
+	}
   }
   bool use_col_filtering =
       config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;

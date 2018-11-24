@@ -272,7 +272,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = load_value<uint32_t>(data);
-    FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
+	FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).resize(NUM_FACTORS);
     for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
@@ -489,6 +489,7 @@ void SparseMFModel::serializeFromDense(MFModel& mf_model,
   // now we store data about items
   for (uint32_t i = 0; i < k_items; ++i) {
     uint32_t item_id = load_value<uint32_t>(item_data_ptr);
+
     store_value<uint32_t>(data_to_send_ptr, item_id);
     store_value<FEATURE_TYPE>(data_to_send_ptr,
                               mf_model.get_item_bias(item_id));

@@ -192,7 +192,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   char** msg_begin_lst = msg_begin_lst_ptr.get();
 
   std::unique_ptr<uint32_t[]> item_ids_count_lst(new uint32_t[num_servers]);
-  std::unique_ptr<bool[]> seen(new bool[NUM_ITEMS]);
+  bool seen[NUM_ITEMS] = {0};
 
   user_base /= num_servers;
 
