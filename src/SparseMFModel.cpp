@@ -5,6 +5,8 @@
 #include <Checksum.h>
 #include <algorithm>
 #include <ModelGradient.h>
+#include <iostream>
+#include <fstream>
 
 // #define DEBUG
 
@@ -247,7 +249,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
                                          const Configuration& config,
                                          int server_id,
                                          int num_ps) {
-  int minibatch_size = 20;
+  int minibatch_size = NETFLIX_MB_SIZE;
   nfactors_ = NUM_FACTORS;
   global_bias_ = GLOBAL_BIAS;  // TODO: Fix the global bias away from hardcode
 
@@ -274,7 +276,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
     uint32_t item_id = load_value<uint32_t>(data);
 	FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
-    std::get<1>(item_model).resize(NUM_FACTORS);
+    std::get<1>(item_model).reserve(NUM_FACTORS);
     for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
       FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
       std::get<1>(item_model).push_back(item_weight);
@@ -457,6 +459,39 @@ void SparseMFModel::print() const {
   std::cout << "MODEL user weights: Not implemented";
   std::cout << std::endl;
 }
+/*
+void SparseMFModel::to_file(std::string fname) const {
+	
+	std::ofstream myfile;
+	myfile.open(fname);
+	myfile << "users\n";
+	for (auto user_model : user_models) {
+		int user_id = std::get<0>(user_model);
+		myfile << user_id << " ";
+		FEATURE_TYPE user_bias = std::get<1>(user_model);
+		myfile << user_bias << " ";
+		for (FEATURE_TYPE weight : std::get<2>(user_model)) {
+			myfile << weight << " ";
+		}
+		myfile << "\n";
+	}
+	myfile << "items\n";
+	for (int i = 0; i < 17770; i++) {
+		
+		FEATURE_TYPE item_bias = std::get<0>(item_models[i]);
+		std::vector<FEATURE_TYPE> item_weights = std::get<1>(item_models[i]);
+		if (item_weights.size() == 0)
+			continue;
+		myfile << i << " " << item_bias << " ";
+		for (FEATURE_TYPE weight : item_weights)
+			myfile << weight << " ";
+		myfile << "\n";
+	}
+	myfile.close();
+
+
+}
+*/
 
 void SparseMFModel::check() const {
   std::cout << "SparseMFModel::check() Not Implemented" << std::endl;
