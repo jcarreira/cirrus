@@ -291,10 +291,11 @@ double LDAModel::compute_ll_ndt() {
       ndj += ndt[j][k];
       if (ndt[j][k] > 0) {
         ll_single_doc += lda_lgamma(alpha + ndt[j][k]);
-        ++ nz_num;
+        ++nz_num;
       }
     }
-    ll_single_doc += (K_ - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K_ + ndj);
+    ll_single_doc +=
+        (K_ - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K_ + ndj);
     ll += ll_single_doc;
   }
   return ll;

@@ -1403,10 +1403,11 @@ void PSSparseServerTask::init_loglikelihood() {
       ndj += ndt[j][k];
       if (ndt[j][k] > 0) {
         ll_single_doc += lda_lgamma(alpha + ndt[j][k]);
-        ++ nz_num;
+        ++nz_num;
       }
     }
-    ll_single_doc += (K - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K + ndj);
+    ll_single_doc +=
+        (K - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K + ndj);
     ll_temp += ll_single_doc;
   }
 
@@ -1438,7 +1439,8 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   //   ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
   //   for (int v = 0; v < V; ++v) {
   //     if (nvt_ptr->operator[](v* K + i) != 0) {
-  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v* K + i)) - lgamma_eta;
+  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v* K + i)) -
+  //       lgamma_eta;
   //     }
   //   }
   // }
@@ -1449,7 +1451,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
     for (int i = 0; i < K; ++i) {
       auto cnt = nvt_ptr->operator[](v* K + i);
       if (cnt != 0) {
-        nz_num ++;
+        nz_num++;
         ll_single_word += lda_lgamma(cnt + eta);
       }
     }
