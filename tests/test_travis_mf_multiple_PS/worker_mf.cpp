@@ -30,7 +30,6 @@ int main() {
   int nfactors = 10;
   int batch_size = 200;
 
-
   std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
 
   std::vector<uint64_t> ps_ports{1338, 1340};
