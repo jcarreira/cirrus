@@ -1,12 +1,12 @@
+#include <Checksum.h>
+#include <MlUtils.h>
+#include <ModelGradient.h>
 #include <SparseMFModel.h>
 #include <Utils.h>
-#include <MlUtils.h>
 #include <Eigen/Dense>
-#include <Checksum.h>
 #include <algorithm>
-#include <ModelGradient.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 // #define DEBUG
 
@@ -274,7 +274,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = load_value<uint32_t>(data);
-	FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
+    FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).reserve(NUM_FACTORS);
     for (uint64_t j = 0; j < NUM_FACTORS; ++j) {
@@ -461,33 +461,30 @@ void SparseMFModel::print() const {
 }
 /*
 void SparseMFModel::to_file(std::string fname) const {
-	
-	std::ofstream myfile;
-	myfile.open(fname);
-	myfile << "users\n";
-	for (auto user_model : user_models) {
-		int user_id = std::get<0>(user_model);
-		myfile << user_id << " ";
-		FEATURE_TYPE user_bias = std::get<1>(user_model);
-		myfile << user_bias << " ";
-		for (FEATURE_TYPE weight : std::get<2>(user_model)) {
-			myfile << weight << " ";
-		}
-		myfile << "\n";
-	}
-	myfile << "items\n";
-	for (int i = 0; i < 17770; i++) {
-		
-		FEATURE_TYPE item_bias = std::get<0>(item_models[i]);
-		std::vector<FEATURE_TYPE> item_weights = std::get<1>(item_models[i]);
-		if (item_weights.size() == 0)
-			continue;
-		myfile << i << " " << item_bias << " ";
-		for (FEATURE_TYPE weight : item_weights)
-			myfile << weight << " ";
-		myfile << "\n";
-	}
-	myfile.close();
+
+        std::ofstream myfile;
+        myfile.open(fname);
+        myfile << "users\n";
+        for (auto user_model : user_models) {
+                int user_id = std::get<0>(user_model);
+                myfile << user_id << " ";
+                FEATURE_TYPE user_bias = std::get<1>(user_model);
+                myfile << user_bias << " ";
+                for (FEATURE_TYPE weight : std::get<2>(user_model)) {
+                        myfile << weight << " ";
+                }
+                myfile << "\n";
+        }
+        myfile << "items\n";
+        for (int i = 0; i < 17770; i++) {
+
+                FEATURE_TYPE item_bias = std::get<0>(item_models[i]);
+                std::vector<FEATURE_TYPE> item_weights =
+std::get<1>(item_models[i]); if (item_weights.size() == 0) continue; myfile << i
+<< " " << item_bias << " "; for (FEATURE_TYPE weight : item_weights) myfile <<
+weight << " "; myfile << "\n";
+        }
+        myfile.close();
 
 
 }

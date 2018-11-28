@@ -251,7 +251,8 @@ void PSSparseServerInterface::get_full_model_inplace(
   if (read_all(sock, &model_size, sizeof(int)) == 0) {
     throw std::runtime_error("Error talking to PS");
   }
-  std::unique_ptr<char> model_data_smart_ptr(new char[sizeof(int)*2 + model_size * sizeof(FEATURE_TYPE)]);
+  std::unique_ptr<char> model_data_smart_ptr(
+      new char[sizeof(int) * 2 + model_size * sizeof(FEATURE_TYPE)]);
   char* model_data = model_data_smart_ptr.get();
   char* model_data_ptr = model_data;
   store_value<uint32_t>(model_data_ptr, model_size);
