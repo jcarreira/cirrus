@@ -101,8 +101,8 @@ void SparseLRModel::loadSerialized(const void* data,
                                    int server_id,
                                    int num_ps) {
   std::hash<uint32_t> hash;
-  int num_weights = load_value<int>(data);
-  int largest_weight = load_value<int>(data);
+  uint32_t num_weights = load_value<uint32_t>(data);
+  uint32_t largest_weight = load_value<uint32_t>(data);
   assert(num_weights > 0 && num_weights < 10000000);
 
   if (weights_.size() < largest_weight) {

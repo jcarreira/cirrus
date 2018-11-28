@@ -91,7 +91,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   uint64_t version = 1;
   SparseLRModel model(1 << config.get_model_bits());
 
-  if (ps_ips.size() > 1) {
+  if (ps_ips.size() == 1) {
     psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
   } else {
     psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
