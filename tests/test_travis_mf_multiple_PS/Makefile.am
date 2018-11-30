@@ -34,7 +34,8 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
-		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp
+		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
+				config.h
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \

@@ -27,7 +27,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
     psi = new PSSparseServerInterface(ps_ip, ps_port);
     psi->connect();
   }
-  return psi->get_full_model(false);
+  return psi->get_full_model(config, false);
 }
 
 int main() {

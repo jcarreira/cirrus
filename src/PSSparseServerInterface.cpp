@@ -125,7 +125,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   store_value<uint32_t>(msg, MAGIC_NUMBER);  // magic value
-  bool seen[NUM_ITEMS] = {false};
+  bool seen[config.get_items()] = {false};
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
       uint32_t movieId = w.first;
@@ -266,6 +266,7 @@ void PSSparseServerInterface::get_full_model_inplace(
 
 void PSSparseServerInterface::get_full_model_inplace(
     std::unique_ptr<SparseMFModel>& model,
+    const Configuration& config, 
     int server_id,
     int num_ps) {
   // 1. Send operation
@@ -281,10 +282,11 @@ void PSSparseServerInterface::get_full_model_inplace(
             << std::endl;
 
   // build a sparse model and return
-  model->loadSerializedShard(buffer.get(), server_id, num_ps);
+  model->loadSerializedShard(buffer.get(), config, server_id, num_ps);
 }
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
+    const Configuration& config, 
     bool isCollaborative //XXX use a better argument here
     ) {
 #ifdef DEBUG

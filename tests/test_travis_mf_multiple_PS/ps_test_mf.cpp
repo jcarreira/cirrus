@@ -1,4 +1,4 @@
-// Code here starts a parameter server on localhost, port 1338
+// Code here starts a parameter server on localhost, port specified port
 
 #include <Configuration.h>
 #include <Tasks.h>

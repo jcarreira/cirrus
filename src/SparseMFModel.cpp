@@ -128,6 +128,7 @@ uint64_t SparseMFModel::getSerializedSize() const {
 }
 
 void SparseMFModel::loadSerializedShard(const void* data,
+                                        const Configuration& config,
                                         int server_id,
                                         int num_ps) {
   std::hash<int> hash;
@@ -136,17 +137,17 @@ void SparseMFModel::loadSerializedShard(const void* data,
   load_value<uint64_t>(data);
   uint64_t nfactors_ = NUM_FACTORS;
   global_bias_ = GLOBAL_BIAS;
-  int minibatch_size = NETFLIX_MB_SIZE;
+  int minibatch_size = config.get_minibatch_size();
   uint64_t user_base = (minibatch_size / num_ps) * server_id;
 
-  if (user_models.size() < NUM_USERS)
-    user_models.resize(NUM_USERS);
+  if (user_models.size() < config.get_users())
+    user_models.resize(config.get_users());
 
   for (uint64_t i = 0; i < nusers_; ++i) {
     uint32_t user_id = (i % (minibatch_size / num_ps)) +
                        (minibatch_size / num_ps) * server_id +
                        (i / (minibatch_size / num_ps)) * minibatch_size;
-    if (user_id >= NUM_USERS) {
+    if (user_id >= config.get_users()) {
       FEATURE_TYPE user_bias = load_value<FEATURE_TYPE>(data);
       continue;
     }
@@ -159,7 +160,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint64_t i = 0; i < nitems_; ++i) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = i;
-    if (item_id >= NUM_ITEMS or hash(item_id) % num_ps != server_id) {
+    if (item_id >= config.get_items() or hash(item_id) % num_ps != server_id) {
       FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
       continue;
     }
@@ -174,7 +175,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
       uint32_t user_id = (i % (minibatch_size / num_ps)) +
                          (minibatch_size / num_ps) * server_id +
                          (i / (minibatch_size / num_ps)) * minibatch_size;
-      if (user_id >= NUM_USERS) {
+      if (user_id >= config.get_users()) {
         FEATURE_TYPE user_weight = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -186,7 +187,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint32_t i = 0; i < nitems_; ++i) {
     for (uint32_t j = 0; j < nfactors_; ++j) {
       uint32_t item_id = i;
-      if (item_id >= NUM_ITEMS or hash(item_id) % num_ps != server_id) {
+      if (item_id >= config.get_items() or hash(item_id) % num_ps != server_id) {
         FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -249,7 +250,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
                                          const Configuration& config,
                                          int server_id,
                                          int num_ps) {
-  int minibatch_size = NETFLIX_MB_SIZE;
+  int minibatch_size = config.get_minibatch_size();
   nfactors_ = NUM_FACTORS;
   global_bias_ = GLOBAL_BIAS;  // TODO: Fix the global bias away from hardcode
 

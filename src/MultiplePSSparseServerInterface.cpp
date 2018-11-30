@@ -192,7 +192,7 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   char** msg_begin_lst = msg_begin_lst_ptr.get();
 
   std::unique_ptr<uint32_t[]> item_ids_count_lst(new uint32_t[num_servers]);
-  bool seen[NUM_ITEMS] = {0};
+  bool seen[config.get_items()] = {0};
 
   user_base /= num_servers;
 
@@ -252,12 +252,13 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
 }
 
 std::unique_ptr<CirrusModel> MultiplePSSparseServerInterface::get_full_model(
+    const Configuration& config,
     bool use_col_filtering) {
   if (use_col_filtering) {
     std::unique_ptr<SparseMFModel> model = std::make_unique<SparseMFModel>(
         (uint64_t) 0, (uint64_t) 0, (uint64_t) NUM_FACTORS);
     for (int i = 0; i < psints.size(); i++) {
-      psints[i]->get_full_model_inplace(model, i, psints.size());
+      psints[i]->get_full_model_inplace(model, config, i, psints.size());
     }
     return std::move(model);
 

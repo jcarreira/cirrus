@@ -25,24 +25,34 @@ int main() {
   int nusers, njokes;
   SparseDataset train_dataset = input.read_jester_ratings(
       "tests/test_data/jester_train.csv", &nusers, &njokes);
+  nusers = config.get_users();
+  njokes = config.get_items();
   train_dataset.check();
   train_dataset.print_info();
   int nfactors = 10;
-  int batch_size = 200;
+  int batch_size = config.get_minibatch_size();
 
   std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
 
   std::vector<uint64_t> ps_ports{1338, 1340};
 
   MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
-  psi.connect();
+  while (true) {
+    try {
+      psi.connect();
+      break;
+    } catch (const std::exception& exc) {
+      std::cout << exc.what();
+    }
+  }
+
   int version = 0;
   while (1) {
     for (uint32_t i = 0; i < nusers; i += batch_size) {
       SparseMFModel model(nusers, njokes, nfactors);
       int actual_batch_size = batch_size;
       if (i + batch_size >= nusers) {
-        actual_batch_size = nusers - i - 1;
+        break;
       }
       SparseDataset ds = train_dataset.sample_from(i, actual_batch_size);
       psi.get_mf_sparse_model_inplace(ds, model, config, i, actual_batch_size);

@@ -9,7 +9,7 @@
 // #define PRELOAD_DATA
 
 #ifdef USE_REDIS
-#define PS_IP "172.31.0.197"
+#define PS_IP "127.0.0.1"
 #define PS_PORT 1337
 #endif
 
@@ -41,9 +41,6 @@ using FEATURE_TYPE = float;
 
 // Special params for Netflix Task
 #define GLOBAL_BIAS 3.604
-#define NUM_USERS 480189
-#define NUM_ITEMS 17770
-#define NETFLIX_MB_SIZE 20
 #define MAX_NUM_PS 100
 
 // fixed size number of characters for key name

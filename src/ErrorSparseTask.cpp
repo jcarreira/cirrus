@@ -65,7 +65,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   bool use_col_filtering =
       config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   std::cout << "[ERROR_TASK] Call to get_model" << std::endl;
-  return psi->get_full_model(use_col_filtering);
+  return psi->get_full_model(config, use_col_filtering);
 }
 
 void ErrorSparseTask::error_response() {
