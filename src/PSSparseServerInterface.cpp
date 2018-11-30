@@ -266,7 +266,7 @@ void PSSparseServerInterface::get_full_model_inplace(
 
 void PSSparseServerInterface::get_full_model_inplace(
     std::unique_ptr<SparseMFModel>& model,
-    const Configuration& config, 
+    const Configuration& config,
     int server_id,
     int num_ps) {
   // 1. Send operation
@@ -286,9 +286,9 @@ void PSSparseServerInterface::get_full_model_inplace(
 }
 
 std::unique_ptr<CirrusModel> PSSparseServerInterface::get_full_model(
-    const Configuration& config, 
-    bool isCollaborative //XXX use a better argument here
-    ) {
+    const Configuration& config,
+    bool isCollaborative  // XXX use a better argument here
+) {
 #ifdef DEBUG
   std::cout << "Getting full model isCollaborative: " << isCollaborative << std::endl;
 #endif

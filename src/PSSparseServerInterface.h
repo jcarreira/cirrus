@@ -47,7 +47,7 @@ class PSSparseServerInterface {
                                            uint32_t mb_size);
 
   virtual std::unique_ptr<CirrusModel> get_full_model(
-      const Configuration& config, 
+      const Configuration& config,
       bool isCollaborativeFiltering);  // XXX use a better argument here
 
   void set_status(uint32_t id, uint32_t status);
@@ -105,7 +105,7 @@ class PSSparseServerInterface {
                               int server_id,
                               int num_ps);
   void get_full_model_inplace(std::unique_ptr<cirrus::SparseMFModel>& model,
-                              const Configuration& config, 
+                              const Configuration& config,
                               int server_id,
                               int num_ps);
 

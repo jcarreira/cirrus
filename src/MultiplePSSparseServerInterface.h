@@ -42,8 +42,8 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
                                    const Configuration& config,
                                    uint32_t user_base,
                                    uint32_t minibatch_size);
-  std::unique_ptr<CirrusModel> get_full_model(const Configuration& config, 
-      bool isCollaborativeFiltering);
+  std::unique_ptr<CirrusModel> get_full_model(const Configuration& config,
+                                              bool isCollaborativeFiltering);
 
  private:
   std::vector<PSSparseServerInterface*> psints;

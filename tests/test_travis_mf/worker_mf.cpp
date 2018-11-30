@@ -30,7 +30,7 @@ int main() {
   nusers = config.get_users();
   nitems = config.get_items();
   int nfactors = 10;
-  int batch_size = config.get_minibatch()_size();
+  int batch_size = config.get_minibatch() _size();
 
   SparseMFModel model(nusers, njokes, nfactors);
   std::unique_ptr<PSSparseServerInterface> psi =

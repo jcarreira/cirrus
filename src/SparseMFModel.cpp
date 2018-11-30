@@ -187,7 +187,8 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint32_t i = 0; i < nitems_; ++i) {
     for (uint32_t j = 0; j < nfactors_; ++j) {
       uint32_t item_id = i;
-      if (item_id >= config.get_items() or hash(item_id) % num_ps != server_id) {
+      if (item_id >= config.get_items() or
+          hash(item_id) % num_ps != server_id) {
         FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
         continue;
       }
