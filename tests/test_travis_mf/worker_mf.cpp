@@ -28,7 +28,7 @@ int main() {
   train_dataset.check();
   train_dataset.print_info();
   nusers = config.get_users();
-  nitems = config.get_items();
+  njokes = config.get_items();
   int nfactors = 10;
   int batch_size = config.get_minibatch_size();
 
