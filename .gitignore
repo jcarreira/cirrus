@@ -1,4 +1,5 @@
 *.o
+*.toml
 *.log
 *.status
 *.in
@@ -9,6 +10,7 @@ core
 .deps
 *.out
 *.txt
+!requirements.txt
 config.*
 Makefile
 *.tgz
@@ -22,6 +24,7 @@ install-sh
 ltmain.sh
 missing
 docs/html/
+.DS_Store
 *.pyc
 __pycache__/
 *.dSYM/
@@ -44,3 +47,4 @@ third_party/keyutils-1.5.10.tar.bz2
 third_party/keyutils/
 third_party/krb5-1.15.2.tar.gz
 third_party/curl/
+.idea

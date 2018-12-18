@@ -1,16 +1,18 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "config.h"
-#include "Utils.h"
-#include "SparseLRModel.h"
-#include "PSSparseServerInterface.h"
 #include "Configuration.h"
 #include "InputReader.h"
+#include "PSSparseServerInterface.h"
+#include "Serializers.h"
+#include "SparseLRModel.h"
+#include "Utils.h"
+#include "config.h"
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
 #define ACC_CUTOFF (0.7)              // when to register test as passing
+
+#define LOSS_THRESHOLD (0.66)
 
 using namespace cirrus;
 
@@ -79,4 +81,6 @@ int main() {
   } else {
     exit(EXIT_FAILURE);
   }
+
+  return 0;
 }

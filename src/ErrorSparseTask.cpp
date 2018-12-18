@@ -59,6 +59,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   bool use_col_filtering =
     config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   if (use_softmax) {
+    std::cout << "inside if" << std::endl;
     return psi->get_sm_full_model(config);
   } else {
     return psi->get_full_model(use_col_filtering);
