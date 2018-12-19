@@ -42,6 +42,7 @@ script:
    - sleep 70
    - echo "BEGIN TEST_KEYVALUE ==========================================================="
    - ./tests/test_travis/test_keyvalue.sh
+   - sleep 70
 
 env:
   global:
