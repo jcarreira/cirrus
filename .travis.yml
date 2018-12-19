@@ -24,17 +24,23 @@ script:
    - gcc --version
    - g++ --version
    - make -j 10
+   - echo "BEGIN TEST_TRAVIS_LR ==========================================================="
    - for i in "./tests/test_travis_lr/test.sh & sleep 1" "./tests/test_travis_lr/error"; do eval ${i}; done
-   - sleep 20
+   - sleep 70
+   - echo "BEGIN TEST_TRAVIS_LR_mult ==========================================================="
    - for i in "./tests/test_travis_lr_multiple_PS/test.sh & sleep 1" "./tests/test_travis_lr_multiple_PS/error"; do eval ${i}; done
-   - sleep 20
+   - sleep 70
+   - echo "BEGIN TEST_TRAVIS_MF ==========================================================="
    - ./tests/test_data/jester.sh
    - for i in "./tests/test_travis_mf/test.sh & sleep 1" "./tests/test_travis_mf/error"; do eval ${i}; done
-   - sleep 20
+   - sleep 70
+   - echo "BEGIN TEST_TRAVIS_MF_mult ==========================================================="
    - for i in "./tests/test_travis_mf_multiple_PS/test.sh & sleep 1" "./tests/test_travis_mf_multiple_PS/error"; do eval ${i}; done
-   - sleep 20
+   - sleep 70
+   - echo "BEGIN TEST_REGISTSER ==========================================================="
    - ./tests/test_travis/test_register.sh
-   - sleep 20
+   - sleep 70
+   - echo "BEGIN TEST_KEYVALUE ==========================================================="
    - ./tests/test_travis/test_keyvalue.sh
 
 env:
