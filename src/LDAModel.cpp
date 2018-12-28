@@ -267,21 +267,6 @@ LDAModel& LDAModel::operator=(LDAModel& model) {
   slice = std::move(model.slice);
 }
 
-// double LDAModel::compute_ll_ndt() {
-//   double ll = 0, lgamma_alpha = lda_lgamma(alpha);
-//   for (int j = 0; j < ndt.size(); ++j) {
-//     int ndj = 0;
-//     for (int k = 0; k < K_; ++k) {
-//       ndj += ndt[j][k];
-//       if (ndt[j][k] > 0) {
-//         ll += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
-//       }
-//     }
-//     ll += lda_lgamma(alpha * K_) - lda_lgamma(alpha * K_ + ndj);
-//   }
-//   return ll;
-// }
-
 double LDAModel::compute_ll_ndt() {
   double ll = 0;
   for (int j = 0; j < ndt.size(); ++j) {
@@ -329,14 +314,9 @@ char* LDAModel::sample_thread(std::vector<int>& t,
 
   total_sampled_tokens = 0;
 
-  // // Naive Sampler
-  // double* rate = new double[K_];
-  // double r, rate_cum, linear;
-
   int top, new_top, doc, gindex, lindex, j;
-  // std::vector<int>::iterator it;
 
-  // initialize an empty vector to hold the updates
+  // initialize empty vectors to hold the updates
   std::vector<int> change_nvt(nvt.size() * K_, 0);
   std::vector<int> change_nt(K_, 0);
   std::vector<std::set<int> > change_nvt_indices(nvt.size(), std::set<int>());
@@ -447,27 +427,6 @@ char* LDAModel::sample_thread(std::vector<int>& t,
                     (eta * (double) V_ + (float) nt[top]);
     coeff_base[top] = alpha / (eta * (double) V_ + (float) nt[top]);
 
-    // // Naive Sampler
-    // rate_cum = 0.0;
-    // std::vector<int> which_topic(K_);
-    // which_topic[top] = 1;
-    // for (int j = 0; j < K_; ++j) {
-    //
-    //   // r = (alpha + ndt[doc][j]) * (eta + nvt[lindex][j]) / (V_ * eta +
-    // nt[j]);
-    //   r = (alpha * eta) / (eta * V_ + nt[j]) +
-    //       (ndt[doc][j] * eta) / (eta * V_ + nt[j]) +
-    //       ((alpha + ndt[doc][j]) * nvt[lindex][j]) / (eta * V_ + nt[j]);
-    //
-    //   if (r > 0)
-    //     rate_cum += r;
-    //
-    //   rate[j] = rate_cum;
-    // }
-    //
-    // linear = rand() * rate_cum / RAND_MAX;
-    // new_top = (std::lower_bound(rate, rate + K_, linear)) - rate;
-
     // Compute word_threshold from coeff_di helpers
     double word_threshold = 0.0;
     for (auto& nz_top : nz_nvt_indices[lindex]) {
@@ -576,12 +535,6 @@ char* LDAModel::sample_thread(std::vector<int>& t,
     total_sampled_tokens += 1;
   }
 
-  // store the number of sampled tokens in this run
-  // total_sampled_tokens = temp;
-
-  // // Naive Sampler
-  // delete[] rate;
-
   // The upper bound of the update's size
   uint32_t temp_size = sizeof(uint64_t) +
                        sizeof(int) * (3 + change_nt.size() + 2 * slice.size()) +
@@ -616,7 +569,6 @@ char* LDAModel::sample_thread(std::vector<int>& t,
   mem = reinterpret_cast<char*>(
       (reinterpret_cast<char*>(mem) + sizeof(int) * change_nt.size()));
 
-  // XXX remove later
   store_value<uint32_t>(mem, 1);
 
   // save the actual size
