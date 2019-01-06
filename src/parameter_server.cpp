@@ -17,9 +17,13 @@
 DEFINE_int64(nworkers, -1, "number of workers");
 DEFINE_int64(rank, -1, "rank");
 DEFINE_string(config, "", "config");
-
 DEFINE_string(ps_ip, PS_IP, "parameter server ips comma separated");
 DEFINE_string(ps_port, "1337", "parameter server ports comma separated");
+DEFINE_bool(testing, false, "testing mode");
+DEFINE_int64(test_iters, -1, "iterations to test for convergence");
+DEFINE_double(test_threshold,
+              -0.1,
+              "accuracy threshold for a passing convergence test");
 
 static const uint64_t GB = (1024*1024*1024);
 static const uint32_t SIZE = 1;
@@ -29,7 +33,10 @@ void run_tasks(int rank,
                int batch_size,
                const cirrus::Configuration& config,
                std::vector<std::string> ps_ips,
-               std::vector<uint64_t> ps_ports) {
+               std::vector<uint64_t> ps_ports,
+               bool testing,
+               int test_iters,
+               double test_threshold) {
   std::cout << "Run tasks rank: " << rank << std::endl;
   int features_per_sample = config.get_num_features();
   int samples_per_batch = config.get_minibatch_size();
@@ -65,7 +72,7 @@ void run_tasks(int rank,
     cirrus::ErrorSparseTask et((1 << config.get_model_bits()), batch_size,
                                samples_per_batch, features_per_sample, nworkers,
                                rank, config, ps_ips, ps_ports);
-    et.run(config);
+    et.run(config, testing, test_iters, test_threshold);
     cirrus::sleep_forever();
 
   } else if (rank == LOADING_SPARSE_TASK_RANK) {
@@ -179,9 +186,16 @@ int main(int argc, char** argv) {
   // Initialize S3
   cirrus::s3_initialize_aws();
 
-  // call the right task for this process
-  std::cout << "Running task" << std::endl;
-  run_tasks(rank, nworkers, batch_size, config, ps_ips, ps_ports);
+  if (FLAGS_test_iters <= 0 && FLAGS_testing) {
+    throw std::runtime_error(
+        "Please specify a valid number of test iterations");
+  }
+  if (FLAGS_test_threshold <= 0 && FLAGS_testing) {
+    throw std::runtime_error("Please specify a valid test accuracy threshold");
+  }
+  run_tasks(rank, nworkers, batch_size, config, ps_ips, ps_ports, FLAGS_testing,
+            FLAGS_test_iters, FLAGS_test_threshold);
+
   std::cout << "Test successful" << std::endl;
 
   return 0;
