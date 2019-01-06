@@ -154,7 +154,10 @@ class ErrorSparseTask : public MLTask {
                    const std::vector<std::string>& ps_ips,
                    const std::vector<uint64_t>& ps_ports);
 
-   void run(const Configuration& config);
+   void run(const Configuration& config,
+            bool testing,
+            int iters,
+            double test_threshold);
    void error_response();
 
   private:
