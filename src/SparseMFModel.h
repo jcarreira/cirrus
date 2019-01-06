@@ -27,7 +27,7 @@ class SparseMFModel : public CirrusModel {
       * @param minibatch_size 
       * @param num_items
       */
-    SparseMFModel(const void* w, uint64_t minibatch_size, uint64_t num_items);
+    SparseMFModel(const void* w, std::vector<uint32_t> seen_indices, uint64_t minibatch_size, uint64_t num_items);
     SparseMFModel(uint64_t users, uint64_t items, uint64_t factors);
 
     /**
@@ -40,12 +40,13 @@ class SparseMFModel : public CirrusModel {
      * @param mem Memory where model is serialized
      */
     void loadSerialized(const void*) { throw std::runtime_error("Not implemented"); }
-    void loadSerialized(const void* mem, uint64_t, uint64_t);
+    void loadSerialized(const void* mem, std::vector<uint32_t> seen_indices, uint64_t, uint64_t);
     void loadSerializedShard(const void* mem,
                              const Configuration& config,
                              int server_id,
                              int num_ps);
     void loadSerializedSparse(const void* mem,
+							  std::vector<uint32_t> seen_indicies,
                               uint64_t num_users,
                               uint64_t num_items,
                               const cirrus::Configuration& config,

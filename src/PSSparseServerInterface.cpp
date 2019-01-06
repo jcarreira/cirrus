@@ -125,6 +125,8 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   store_value<uint32_t>(msg, MAGIC_NUMBER);  // magic value
+
+  std::vector<uint32_t> seen_indices;
   bool seen[config.get_items()] = {false};
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
@@ -133,6 +135,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
         continue;
       store_value<uint32_t>(msg, movieId);
       seen[movieId] = true;
+	  seen_indices.push_back(movieId);
       item_ids_count++;
     }
   }
@@ -156,7 +159,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace(
 
   // build a sparse model and return
   model.initialize_weights(0, 0, 0);
-  model.loadSerialized((FEATURE_TYPE*) buffer.get(), minibatch_size,
+  model.loadSerialized((FEATURE_TYPE*) buffer.get(), seen_indices, minibatch_size,
                        item_ids_count);
 }
 
@@ -352,6 +355,8 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   store_value<uint32_t>(msg, user_base);
   store_value<uint32_t>(msg, minibatch_size);
   store_value<uint32_t>(msg, MAGIC_NUMBER); // magic value
+
+  std::vector<uint32_t> seen_indices;
   bool seen[17770] = {false};
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
@@ -359,6 +364,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
       if (seen[movieId])
           continue;
       store_value<uint32_t>(msg, movieId);
+	  seen_indices.push_back(movieId);
       seen[movieId] = true;
       item_ids_count++;
     }
@@ -381,7 +387,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
   }
 
   // build a sparse model and return
-  SparseMFModel model((FEATURE_TYPE*) buffer.get(), minibatch_size,
+  SparseMFModel model((FEATURE_TYPE*) buffer.get(), seen_indices, minibatch_size,
                       item_ids_count);
 
   return std::move(model);
@@ -389,6 +395,7 @@ SparseMFModel PSSparseServerInterface::get_sparse_mf_model(
 
 void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
     SparseMFModel& mf_model,
+	std::vector<uint32_t> seen_indicies,
     const Configuration& config,
     char* msg_begin,
     uint32_t num_users,
@@ -402,7 +409,7 @@ void PSSparseServerInterface::get_mf_sparse_model_inplace_sharded(
   read_all(sock, buffer.get(), to_receive_size);
 
   // Serialize data recieved into MF Model
-  mf_model.loadSerializedSparse(buffer.get(), num_users, num_items, config,
+  mf_model.loadSerializedSparse(buffer.get(), seen_indicies, num_users, num_items, config,
                                 server_id, num_ps);
 }
 

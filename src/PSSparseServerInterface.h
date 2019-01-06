@@ -94,6 +94,7 @@ class PSSparseServerInterface {
                                            int num_ps);
 
   void get_mf_sparse_model_inplace_sharded(SparseMFModel& model,
+		  								   std::vector<uint32_t> seen_indices,
                                            const Configuration& config,
                                            char* msg_begin,
                                            uint32_t num_users,

@@ -69,16 +69,13 @@ SparseMFModel::SparseMFModel(uint64_t users, uint64_t items, uint64_t nfactors) 
   initialize_weights(users, items, nfactors);
 }
 
-SparseMFModel::SparseMFModel(const void* data, uint64_t minibatch_size, uint64_t num_items) {
+SparseMFModel::SparseMFModel(const void* data, std::vector<uint32_t> seen_indices, uint64_t minibatch_size, uint64_t num_items) {
   initialize_weights(0, 0, 0);
-  loadSerialized(data, minibatch_size, num_items);
+  loadSerialized(data, seen_indices, minibatch_size, num_items);
 }
 
 std::unique_ptr<CirrusModel> SparseMFModel::deserialize(void* data, uint64_t /*size*/) const {
   throw std::runtime_error("Not implemented");
-  uint32_t* data_p = reinterpret_cast<uint32_t*>(data);
-  return std::make_unique<SparseMFModel>(reinterpret_cast<void*>(data_p), 10,
-                                         10);
 }
 
 std::pair<std::unique_ptr<char[]>, uint64_t> SparseMFModel::serialize() const {
@@ -199,6 +196,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
 }
 
 void SparseMFModel::loadSerialized(const void* data,
+								   std::vector<uint32_t> seen_indicies,
                                    uint64_t minibatch_size,
                                    uint64_t num_item_ids) {
 #ifdef DEBUG
@@ -226,7 +224,7 @@ void SparseMFModel::loadSerialized(const void* data,
   // now we read the item vectors
   for (uint64_t i = 0; i < num_item_ids; ++i) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
-    uint32_t item_id = load_value<uint32_t>(data);
+    uint32_t item_id = seen_indicies[i];
     FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).resize(NUM_FACTORS);
@@ -246,6 +244,7 @@ void SparseMFModel::loadSerialized(const void* data,
  * This is used to unserialize for sharded PS
  */
 void SparseMFModel::loadSerializedSparse(const void* data,
+										 std::vector<uint32_t> seen_indices, 
                                          uint64_t num_users,
                                          uint64_t num_items,
                                          const Configuration& config,
@@ -275,7 +274,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
   // Load out item data. Item data is sparse
   for (uint64_t i = 0; i < num_items; i++) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
-    uint32_t item_id = load_value<uint32_t>(data);
+    uint32_t item_id = seen_indices[i];
     FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
     std::get<0>(item_model) = item_bias;
     std::get<1>(item_model).reserve(NUM_FACTORS);
@@ -461,36 +460,6 @@ void SparseMFModel::print() const {
   std::cout << "MODEL user weights: Not implemented";
   std::cout << std::endl;
 }
-/*
-void SparseMFModel::to_file(std::string fname) const {
-
-        std::ofstream myfile;
-        myfile.open(fname);
-        myfile << "users\n";
-        for (auto user_model : user_models) {
-                int user_id = std::get<0>(user_model);
-                myfile << user_id << " ";
-                FEATURE_TYPE user_bias = std::get<1>(user_model);
-                myfile << user_bias << " ";
-                for (FEATURE_TYPE weight : std::get<2>(user_model)) {
-                        myfile << weight << " ";
-                }
-                myfile << "\n";
-        }
-        myfile << "items\n";
-        for (int i = 0; i < 17770; i++) {
-
-                FEATURE_TYPE item_bias = std::get<0>(item_models[i]);
-                std::vector<FEATURE_TYPE> item_weights =
-std::get<1>(item_models[i]); if (item_weights.size() == 0) continue; myfile << i
-<< " " << item_bias << " "; for (FEATURE_TYPE weight : item_weights) myfile <<
-weight << " "; myfile << "\n";
-        }
-        myfile.close();
-
-
-}
-*/
 
 void SparseMFModel::check() const {
   std::cout << "SparseMFModel::check() Not Implemented" << std::endl;
@@ -524,7 +493,6 @@ void SparseMFModel::serializeFromDense(MFModel& mf_model,
   for (uint32_t i = 0; i < k_items; ++i) {
     uint32_t item_id = load_value<uint32_t>(item_data_ptr);
 
-    store_value<uint32_t>(data_to_send_ptr, item_id);
     store_value<FEATURE_TYPE>(data_to_send_ptr,
                               mf_model.get_item_bias(item_id));
     for (uint32_t j = 0; j < NUM_FACTORS; ++j) {
