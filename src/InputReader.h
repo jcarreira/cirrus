@@ -1,7 +1,6 @@
 #ifndef _INPUT_H_
 #define _INPUT_H_
 
-// #include <functional>
 #include <Configuration.h>
 #include <Dataset.h>
 #include <LDADataset.h>

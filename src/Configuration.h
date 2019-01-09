@@ -170,12 +170,8 @@ class Configuration {
     uint64_t d = 0;          //< number of sample features
     uint64_t n_workers = 0;  //< number of system workers
 
-    uint32_t K_ = 0;
-
     uint64_t minibatch_size = 0;  //< size of minibatch
     uint64_t s3_size = 0;  //< size of samples chunk stored in each s3 object
-
-    uint32_t slice_size = 0;
 
     double learning_rate = 0;     //< sgd learning rate
     double epsilon = 0;           //< regularization rate
@@ -188,8 +184,10 @@ class Configuration {
     std::string samples_path;  //< path to dataset samples
     std::string labels_path;   //< path to dataset labels
 
-    std::string vocab_path;
-    std::string doc_path;
+    uint32_t K_ = 0;          //< number of topics
+    uint32_t slice_size = 0;  //< vocab slice dimension
+    std::string vocab_path;   //< path to the vocab file
+    std::string doc_path;     //< path to the corpus 
 
     Configuration::ModelType model_type = UNKNOWN;  //< type of the model
 
