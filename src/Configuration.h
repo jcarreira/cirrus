@@ -187,7 +187,7 @@ class Configuration {
     uint32_t K_ = 0;          //< number of topics
     uint32_t slice_size = 0;  //< vocab slice dimension
     std::string vocab_path;   //< path to the vocab file
-    std::string doc_path;     //< path to the corpus 
+    std::string doc_path;     //< path to the corpus
 
     Configuration::ModelType model_type = UNKNOWN;  //< type of the model
 
