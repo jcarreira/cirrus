@@ -29,6 +29,8 @@ docs/html/
 __pycache__/
 *.dSYM/
 *.gch
+.idea/
+cmake-build-debug/
 third_party/eigen_source/*
 .m4
 lib-link.m4

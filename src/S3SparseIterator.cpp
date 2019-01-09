@@ -58,7 +58,14 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
   }
 }
 
-std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
+/**
+ * Called to get next minibatch with a minibatch index. The minibatch index only works properly if
+ * all minibatches per s3 object are full, (minibatch_rows % s3_rows == 0).
+ * @return pair of minibatch index and the minibatch dataset.
+ */
+std::pair<int, std::shared_ptr<SparseDataset>> S3SparseIterator::getNextWithIndex() {
+  assert(minibatch_rows % s3_rows == 0);
+
   // we need to delete entry
   if (to_delete != -1) {
 #ifdef DEBUG
@@ -79,7 +86,8 @@ std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
     auto queue_ptr = minibatches_list.pop();
     delete queue_ptr; // free memory of empty queue
   }
-  auto ret = minibatches_list.front()->front();
+  auto index = minibatches_list.front()->front().second;
+  auto ret = minibatches_list.front()->front().first;
   minibatches_list.front()->pop();
   num_minibatches_ready--;
   ring_lock.unlock();
@@ -106,13 +114,18 @@ std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
 #ifdef DEBUG
   ds.check();
 #endif
-  return ds;
+  return std::make_pair(index, ds);
+}
+
+std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
+  auto data_with_index = getNextWithIndex();
+  return data_with_index.second;
 }
 
 // XXX we need to build minibatches from S3 objects
 // in a better way to allow support for different types
 // of minibatches
-void S3SparseIterator::pushSamples(std::ostringstream* oss) {
+void S3SparseIterator::pushSamples(std::ostringstream* oss, uint64_t obj_id) {
   uint64_t n_minibatches = s3_rows / minibatch_rows;
 
 #ifdef DEBUG
@@ -142,12 +155,14 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss) {
   assert(s3_obj_size > 0 && s3_obj_size < 100 * 1024 * 1024);
   assert(num_samples > 0 && num_samples < 1000000);
 #endif
-  auto new_queue = new std::queue<std::pair<const void*, int>>;
+  auto new_queue = new std::queue<std::pair<std::pair<const void*, int>, uint64_t>>;
   for (uint64_t i = 0; i < n_minibatches; ++i) {
     // if it's the last minibatch in object we mark it so it can be deleted
     int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
 
-    new_queue->push(std::make_pair(s3_data, is_last));
+    // push data, as well as index of minibatch, which is calculated by
+    // id of s3 obj * n_minibatches/obj + index in obj
+    new_queue->push(std::make_pair(std::make_pair(s3_data, is_last), obj_id * n_minibatches + i));
   
     // advance ptr sample by sample
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
@@ -233,7 +248,8 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
     std::cout << "Waiting for pref_sem" << std::endl;
     pref_sem.wait();
 
-    std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
+    uint64_t obj_id = getObjId(left_id, right_id);
+    std::string obj_id_str = std::to_string(obj_id);
 
     std::ostringstream* s3_obj;
 try_start:
@@ -269,7 +285,7 @@ try_start:
     }
 
     //auto start = get_time_us();
-    pushSamples(s3_obj);
+    pushSamples(s3_obj, obj_id);
     //auto elapsed_us = (get_time_us() - start);
     //std::cout << "pushing took (us): " << elapsed_us << " at (us) " << get_time_us() << std::endl;
   }

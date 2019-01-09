@@ -31,10 +31,11 @@ class S3SparseIterator : public S3Iterator {
                    bool has_labels = true);
 
   std::shared_ptr<SparseDataset> getNext() override;
+  std::pair<int, std::shared_ptr<SparseDataset>> getNextWithIndex();
 
  private:
   void threadFunction(const Configuration&);
-  void pushSamples(std::ostringstream* oss);
+  void pushSamples(std::ostringstream* oss, uint64_t obj_id);
   void printProgress(const std::string& s3_obj);
   uint64_t getObjId(uint64_t left, uint64_t right);
 
@@ -62,8 +63,9 @@ class S3SparseIterator : public S3Iterator {
   std::map<int, std::string> list_strings;  // strings from s3
 
   // this contains a pointer to memory where a minibatch can be found
-  // the int tells whether this is the last minibatch of a block of memory
-  CircularBuffer<std::queue<std::pair<const void*, int>>*> minibatches_list;
+  // the uint64_t in the outer pair is the in
+  // the int in the inner pair tells whether this is the last minibatch of a block of memory
+  CircularBuffer<std::queue<std::pair<std::pair<const void*, int>, uint64_t>>*> minibatches_list;
   std::atomic<int> num_minibatches_ready{0};
 
   int to_delete = -1;
