@@ -136,7 +136,7 @@ class Configuration {
     int get_users() const;
     int get_items() const;
 
-    std::string get_opt_method() const;
+    std::string get_opt_method() const; // TODO: add SDCA opt method
     uint64_t get_netflix_workers() const;
 
     double get_momentum_beta() const;

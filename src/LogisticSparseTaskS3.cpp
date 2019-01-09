@@ -65,6 +65,8 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
+// TODO: make LogisticSparseSDCATaskS3
+
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
   std::cout << "Starting LogisticSparseTaskS3"
     << std::endl;

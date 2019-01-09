@@ -114,6 +114,29 @@ class LRSparseGradient : public ModelGradient {
     std::vector<std::pair<int, FEATURE_TYPE>> weights;  //< weights
 };
 
+class LRSDCASparseGradient : public ModelGradient {
+ public:
+    friend class SDCA;
+
+    virtual ~LRSDCASparseGradient() = default;
+
+    LRSDCASparseGradient(LRSDCASparseGradient&& data);
+    explicit LRSDCASparseGradient(const std::vector<std::pair<int, FEATURE_TYPE>>&& data);
+    explicit LRSDCASparseGradient(int d);
+
+    LRSDCASparseGradient& operator=(LRSDCASparseGradient&& other);
+
+    void loadSerialized(const void*);
+    void serialize(void*) const override;
+    uint64_t getSerializedSize() const override;
+
+    void print() const override;
+    void check_values() const override;
+ protected:
+    std::vector<std::pair<int, FEATURE_TYPE>> a;  //< weights
+    std::vector<std::pair<int, FEATURE_TYPE>> w;
+};
+
 class SoftmaxGradient : public ModelGradient {
  public:
     friend class SoftmaxModel;
