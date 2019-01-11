@@ -47,7 +47,7 @@ PSSparseServerInterface::~PSSparseServerInterface() {
   }
 }
 
-// TODO: make the send lr_sdca_gradient, get lr_sdca_models
+// TODO: make the send_lr_sdca_gradient, get_lr_sdca_models
 
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   uint32_t operation = SEND_LR_GRADIENT;
@@ -68,6 +68,33 @@ void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient)
     throw std::runtime_error("Error sending grad size");
   }
   
+  char data[size];
+  gradient.serialize(data);
+  ret = send_all(sock, data, size);
+  if (ret == 0) {
+    throw std::runtime_error("Error sending grad");
+  }
+}
+
+void PSSparseServerInterface::send_lr_sdca_gradient(const LRSDCASparseGradient& gradient) {
+  uint32_t operation = SEND_LR_SDCA_GRADIENT;
+#ifdef DEBUG
+  std::cout << "Sending gradient" << std::endl;
+#endif
+  int ret = send(sock, &operation, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending operation");
+  }
+
+  uint32_t size = gradient.getSerializedSize();
+#ifdef DEBUG
+  std::cout << "Sending gradient with size: " << size << std::endl;
+#endif
+  ret = send(sock, &size, sizeof(uint32_t), 0);
+  if (ret == -1) {
+    throw std::runtime_error("Error sending grad size");
+  }
+
   char data[size];
   gradient.serialize(data);
   ret = send_all(sock, data, size);

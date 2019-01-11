@@ -175,92 +175,122 @@ void LRSparseGradient::check_values() const {
 /**
  * LRSDCASparseGradient
  */
-// TODO: all of this
-LRSDCASparseGradient::LRSDCASparseGradient(LRSDCASparseGradient&& other) {
-  weights = std::move(other.weights);
+
+LRSDCASparseGradient::LRSDCASparseGradient(LRSDCASparseGradient &&other) {
+  w = std::move(other.w);
+  a = std::move(other.a);
   version = other.version;
 }
 
 LRSDCASparseGradient::LRSDCASparseGradient(
-        const std::vector<std::pair<int, FEATURE_TYPE>>&& data) :
-        weights(data) {
+    const std::vector<std::pair<int, FEATURE_TYPE>> &&w, const std::vector<std::pair<int, FEATURE_TYPE>> &&a) :
+    w(w), a(a) {
 }
 
-LRSDCASparseGradient::LRSDCASparseGradient(int d) {
-  weights.resize(d);
+LRSDCASparseGradient::LRSDCASparseGradient(int d, int n) {
+  w.resize(d);
+  a.resize(n);
   version = 0;
 }
 
-LRSDCASparseGradient& LRSDCASparseGradient::operator=(LRSDCASparseGradient&& other) {
-  weights = std::move(other.weights);
+LRSDCASparseGradient &LRSDCASparseGradient::operator=(LRSDCASparseGradient &&other) {
+  w = std::move(other.w);
+  a = std::move(other.a);
   version = other.version;
   return *this;
 }
-
-/**
- *
- */
-    void LRSDCASparseGradient::loadSerialized(const void* mem) {
-        // load version and number of weights
-        version = load_value<int>(mem);
-        int num_weights = load_value<int>(mem);
-        assert(num_weights > 0 && num_weights < 10000000);
-
-        int size = num_weights * (sizeof(FEATURE_TYPE)+sizeof(int)) + 2 * sizeof(int);
-        char* data_begin = (char*)mem;
-
-        //std::cout << "Number of weights: " << num_weights << std::endl;
-        //std::cout << "Version: " << version << std::endl;
-        //std::cout << "size: " << size << std::endl;
-
-        // clear weights
-        weights.resize(0);
-
-        for (int i = 0; i < num_weights; ++i) {
-            assert(std::distance(data_begin, (char*)mem) < size);
-            int index = load_value<int>(mem);
-            FEATURE_TYPE w = load_value<FEATURE_TYPE>(mem);
-            weights.push_back(std::make_pair(index, w));
-        }
-    }
 
 /** Format:
  * version (int)
  * number of weights (int)
  * list of weights: index1 (int) weight1 (FEATURE_TYPE) | index2 (int) weight2 (FEATURE_TYPE) | ..
  */
-    void LRSDCASparseGradient::serialize(void* mem) const {
-        store_value<int>(mem, version);
-        store_value<int>(mem, weights.size());
+void LRSDCASparseGradient::loadSerialized(const void *mem) {
+  // load version and number of weights
+  version = load_value<int>(mem);
+  int num_weights = load_value<int>(mem);
+  int num_coords = load_value<int>(mem);
+  assert(num_weights > 0 && num_weights < 10000000);
 
-        for (const auto& w : weights) {
-            int index = w.first;
-            FEATURE_TYPE v = w.second;
-            store_value<int>(mem, index);
-            store_value<FEATURE_TYPE>(mem, v);
-        }
-    }
+  int size = (num_weights + num_coords) * (sizeof(FEATURE_TYPE) + sizeof(int)) + 3 * sizeof(int);
+  char *data_begin = (char *) mem;
 
-    uint64_t LRSDCASparseGradient::getSerializedSize() const {
-        return weights.size() * (sizeof(FEATURE_TYPE) + sizeof(int)) + // pairs (index, weight value)
-               sizeof(int) * 2; // version + number of weights
-    }
+  //std::cout << "Number of weights: " << num_weights << std::endl;
+  //std::cout << "Version: " << version << std::endl;
+  //std::cout << "size: " << size << std::endl;
 
-    void LRSDCASparseGradient::print() const {
-        std::cout << "Printing LRSparseGradient. version: " << version << std::endl;
-        for (const auto &v : weights) {
-            std::cout << "(" << v.first << "," << v.second << ") ";
-        }
-        std::cout << std::endl;
-    }
+  // clear weights
+  w.resize(0);
 
-    void LRSDCASparseGradient::check_values() const {
-        for (const auto& w : weights) {
-            if (std::isnan(w.second) || std::isinf(w.second)) {
-                throw std::runtime_error("LRSparseGradient::check_values error");
-            }
-        }
+  for (int i = 0; i < num_weights; ++i) {
+    assert(std::distance(data_begin, (char *) mem) < size);
+    int index = load_value<int>(mem);
+    FEATURE_TYPE weight = load_value<FEATURE_TYPE>(mem);
+    w.push_back(std::make_pair(index, weight));
+  }
+
+  a.resize(0);
+
+  for (int i = 0; i < num_coords; ++i) {
+    assert(std::distance(data_begin, (char *) mem) < size);
+    int index = load_value<int>(mem);
+    FEATURE_TYPE weight = load_value<FEATURE_TYPE>(mem);
+    a.push_back(std::make_pair(index, weight));
+  }
+}
+
+void LRSDCASparseGradient::serialize(void *mem) const {
+  store_value<int>(mem, version);
+  store_value<int>(mem, w.size());
+  store_value<int>(mem, a.size());
+
+  for (const auto &val : w) {
+    int index = val.first;
+    FEATURE_TYPE v = val.second;
+    store_value<int>(mem, index);
+    store_value<FEATURE_TYPE>(mem, v);
+  }
+
+  for (const auto &val : a) {
+    int index = val.first;
+    FEATURE_TYPE v = val.second;
+    store_value<int>(mem, index);
+    store_value<FEATURE_TYPE>(mem, v);
+  }
+}
+
+uint64_t LRSDCASparseGradient::getSerializedSize() const {
+  return (w.size() + a.size()) * (sizeof(FEATURE_TYPE) + sizeof(int)) + // pairs (index, weight value)
+         sizeof(int) * 3; // version + number of weights
+}
+
+void LRSDCASparseGradient::print() const {
+  std::cout << "Printing LRSparseGradient primal. version: " << version << std::endl;
+  for (const auto &v : w) {
+    std::cout << "(" << v.first << "," << v.second << ") ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "Printing LRSparseGradient dual." << std::endl;
+  for (const auto &v : a) {
+    std::cout << "(" << v.first << "," << v.second << ") ";
+  }
+  std::cout << std::endl;
+}
+
+void LRSDCASparseGradient::check_values() const {
+  for (const auto &v : w) {
+    if (std::isnan(v.second) || std::isinf(v.second)) {
+      throw std::runtime_error("LRSparseGradient::check_values error");
     }
+  }
+
+  for (const auto &v : a) {
+    if (std::isnan(v.second) || std::isinf(v.second)) {
+      throw std::runtime_error("LRSparseGradient::check_values error");
+    }
+  }
+}
 
 
 

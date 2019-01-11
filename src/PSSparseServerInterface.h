@@ -27,6 +27,7 @@ class PSSparseServerInterface {
   void connect();
 
   void send_lr_gradient(const LRSparseGradient&);
+  void send_lr_sdca_gradient(const LRSDCASparseGradient& gradient);
   void send_mf_gradient(const MFSparseGradient&);
   
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);

@@ -118,6 +118,8 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   return x.fd == -1;
 }
 
+// TODO: implement process_send_lr_sdca_gradient, process_get_lr_sdca_model
+
 bool PSSparseServerTask::process_send_mf_gradient(
     int sock,
     const Request& req,
@@ -704,6 +706,7 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 }
 
 void PSSparseServerTask::start_server() {
+  // TODO: figure out how lr_sdca_model would fit into this
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
 

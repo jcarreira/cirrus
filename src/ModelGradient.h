@@ -121,8 +121,9 @@ class LRSDCASparseGradient : public ModelGradient {
     virtual ~LRSDCASparseGradient() = default;
 
     LRSDCASparseGradient(LRSDCASparseGradient&& data);
-    explicit LRSDCASparseGradient(const std::vector<std::pair<int, FEATURE_TYPE>>&& data);
-    explicit LRSDCASparseGradient(int d);
+    explicit LRSDCASparseGradient(
+            const std::vector<std::pair<int, FEATURE_TYPE>>&& w, const std::vector<std::pair<int, FEATURE_TYPE>>&& a);
+    explicit LRSDCASparseGradient(int d, int n);
 
     LRSDCASparseGradient& operator=(LRSDCASparseGradient&& other);
 
@@ -133,8 +134,8 @@ class LRSDCASparseGradient : public ModelGradient {
     void print() const override;
     void check_values() const override;
  protected:
-    std::vector<std::pair<int, FEATURE_TYPE>> a;  //< weights
-    std::vector<std::pair<int, FEATURE_TYPE>> w;
+    std::vector<std::pair<int, FEATURE_TYPE>> a;  // dual coordinate weights, sparse
+    std::vector<std::pair<int, FEATURE_TYPE>> w;  // primal weights, not sparse
 };
 
 class SoftmaxGradient : public ModelGradient {
