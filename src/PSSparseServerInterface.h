@@ -16,6 +16,7 @@
 #include "SparseLRModel.h"
 #include "SparseMFModel.h"
 #include "Model.h"
+#include "SparseLRSDCAModel.h"
 
 namespace cirrus {
 
@@ -32,6 +33,8 @@ class PSSparseServerInterface {
   
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
+  SparseLRSDCAModel get_lr_sdca_model(const Configuration& config);
+  void get_lr_sdca_model_inplace(SparseLRSDCAModel&, const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here

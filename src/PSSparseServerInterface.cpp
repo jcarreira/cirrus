@@ -291,6 +291,44 @@ void PSSparseServerInterface::send_mf_gradient(const MFSparseGradient& gradient)
   delete[] data;
 }
 
+void PSSparseServerInterface::get_lr_sdca_model_inplace(SparseLRSDCAModel& lr_model, const Configuration& config) {
+#ifdef DEBUG
+  std::cout << "Getting LR SDCA model inplace" << std::endl;
+#endif
+
+#ifdef DEBUG
+  std::cout << "Sending operation" << std::endl;
+#endif
+  uint32_t operation = GET_LR_SPARSE_MODEL;
+  if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
+    throw std::runtime_error("Error getting sparse lr model");
+  }
+
+  uint32_t to_receive_size;
+  read_all(sock, &to_receive_size, sizeof(uint32_t));
+
+#ifdef DEBUG
+  std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
+#endif
+  char* buffer = new char[to_receive_size];
+  read_all(sock, buffer, to_receive_size); //XXX this takes 2ms once every 5 runs
+
+#ifdef DEBUG
+  std::cout << "Loading model from memory" << std::endl;
+#endif
+  // build a truly sparse model and return
+  // XXX this copy could be avoided
+  lr_model.loadSerialized(buffer);
+
+  delete[] buffer;
+}
+
+SparseLRSDCAModel PSSparseServerInterface::get_lr_sdca_model(const Configuration& config) {
+  SparseLRSDCAModel model(0, 0);
+  get_lr_sdca_model_inplace(model, config);
+  return std::move(model);
+}
+
 uint32_t PSSparseServerInterface::register_task(uint32_t id,
                                                 uint32_t remaining_time_sec) {
 #ifdef DEBUG

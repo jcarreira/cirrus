@@ -20,7 +20,7 @@ namespace cirrus {
       for (const auto &w : grad->w) {
         int index = w.first;
         FEATURE_TYPE value = w.second;
-        lr_model->weights_[index] += value / (learning_rate * dual_size());
+        lr_model->weights_[index] += value / (learning_rate * lr_model->dual_size());
       }
 
       for (const auto &a : grad->a) {

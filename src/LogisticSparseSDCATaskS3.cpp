@@ -114,7 +114,7 @@ auto now = get_time_us();
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(*dataset.second, model, config);
+    sparse_model_get->get_new_model_inplace(model, config);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;

@@ -40,10 +40,17 @@ void run_tasks(int rank, int nworkers,
      * Number of tasks is determined by the value of nworkers
      */
     if (config.get_model_type() == cirrus::Configuration::LOGISTICREGRESSION) {
-      cirrus::LogisticSparseTaskS3 lt(features_per_sample,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, rank, ps_ip, ps_port);
-      lt.run(config, rank - WORKERS_BASE);
+      if (config.get_opt_method() == "sdca") {
+        cirrus::LogisticSparseSDCATaskS3 lt(features_per_sample,
+            batch_size, samples_per_batch, features_per_sample,
+            nworkers, rank, ps_ip, ps_port);
+        lt.run(config, rank - WORKERS_BASE);
+      } else {
+        cirrus::LogisticSparseTaskS3 lt(features_per_sample,
+            batch_size, samples_per_batch, features_per_sample,
+            nworkers, rank, ps_ip, ps_port);
+        lt.run(config, rank - WORKERS_BASE);
+      }
     } else if (config.get_model_type()
             == cirrus::Configuration::COLLABORATIVE_FILTERING) {
       cirrus::MFNetflixTask lt(0,

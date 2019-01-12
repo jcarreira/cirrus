@@ -9,6 +9,7 @@
 #include "AdaGrad.h"
 #include "Momentum.h"
 #include "SGD.h"
+#include "SDCA.h"
 #include "Nesterov.h"
 
 #undef DEBUG
@@ -52,9 +53,11 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
 }
 
 void PSSparseServerTask::set_operation_maps() {
-  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT";
+  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT"
+  operation_to_name[SEND_LR_SDCA_GRADIENT] = "SEND_LR_SDCA_GRADIENT";
   operation_to_name[SEND_MF_GRADIENT] = "SEND_MF_GRADIENT";
   operation_to_name[GET_LR_FULL_MODEL] = "GET_LR_FULL_MODEL";
+  operation_to_name[GET_LR_SDCA_MODEL] = "GET_LR_SDCA_MODEL";
   operation_to_name[GET_MF_FULL_MODEL] = "GET_MF_FULL_MODEL";
   operation_to_name[GET_LR_SPARSE_MODEL] = "GET_LR_SPARSE_MODEL";
   operation_to_name[GET_MF_SPARSE_MODEL] = "GET_MF_SPARSE_MODEL";
@@ -72,6 +75,8 @@ void PSSparseServerTask::set_operation_maps() {
   using namespace std::placeholders;
   operation_to_f[SEND_LR_GRADIENT] = std::bind(
       &PSSparseServerTask::process_send_lr_gradient, this, _1, _2, _3, _4);
+  operation_to_f[SEND_LR_SDCA_GRADIENT] = std::bind(
+      &PSSparseServerTask::process_send_lr_sdca_gradient, this, _1, _2, _3, _4);
   operation_to_f[SEND_MF_GRADIENT] = std::bind(
       &PSSparseServerTask::process_send_mf_gradient, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_SPARSE_MODEL] = std::bind(
@@ -82,6 +87,8 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_get_mf_full_model, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_FULL_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lr_full_model, this, _1, _2, _3, _4);
+  operation_to_f[GET_LR_SDCA_MODEL] = std::bind(
+      &PSSparseServerTask::process_get_lr_sdca_model, this, _1, _2, _3, _4);
   operation_to_f[SET_TASK_STATUS] = std::bind(
       &PSSparseServerTask::process_set_task_status, this, _1, _2, _3, _4);
   operation_to_f[GET_TASK_STATUS] = std::bind(
@@ -117,8 +124,6 @@ bool PSSparseServerTask::testRemove(struct pollfd x, int poll_id) {
   }
   return x.fd == -1;
 }
-
-// TODO: implement process_send_lr_sdca_gradient, process_get_lr_sdca_model
 
 bool PSSparseServerTask::process_send_mf_gradient(
     int sock,
@@ -194,6 +199,44 @@ bool PSSparseServerTask::process_send_lr_gradient(
   model_lock.lock();
   opt_method->sgd_update(
       lr_model, &gradient);
+  model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
+bool PSSparseServerTask::process_send_lr_sdca_gradient(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  // read 4 bytes of the size of the remaining message
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+#ifdef DEBUG
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+  //buffer.resize(incoming_size);
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  LRSDCASparseGradient gradient(0, 0);
+  gradient.loadSerialized(thread_buffer.data());
+
+  model_lock.lock();
+  dynamic_cast<SDCA*>(opt_method.get())->sdca_update(
+      lr_sdca_model, &gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -361,6 +404,37 @@ bool PSSparseServerTask::process_get_lr_full_model(
   lr_model_copy.serializeTo(thread_buffer.data());
   if (send_all(req.sock, thread_buffer.data(), model_size) == -1)
     return false;
+  return true;
+}
+
+bool PSSparseServerTask::process_get_lr_sdca_model(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  model_lock.lock();
+  auto lr_sdca_model_copy = *lr_sdca_model;
+  model_lock.unlock();
+  uint32_t model_size = lr_sdca_model_copy.getSerializedSize();
+
+  if (thread_buffer.size() < model_size) {
+    std::cout << "thread_buffer.size(): " << thread_buffer.size()
+              << " model_size: " << model_size << std::endl;
+    throw std::runtime_error("Thread buffer too small");
+  }
+
+  lr_sdca_model_copy.serializeTo(thread_buffer.data());
+  std::cout
+      << "Serializing lr sdca model"
+      << " mode checksum: " << lr_sdca_model_copy.checksum()
+      << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+      << std::endl;
+  if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+  if (send_all(req.sock, thread_buffer.data(), model_size) == -1) {
+    return false;
+  }
   return true;
 }
 
@@ -706,9 +780,11 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 }
 
 void PSSparseServerTask::start_server() {
-  // TODO: figure out how lr_sdca_model would fit into this
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
+
+  lr_sdca_model.reset(new SparseLRSDCAModel(model_size, config.get_limit_samples()));
+  lr_sdca_model->randomize();
 
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
@@ -952,6 +1028,8 @@ void PSSparseServerTask::run(const Configuration& config) {
   auto momentum_beta = config.get_momentum_beta();
   if (config.get_opt_method() == "sgd") {
     opt_method.reset(new SGD(learning_rate));
+  } else if (config.get_opt_method() == "sdca") {
+    opt_method.reset(new SDCA(learning_rate));
   } else if (config.get_opt_method() == "nesterov") {
     opt_method.reset(new Nesterov(learning_rate, momentum_beta));
   } else if (config.get_opt_method() == "momentum") {

@@ -151,10 +151,9 @@ class LogisticSparseSDCATaskS3 : public MLTask {
         return std::move(psi->get_lr_sparse_model(ds, config));
       }
 
-      void get_new_model_inplace(const SparseDataset &ds,
-                                 SparseLRSDCAModel &model,
+      void get_new_model_inplace(SparseLRSDCAModel &model,
                                  const Configuration &config) {
-        psi->get_lr_sdca_sparse_model_inplace(ds, model, config);
+        psi->get_lr_sdca_model_inplace(model, config);
       }
 
     private:
@@ -358,7 +357,12 @@ class PSSparseServerTask : public MLTask {
                                    const Request&,
                                    std::vector<char>&,
                                    int);
+  bool process_get_lr_sdca_model(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
   bool process_send_lr_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_send_lr_sdca_gradient(int, const Request&, std::vector<char>&, int);
   bool process_send_mf_gradient(int, const Request&, std::vector<char>&, int);
   bool process_get_lr_full_model(int, const Request&, std::vector<char>&, int);
   bool process_get_mf_full_model(int, const Request&, std::vector<char>&, int);
@@ -427,6 +431,7 @@ class PSSparseServerTask : public MLTask {
   std::atomic<uint64_t> gradientUpdatesCount;  //< # of gradients processed
 
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
+  std::unique_ptr<SparseLRSDCAModel> lr_sdca_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
   Configuration task_config;                //< config for parameter server
   uint32_t num_connections = 0;             //< num of current connections
