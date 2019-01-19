@@ -29,9 +29,6 @@ script:
    - python tests/test_travis_mf/test.py
    - for i in "./tests/test_travis_lr_multiple_PS/test.sh & sleep 1" "./tests/test_travis_lr_multiple_PS/error"; do eval ${i}; done
    - sleep 70
-   - ./tests/test_data/jester.sh
-   - for i in "./tests/test_travis_mf/test.sh & sleep 1" "./tests/test_travis_mf/error"; do eval ${i}; done
-   - sleep 70
    - for i in "./tests/test_travis_mf_multiple_PS/test.sh & sleep 1" "./tests/test_travis_mf_multiple_PS/error"; do eval ${i}; done
    - sleep 70
    - ./tests/test_travis/test_register.sh

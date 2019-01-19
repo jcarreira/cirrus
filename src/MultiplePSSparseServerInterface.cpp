@@ -246,8 +246,8 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
   // Receive responses from PS
   for (int i = 0; i < num_servers; i++) {
     psints[i]->get_mf_sparse_model_inplace_sharded(
-        model, movie_memory[i], config, msg_begin_lst[i], minibatch_size / num_servers,
-        item_ids_count_lst[i], i, num_servers);
+        model, movie_memory[i], config, msg_begin_lst[i],
+        minibatch_size / num_servers, item_ids_count_lst[i], i, num_servers);
   }
 }
 

@@ -34,7 +34,7 @@ class MultiplePSSparseServerInterface : public PSSparseServerInterface {
                                    SparseLRModel& model,
                                    const Configuration& config);
   SparseMFModel get_mf_sparse_model(const SparseDataset& ds,
-		                            std::vector<uint32_t> seen_indices,
+                                    std::vector<uint32_t> seen_indices,
                                     const Configuration& config,
                                     uint32_t,
                                     uint32_t);

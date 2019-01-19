@@ -173,6 +173,7 @@ void ErrorSparseTask::run(const Configuration& config,
   FEATURE_TYPE total_accuracy = 0;
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
+
     if (iterations >= iters && testing) {
       exit(EXIT_FAILURE);
     }
@@ -183,11 +184,11 @@ void ErrorSparseTask::run(const Configuration& config,
     try {
       // first we get the model
 #ifdef DEBUG
-    std::cout << "[ERROR_TASK] getting the full model"
-              << "\n";
+      std::cout << "[ERROR_TASK] getting the full model"
+                << "\n";
 #endif
-    std::unique_ptr<CirrusModel> model;
-    model = get_model(config, ps_ips, ps_ports);
+      std::unique_ptr<CirrusModel> model;
+      model = get_model(config, ps_ips, ps_ports);
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
 #endif
