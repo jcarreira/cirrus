@@ -55,6 +55,7 @@ void run_tasks(int rank,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE);
     } else if (config.get_model_type() == cirrus::Configuration::SOFTMAX) {
+      std::cout << "here" << std::endl;
       cirrus::SoftmaxTask lt(features_per_sample, batch_size, samples_per_batch,
                              features_per_sample, nworkers, rank, ps_ip,
                              ps_port);
