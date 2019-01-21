@@ -35,14 +35,16 @@ CPPFLAGS = -static -static-libgcc -static-libstdc++ \
 CPP_SOURCES = InputReader.cpp Utils.cpp \
               Dataset.cpp Matrix.cpp \
 	      OptimizationMethod.cpp AdaGrad.cpp \
-	      Momentum.cpp SGD.cpp Nesterov.cpp\
+	      Momentum.cpp SGD.cpp SDCA.cpp Nesterov.cpp\
 	      Model.cpp LRModel.cpp SoftmaxModel.cpp SparseLRModel.cpp \
+	      SparseLRSDCAModel.cpp \
 	      S3Client.cpp \
 	      SparseMFModel.cpp MFModel.cpp\
               ModelGradient.cpp MlUtils.cpp Configuration.cpp \
               Checksum.cpp \
               ErrorSparseTask.cpp \
 	      LogisticSparseTaskS3.cpp \
+	      LogisticSparseSDCATaskS3.cpp \
 	      MFNetflixTask.cpp \
 	      LoadingSparseTaskS3.cpp LoadingNetflixTask.cpp \
               TasksWait.cpp MurmurHash3.cpp \
