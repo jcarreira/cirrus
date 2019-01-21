@@ -30,4 +30,8 @@ namespace cirrus {
       }
     }
 
+    void SDCA::sgd_update(std::unique_ptr<cirrus::SparseLRModel> &lr_model, const cirrus::ModelGradient *gradient) {
+      throw std::runtime_error("Not Implemented");
+    }
+
 }  // namespace cirrus

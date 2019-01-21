@@ -53,7 +53,7 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
 }
 
 void PSSparseServerTask::set_operation_maps() {
-  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT"
+  operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT";
   operation_to_name[SEND_LR_SDCA_GRADIENT] = "SEND_LR_SDCA_GRADIENT";
   operation_to_name[SEND_MF_GRADIENT] = "SEND_MF_GRADIENT";
   operation_to_name[GET_LR_FULL_MODEL] = "GET_LR_FULL_MODEL";

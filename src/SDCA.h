@@ -13,6 +13,10 @@ namespace cirrus {
         void sdca_update(
                 std::unique_ptr<SparseLRSDCAModel>& lr_model,
                 const ModelGradient* gradient);
+
+        void sgd_update(
+            std::unique_ptr<cirrus::SparseLRModel> &lr_model,
+            const cirrus::ModelGradient *gradient);
     };
 
 }  // namespace cirrus
