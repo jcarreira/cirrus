@@ -413,7 +413,7 @@ bool PSSparseServerTask::process_get_lr_sdca_model(
     std::vector<char>& thread_buffer,
     int) {
   model_lock.lock();
-  auto lr_sdca_model_copy = *lr_sdca_model;
+  SparseLRSDCAModel lr_sdca_model_copy = *lr_sdca_model;
   model_lock.unlock();
   uint32_t model_size = lr_sdca_model_copy.getSerializedSize();
 

@@ -9,6 +9,7 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/Matrix.cpp \
 		    $(CIRRUS_SRC_DIR)/LRModel.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseLRModel.cpp \
+		    $(CIRRUS_SRC_DIR)/SparseLRSDCAModel.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3SparseIterator.cpp \
 		    $(CIRRUS_SRC_DIR)/Utils.cpp \
