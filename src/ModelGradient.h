@@ -117,6 +117,7 @@ class LRSparseGradient : public ModelGradient {
 class LRSDCASparseGradient : public ModelGradient {
  public:
     friend class SDCA;
+    friend class SparseLRSDCAModel;
 
     virtual ~LRSDCASparseGradient() = default;
 
