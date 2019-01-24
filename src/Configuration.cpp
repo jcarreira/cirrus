@@ -93,11 +93,11 @@ void Configuration::check() const {
   if (model_bits == 0) {
     throw std::runtime_error("Model bits can't be 0");
   }
-  if (opt_method != "adagrad" && opt_method != "nesterov"
-          && opt_method != "momentum" && opt_method != "sgd" && opt_method != "sdca") {
-      throw std::runtime_error(
-             "Choose a valid update rule: adagrad, nesterov, momentum, sdca, or "
-             "sgd");
+  if (opt_method != "adagrad" && opt_method != "nesterov" &&
+      opt_method != "momentum" && opt_method != "sgd" && opt_method != "sdca") {
+    throw std::runtime_error(
+        "Choose a valid update rule: adagrad, nesterov, momentum, sdca, or "
+        "sgd");
   }
   if (checkpoint_frequency > 0
           && (checkpoint_s3_bucket == "" || checkpoint_s3_keyname == "")) {
