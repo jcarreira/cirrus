@@ -1,10 +1,10 @@
 #include <Tasks.h>
 
-#include "Serializers.h"
-#include "Utils.h"
-#include "S3SparseIterator.h"
 #include "PSSparseServerInterface.h"
+#include "S3SparseIterator.h"
+#include "Serializers.h"
 #include "SparseLRSDCAModel.h"
+#include "Utils.h"
 
 #include <pthread.h>
 
@@ -12,36 +12,35 @@
 
 namespace cirrus {
 
-void LogisticSparseSDCATaskS3::push_gradient(LRSDCASparseGradient *lrg) {
+void LogisticSparseSDCATaskS3::push_gradient(LRSDCASparseGradient* lrg) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
-std::cout << "Publishing gradients" << std::endl;
+  std::cout << "Publishing gradients" << std::endl;
 #endif
   psint->send_lr_sdca_gradient(*lrg);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
-auto elapsed_push_us = get_time_us() - before_push_us;
-static uint64_t before = 0;
-if (before == 0)
-before = get_time_us();
-auto now = get_time_us();
-std::cout << "[WORKER] "
-<< "Worker task published gradient"
-<< " with version: " << lrg->getVersion()
-<< " at time (us): " << get_time_us()
-<< " took(us): " << elapsed_push_us
-<< " bw(MB/s): " << std::fixed <<
-   (1.0 * lrg->getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-<< " since last(us): " << (now - before)
-<< "\n";
-before = now;
+  auto elapsed_push_us = get_time_us() - before_push_us;
+  static uint64_t before = 0;
+  if (before == 0)
+    before = get_time_us();
+  auto now = get_time_us();
+  std::cout << "[WORKER] "
+            << "Worker task published gradient"
+            << " with version: " << lrg->getVersion()
+            << " at time (us): " << get_time_us()
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
+            << (1.0 * lrg->getSerializedSize() / elapsed_push_us / 1024 / 1024 *
+                1000 * 1000)
+            << " since last(us): " << (now - before) << "\n";
+  before = now;
 #endif
 }
 
 // get samples and labels data
 bool LogisticSparseSDCATaskS3::get_dataset_minibatch(
-    std::pair<int, std::shared_ptr<SparseDataset>> &dataset,
-    S3SparseIterator &s3_iter) {
+    std::pair<int, std::shared_ptr<SparseDataset>>& dataset,
+    S3SparseIterator& s3_iter) {
 #ifdef DEBUG
   auto start = get_time_us();
 #endif
@@ -53,22 +52,19 @@ bool LogisticSparseSDCATaskS3::get_dataset_minibatch(
 
 #ifdef DEBUG
   auto finish2 = get_time_us();
-double bw = 1.0 * dataset->getSizeBytes() /
-(finish2-start) * 1000.0 * 1000 / 1024 / 1024;
-std::cout << "[WORKER] Get Sample Elapsed (S3) "
-<< " minibatch size: " << config.get_minibatch_size()
-<< " part1(us): " << (finish1 - start)
-<< " part2(us): " << (finish2 - finish1)
-<< " BW (MB/s): " << bw
-<< " at time: " << get_time_us()
-<< "\n";
+  double bw = 1.0 * dataset->getSizeBytes() / (finish2 - start) * 1000.0 *
+              1000 / 1024 / 1024;
+  std::cout << "[WORKER] Get Sample Elapsed (S3) "
+            << " minibatch size: " << config.get_minibatch_size()
+            << " part1(us): " << (finish1 - start)
+            << " part2(us): " << (finish2 - finish1) << " BW (MB/s): " << bw
+            << " at time: " << get_time_us() << "\n";
 #endif
   return true;
 }
 
-void LogisticSparseSDCATaskS3::run(const Configuration &config, int worker) {
-  std::cout << "Starting LogisticSparseSDCATaskS3"
-            << std::endl;
+void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
+  std::cout << "Starting LogisticSparseSDCATaskS3" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -76,21 +72,21 @@ void LogisticSparseSDCATaskS3::run(const Configuration &config, int worker) {
   psint->connect();
   sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
 
-  std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
-            << std::endl;
+  std::cout << "[WORKER] "
+            << "num s3 batches: " << num_s3_batches << std::endl;
   wait_for_start(worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
-  S3SparseIterator s3_iter(
-      train_range.first, train_range.second,
-      config, config.get_s3_size(), config.get_minibatch_size(),
-      true, worker);
+  S3SparseIterator s3_iter(train_range.first, train_range.second, config,
+                           config.get_s3_size(), config.get_minibatch_size(),
+                           true, worker);
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
   uint64_t version = 1;
-  SparseLRSDCAModel model(1 << config.get_model_bits(), config.get_limit_samples());
+  SparseLRSDCAModel model(1 << config.get_model_bits(),
+                          config.get_limit_samples());
 
   bool printed_rate = false;
   int count = 0;
@@ -105,10 +101,11 @@ void LogisticSparseSDCATaskS3::run(const Configuration &config, int worker) {
       continue;
     }
 #ifdef DEBUG
-    std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model" << std::endl;
-//dataset->check();
-//dataset->print_info();
-auto now = get_time_us();
+    std::cout << get_time_us() << " [WORKER] phase 1 done. Getting the model"
+              << std::endl;
+    // dataset->check();
+    // dataset->print_info();
+    auto now = get_time_us();
 #endif
     // compute mini batch gradient
     std::unique_ptr<ModelGradient> gradient;
@@ -118,15 +115,17 @@ auto now = get_time_us();
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
-std::cout << "Checking model" << std::endl;
-//model.check();
-std::cout << "Computing gradient" << "\n";
-now = get_time_us();
+    std::cout << "Checking model" << std::endl;
+    // model.check();
+    std::cout << "Computing gradient"
+              << "\n";
+    now = get_time_us();
 #endif
 
     try {
-      gradient = model.minibatch_grad_indexed(dataset.first, config.get_learning_rate(), *dataset.second, config);
-    } catch (const std::runtime_error &e) {
+      gradient = model.minibatch_grad_indexed(
+          dataset.first, config.get_learning_rate(), *dataset.second, config);
+    } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);
     } catch (...) {
@@ -135,18 +134,20 @@ now = get_time_us();
     }
 #ifdef DEBUG
     auto elapsed_us = get_time_us() - now;
-std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
-<< " at time: " << get_time_us()
-<< " version " << version << "\n";
+    std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
+              << " at time: " << get_time_us() << " version " << version
+              << "\n";
 #endif
     gradient->setVersion(version++);
 
     try {
-      LRSDCASparseGradient *lrg = dynamic_cast<LRSDCASparseGradient *>(gradient.get());
+      LRSDCASparseGradient* lrg =
+          dynamic_cast<LRSDCASparseGradient*>(gradient.get());
       push_gradient(lrg);
     } catch (...) {
       std::cout << "[WORKER] "
-                << "Worker task error doing put of gradient" << "\n";
+                << "Worker task error doing put of gradient"
+                << "\n";
       exit(-1);
     }
 #ifdef DEBUG
@@ -158,11 +159,11 @@ std::cout << "[WORKER] Gradient compute time (us): " << elapsed_us
       float elapsed_sec = elapsed_ms / 1000.0;
       if (elapsed_sec > (2 * 60)) {
         printed_rate = true;
-        std::cout << "Update rate/sec last 2 mins: " << (1.0 * count / elapsed_sec) << std::endl;
+        std::cout << "Update rate/sec last 2 mins: "
+                  << (1.0 * count / elapsed_sec) << std::endl;
       }
     }
   }
 }
 
-} // namespace cirrus
-
+}  // namespace cirrus

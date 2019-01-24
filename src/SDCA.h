@@ -6,18 +6,16 @@
 
 namespace cirrus {
 
-    class SDCA : public OptimizationMethod {
-    public:
-        SDCA(double lr);
+class SDCA : public OptimizationMethod {
+ public:
+  SDCA(double lr);
 
-        void sdca_update(
-                std::unique_ptr<SparseLRSDCAModel>& lr_model,
-                const ModelGradient* gradient);
+  void sdca_update(std::unique_ptr<SparseLRSDCAModel>& lr_model,
+                   const ModelGradient* gradient);
 
-        void sgd_update(
-            std::unique_ptr<cirrus::SparseLRModel> &lr_model,
-            const cirrus::ModelGradient *gradient);
-    };
+  void sgd_update(std::unique_ptr<cirrus::SparseLRModel>& lr_model,
+                  const cirrus::ModelGradient* gradient);
+};
 
 }  // namespace cirrus
 

@@ -47,8 +47,6 @@ PSSparseServerInterface::~PSSparseServerInterface() {
   }
 }
 
-// TODO: make the send_lr_sdca_gradient, get_lr_sdca_models
-
 void PSSparseServerInterface::send_lr_gradient(const LRSparseGradient& gradient) {
   uint32_t operation = SEND_LR_GRADIENT;
 #ifdef DEBUG
