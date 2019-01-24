@@ -14,6 +14,7 @@ lda_task = LDA(
              k = 20,
              s3_size = 9000,
              slice_size = 500,
+             n_iter = 100,
              n_workers = 1,
              lambda_size = 128,
              n_ps = 1,

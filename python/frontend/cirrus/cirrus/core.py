@@ -8,12 +8,6 @@ import boto3
 import messenger
 from CostModel import CostModel
 
-lambda_client = boto3.client('lambda', 'us-west-2')
-lambda_name = "testfunc1"
-
-import subprocess
-
-
 # Code shared by all Cirrus experiments
 # Contains all data for a single experiment
 class BaseTask(object):
@@ -104,6 +98,9 @@ class BaseTask(object):
         self.last_num_lambdas = 0
         self.num_task = 3
 
+        self.lambda_client = boto3.client('lambda', 'us-west-2')
+        self.lambda_name = "testfunc1"
+
     def get_name(self):
         string = "Rate %f" % self.learning_rate
         return string
@@ -152,8 +149,8 @@ class BaseTask(object):
                         % (self.num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
-                    response = lambda_client.invoke(
-                        FunctionName="%s_%d" % (lambda_name, self.worker_size),
+                    response = self.lambda_client.invoke(
+                        FunctionName="%s_%d" % (self.lambda_name, self.worker_size),
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)
@@ -222,8 +219,7 @@ class BaseTask(object):
         if command_dict is not None:
             command_dict[self.ps_ip_public].append(cmd)
         else:
-            subprocess.call(cmd, shell=True)
-            # raise ValueError('SSH Copy config not implemented')
+            raise ValueError('SSH Copy config not implemented')
 
     def copy_config(self, command_dict=None):
         config = self.define_config()
@@ -243,13 +239,14 @@ class BaseTask(object):
     def relaunch_lambdas(self):
         if self.is_dead():
             return
-
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
         self.get_cost_per_second()
 
         if num_lambdas == None:
             return
+
+
 
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
@@ -258,8 +255,8 @@ class BaseTask(object):
                         % (self.num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
-                    response = lambda_client.invoke(
-                        FunctionName=lambda_name,
+                    response = self.lambda_client.invoke(
+                        FunctionName=self.lambda_name,
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)
