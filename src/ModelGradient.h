@@ -136,9 +136,9 @@ class LRSDCASparseGradient : public ModelGradient {
   void check_values() const override;
 
  protected:
+  std::vector<std::pair<int, FEATURE_TYPE>> w;  // primal weights, not sparse
   std::vector<std::pair<int, FEATURE_TYPE>>
       a;  // dual coordinate weights, sparse
-  std::vector<std::pair<int, FEATURE_TYPE>> w;  // primal weights, not sparse
 };
 
 class SoftmaxGradient : public ModelGradient {
