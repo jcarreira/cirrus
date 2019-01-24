@@ -66,8 +66,6 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
  */
 std::pair<int, std::shared_ptr<SparseDataset>>
 S3SparseIterator::getNextWithIndex() {
-  assert(minibatch_rows % s3_rows == 0);
-
   // we need to delete entry
   if (to_delete != -1) {
 #ifdef DEBUG
