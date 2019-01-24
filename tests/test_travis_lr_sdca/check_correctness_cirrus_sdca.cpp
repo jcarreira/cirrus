@@ -32,14 +32,15 @@ cirrus::Configuration config =
 std::mutex model_lock;
 std::unique_ptr<SparseLRSDCAModel> model;
 double learning_rate = 0.00001;
-std::unique_ptr<SDCA> opt_method =
-    std::make_unique<SDCA>(learning_rate);
+std::unique_ptr<SDCA> opt_method = std::make_unique<SDCA>(learning_rate);
 
 void learning_function(const SparseDataset& dataset) {
   for (uint64_t i = 0; 20; ++i) {
-    SparseDataset ds = dataset.random_sample(20);
+    int index = (rand() % (dataset.num_samples() / 20)) * 20;
+    SparseDataset ds = dataset.sample_from(index, config.get_minibatch_size());
 
-    auto gradient = model->minibatch_grad(ds, config);
+    auto gradient =
+        model->minibatch_grad_indexed(index, learning_rate, ds, config);
 
     model_lock.lock();
     opt_method->sdca_update(model, gradient.release());
