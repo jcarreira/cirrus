@@ -64,7 +64,7 @@ bool LogisticSparseSDCATaskS3::get_dataset_minibatch(
 }
 
 void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
-  assert(config.get_minibatch_size() % config.get_s3_size() == 0);
+  assert(config.get_s3_size() % config.get_minibatch_size() == 0);
   std::cout << "Starting LogisticSparseSDCATaskS3" << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
