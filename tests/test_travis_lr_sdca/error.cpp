@@ -63,7 +63,6 @@ int main() {
       FEATURE_TYPE total_loss = ret.first;
       FEATURE_TYPE total_accuracy = ret.second;
       uint64_t total_num_samples = test_data.num_samples();
-      uint64_t total_num_features = test_data.num_features();
 
       std::cout << "[ERROR_TASK] Loss (Total/Avg): " << total_loss << "/"
                 << (total_loss / total_num_samples)

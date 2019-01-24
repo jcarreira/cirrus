@@ -41,7 +41,8 @@ int main() {
     SparseDataset minibatch =
         train_dataset.sample_from(index, config.get_minibatch_size());
     psi->get_lr_sdca_model_inplace(model, config);
-    auto gradient = model.minibatch_grad_indexed(index, minibatch, config);
+    auto gradient = model.minibatch_grad_indexed(
+        index, config.get_learning_rate(), minibatch, config);
     gradient->setVersion(version++);
     LRSDCASparseGradient* lrg =
         dynamic_cast<LRSDCASparseGradient*>(gradient.get());

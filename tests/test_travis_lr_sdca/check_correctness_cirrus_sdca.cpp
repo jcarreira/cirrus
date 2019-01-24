@@ -32,7 +32,7 @@ cirrus::Configuration config =
 std::mutex model_lock;
 std::unique_ptr<SparseLRSDCAModel> model;
 double learning_rate = 0.00001;
-std::unique_ptr<OptimizationMethod> opt_method =
+std::unique_ptr<SDCA> opt_method =
     std::make_unique<SDCA>(learning_rate);
 
 void learning_function(const SparseDataset& dataset) {
