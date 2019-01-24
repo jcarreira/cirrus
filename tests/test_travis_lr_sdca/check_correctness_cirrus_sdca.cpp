@@ -88,5 +88,5 @@ int main() {
   if (success) {
     return 0;
   }
-  throw std::runtime_error("Logistic Regression test failed.");
+  throw std::runtime_error("Logistic Regression SDCA test failed.");
 }
