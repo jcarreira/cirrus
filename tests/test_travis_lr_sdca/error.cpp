@@ -36,7 +36,8 @@ int main() {
   InputReader input;
   SparseDataset test_data = input.read_input_criteo_kaggle_sparse(
       "tests/test_data/test_lr.csv", ",", config);
-  SparseLRSDCAModel model(1 << config.get_model_bits(), config.get_limit_samples());
+  SparseLRSDCAModel model(1 << config.get_model_bits(),
+                          config.get_limit_samples());
 
   uint64_t start_time = get_time_us();
 

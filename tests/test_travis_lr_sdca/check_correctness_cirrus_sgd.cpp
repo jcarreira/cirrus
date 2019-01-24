@@ -27,7 +27,8 @@ double check_error(SparseLRSDCAModel* model, SparseDataset& dataset) {
   return avg_loss;
 }
 
-cirrus::Configuration config = cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
+cirrus::Configuration config =
+    cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
 std::mutex model_lock;
 std::unique_ptr<SparseLRSDCAModel> model;
 double learning_rate = 0.00001;
@@ -56,7 +57,8 @@ int main() {
   test_dataset.check();
   dataset.print_info();
 
-  model.reset(new SparseLRSDCAModel((1 << config.get_model_bits()) + 1, config.get_limit_samples()));
+  model.reset(new SparseLRSDCAModel((1 << config.get_model_bits()) + 1,
+                                    config.get_limit_samples()));
 
   uint64_t num_threads = 20;
   std::vector<std::shared_ptr<std::thread>> threads;

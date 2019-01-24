@@ -1,7 +1,8 @@
 #include <Configuration.h>
 #include <Tasks.h>
 
-cirrus::Configuration config = cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
+cirrus::Configuration config =
+    cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
 int main() {
   cirrus::PSSparseServerTask st(
       (1 << config.get_model_bits()) + 1, config.get_minibatch_size(),
