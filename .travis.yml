@@ -25,6 +25,7 @@ script:
    - g++ --version
    - make -j 10
    - python tests/test_travis_lr/test.py
+   - python tests/test_travis_lr_sdca/test.py
    - ./tests/test_data/jester.sh
    - python tests/test_travis_mf/test.py
    - ./tests/test_travis/test_register.sh

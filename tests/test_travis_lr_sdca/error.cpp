@@ -15,7 +15,7 @@
 
 using namespace cirrus;
 
-Configuration config = Configuration("configs/test_config.cfg");
+Configuration config = Configuration("configs/criteo_kaggle_sdca.cfg");
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
                                        const std::string& ps_ip,
@@ -36,7 +36,7 @@ int main() {
   InputReader input;
   SparseDataset test_data = input.read_input_criteo_kaggle_sparse(
       "tests/test_data/test_lr.csv", ",", config);
-  SparseLRModel model(1 << config.get_model_bits());
+  SparseLRSDCAModel model(1 << config.get_model_bits(), config.get_limit_samples());
 
   uint64_t start_time = get_time_us();
 

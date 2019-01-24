@@ -19,7 +19,7 @@ void print_info(const auto& samples) {
   std::cout << "Number of cols: " << samples[0].size() << std::endl;
 }
 
-double check_error(SparseLRModel* model, SparseDataset& dataset) {
+double check_error(SparseLRSDCAModel* model, SparseDataset& dataset) {
   auto ret = model->calc_loss(dataset, 0);
   auto loss = ret.first;
   auto avg_loss = loss / dataset.num_samples();
@@ -27,12 +27,12 @@ double check_error(SparseLRModel* model, SparseDataset& dataset) {
   return avg_loss;
 }
 
-cirrus::Configuration config = cirrus::Configuration("configs/test_config.cfg");
+cirrus::Configuration config = cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
 std::mutex model_lock;
-std::unique_ptr<SparseLRModel> model;
+std::unique_ptr<SparseLRSDCAModel> model;
 double learning_rate = 0.00001;
 std::unique_ptr<OptimizationMethod> opt_method =
-    std::make_unique<SGD>(learning_rate);
+    std::make_unique<SDCA>(learning_rate);
 
 void learning_function(const SparseDataset& dataset) {
   for (uint64_t i = 0; 20; ++i) {
@@ -41,7 +41,7 @@ void learning_function(const SparseDataset& dataset) {
     auto gradient = model->minibatch_grad(ds, config);
 
     model_lock.lock();
-    opt_method->sgd_update(model, gradient.release());
+    opt_method->sdca_update(model, gradient.release());
     model_lock.unlock();
   }
 }
@@ -56,7 +56,7 @@ int main() {
   test_dataset.check();
   dataset.print_info();
 
-  model.reset(new SparseLRModel((1 << config.get_model_bits()) + 1));
+  model.reset(new SparseLRSDCAModel((1 << config.get_model_bits()) + 1, config.get_limit_samples()));
 
   uint64_t num_threads = 20;
   std::vector<std::shared_ptr<std::thread>> threads;

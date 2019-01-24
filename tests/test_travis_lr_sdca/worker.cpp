@@ -18,7 +18,7 @@
 
 using namespace cirrus;
 
-cirrus::Configuration config = cirrus::Configuration("configs/test_config.cfg");
+cirrus::Configuration config = cirrus::Configuration("configs/criteo_kaggle_sdca.cfg");
 
 int main() {
   InputReader input;
@@ -27,21 +27,24 @@ int main() {
   train_dataset.check();
   train_dataset.print_info();
 
-  SparseLRModel model(1 << config.get_model_bits());
+  SparseLRSDCAModel model(1 << config.get_model_bits(), config.get_limit_samples());
+  int num_minibatches = config.get_limit_samples() / config.get_minibatch_size();
   std::unique_ptr<PSSparseServerInterface> psi =
       std::make_unique<PSSparseServerInterface>("127.0.0.1", 1337);
   psi->connect();
   int version = 0;
   while (1) {
-    SparseDataset minibatch = train_dataset.random_sample(20);
-    psi->get_lr_sparse_model_inplace(minibatch, model, config);
-    auto gradient = model.minibatch_grad_sparse(minibatch, config);
+    int index = (rand() % num_minibatches) * config.get_minibatch_size();
+    SparseDataset minibatch = train_dataset.sample_from(index,
+                                                        config.get_minibatch_size());
+    psi->get_lr_sdca_model_inplace(model, config);
+    auto gradient = model.minibatch_grad_indexed(index, minibatch, config);
     gradient->setVersion(version++);
-    LRSparseGradient* lrg = dynamic_cast<LRSparseGradient*>(gradient.get());
+    LRSDCASparseGradient* lrg = dynamic_cast<LRSDCASparseGradient*>(gradient.get());
     if (lrg == nullptr) {
       throw std::runtime_error("Error in dynamic cast");
     }
-    psi->send_lr_gradient(*lrg);
+    psi->send_lr_sdca_gradient(*lrg);
   }
   return 0;
 }
