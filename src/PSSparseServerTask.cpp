@@ -1,20 +1,20 @@
 #include <Tasks.h>
 
+#include <signal.h>
+#include "AdaGrad.h"
+#include "Checksum.h"
+#include "Constants.h"
+#include "Momentum.h"
+#include "Nesterov.h"
+#include "OptimizationMethod.h"
+#include "SDCA.h"
+#include "SGD.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "Constants.h"
-#include "Checksum.h"
-#include <signal.h>
-#include "OptimizationMethod.h"
-#include "AdaGrad.h"
-#include "Momentum.h"
-#include "SGD.h"
-#include "SDCA.h"
-#include "Nesterov.h"
 
 #undef DEBUG
 
-#define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
+#define MAX_CONNECTIONS (nworkers * 2 + 1)  // (2 x # workers + 1)
 #define THREAD_MSG_BUFFER_SIZE 1000000
 
 #define TIMEOUT_THRESHOLD_SEC (3)
@@ -108,10 +108,11 @@ void PSSparseServerTask::set_operation_maps() {
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
-    const SparseLRModel& lr_model, uint64_t* model_size) const {
+    const SparseLRModel& lr_model,
+    uint64_t* model_size) const {
   *model_size = lr_model.getSerializedSize();
-  auto d = std::shared_ptr<char>(
-      new char[*model_size], std::default_delete<char[]>());
+  auto d = std::shared_ptr<char>(new char[*model_size],
+                                 std::default_delete<char[]>());
   lr_model.serializeTo(d.get());
   return d;
 }
@@ -153,13 +154,10 @@ bool PSSparseServerTask::process_send_mf_gradient(
 #ifdef DEBUG
   std::cout << "Doing sgd update" << std::endl;
 #endif
-  mf_model->sgd_update(
-      task_config.get_learning_rate(), &gradient);
+  mf_model->sgd_update(task_config.get_learning_rate(), &gradient);
 #ifdef DEBUG
-  std::cout
-    << "sgd update done"
-    << " checksum: " << mf_model->checksum()
-    << std::endl;
+  std::cout << "sgd update done"
+            << " checksum: " << mf_model->checksum() << std::endl;
 #endif
   model_lock.unlock();
   gradientUpdatesCount++;
@@ -184,7 +182,7 @@ bool PSSparseServerTask::process_send_lr_gradient(
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  //buffer.resize(incoming_size);
+  // buffer.resize(incoming_size);
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -197,8 +195,7 @@ bool PSSparseServerTask::process_send_lr_gradient(
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
-  opt_method->sgd_update(
-      lr_model, &gradient);
+  opt_method->sgd_update(lr_model, &gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -222,7 +219,7 @@ bool PSSparseServerTask::process_send_lr_sdca_gradient(
   if (incoming_size > thread_buffer.size()) {
     throw std::runtime_error("Not enough buffer");
   }
-  //buffer.resize(incoming_size);
+  // buffer.resize(incoming_size);
   try {
     if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
       return false;
@@ -235,8 +232,7 @@ bool PSSparseServerTask::process_send_lr_sdca_gradient(
   gradient.loadSerialized(thread_buffer.data());
 
   model_lock.lock();
-  dynamic_cast<SDCA*>(opt_method.get())->sdca_update(
-      lr_sdca_model, &gradient);
+  dynamic_cast<SDCA*>(opt_method.get())->sdca_update(lr_sdca_model, &gradient);
   model_lock.unlock();
   gradientUpdatesCount++;
   return true;
@@ -285,7 +281,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   sparse_mf_model.serializeFromDense(*mf_model, base_user_id, minibatch_size,
                                      k_items, thread_buffer.data(),
                                      thread_msg_buffer[thread_number].get());
-  //uint32_t to_send_size = data_to_send.size();
+  // uint32_t to_send_size = data_to_send.size();
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -327,21 +323,18 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
 
   uint32_t to_send_size = num_entries * sizeof(FEATURE_TYPE);
   assert(to_send_size < 1024 * 1024);
-  char data_to_send[1024 * 1024]; // 1MB
+  char data_to_send[1024 * 1024];  // 1MB
   char* data_to_send_ptr = data_to_send;
 
 #ifdef DEBUG
   std::cout << "Sending back: " << num_entries
-    << " weights from model. Size: " << to_send_size
-    << std::endl;
+            << " weights from model. Size: " << to_send_size << std::endl;
 #endif
   for (uint32_t i = 0; i < num_entries; ++i) {
     uint32_t entry_index = load_value<uint32_t>(data);
     double weight = lr_model->get_nth_weight(entry_index);
     opt_method->edit_weight(weight);
-    store_value<FEATURE_TYPE>(
-        data_to_send_ptr,
-        weight);
+    store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
   }
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;
@@ -361,16 +354,15 @@ bool PSSparseServerTask::process_get_mf_full_model(
 
   if (thread_buffer.size() < model_size) {
     std::cout << "thread_buffer.size(): " << thread_buffer.size()
-      << " model_size: " << model_size << std::endl;
+              << " model_size: " << model_size << std::endl;
     throw std::runtime_error("Thread buffer too small");
   }
 
   mf_model_copy.serializeTo(thread_buffer.data());
-  std::cout
-    << "Serializing mf model"
-    << " mode checksum: " << mf_model_copy.checksum()
-    << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-    << std::endl;
+  std::cout << "Serializing mf model"
+            << " mode checksum: " << mf_model_copy.checksum()
+            << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+            << std::endl;
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -424,11 +416,10 @@ bool PSSparseServerTask::process_get_lr_sdca_model(
   }
 
   lr_sdca_model_copy.serializeTo(thread_buffer.data());
-  std::cout
-      << "Serializing lr sdca model"
-      << " mode checksum: " << lr_sdca_model_copy.checksum()
-      << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-      << std::endl;
+  std::cout << "Serializing lr sdca model"
+            << " mode checksum: " << lr_sdca_model_copy.checksum()
+            << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
+            << std::endl;
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -692,7 +683,7 @@ bool PSSparseServerTask::process_deregister_task(
 
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
-  thread_buffer.resize(120 * 1024 * 1024); // 120 MB
+  thread_buffer.resize(120 * 1024 * 1024);  // 120 MB
   struct timespec ts;
   int thread_number = thread_count++;
   while (!kill_signal) {
@@ -744,9 +735,9 @@ void PSSparseServerTask::gradient_f() {
 
     // We reactivate events from the client socket here
     req.poll_fd.events = POLLIN;
-    //pthread_kill(main_thread, SIGUSR1);
+    // pthread_kill(main_thread, SIGUSR1);
 
-    assert(write(pipefds[req.id][1], "a", 1) == 1); // wake up poll()
+    assert(write(pipefds[req.id][1], "a", 1) == 1);  // wake up poll()
 
 #ifdef DEBUG
     std::cout << "gradient_f done" << std::endl;
@@ -768,11 +759,11 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 #endif
 
   uint32_t incoming_size = 0;
-#ifdef DEBUG 
+#ifdef DEBUG
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
   to_process_lock.lock();
-  poll_fd.events = 0; // explain this
+  poll_fd.events = 0;  // explain this
   to_process.push(Request(sock, thread_id, incoming_size, poll_fd));
   to_process_lock.unlock();
   sem_post(&sem_new_req);
@@ -783,7 +774,8 @@ void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
 
-  lr_sdca_model.reset(new SparseLRSDCAModel(model_size, config.get_limit_samples()));
+  lr_sdca_model.reset(
+      new SparseLRSDCAModel(model_size, config.get_limit_samples()));
   lr_sdca_model->randomize();
 
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
@@ -794,7 +786,7 @@ void PSSparseServerTask::start_server() {
 
   for (uint32_t i = 0; i < NUM_PS_WORK_THREADS; ++i) {
     gradient_thread.push_back(std::make_unique<std::thread>(
-          std::bind(&PSSparseServerTask::gradient_f, this)));
+        std::bind(&PSSparseServerTask::gradient_f, this)));
   }
 
   // create barrier for all poll threads
@@ -810,8 +802,8 @@ void PSSparseServerTask::start_server() {
 
   // start checkpoing thread
   if (task_config.get_checkpoint_frequency() > 0) {
-      checkpoint_thread.push_back(std::make_unique<std::thread>(
-                  std::bind(&PSSparseServerTask::checkpoint_model_loop, this)));
+    checkpoint_thread.push_back(std::make_unique<std::thread>(
+        std::bind(&PSSparseServerTask::checkpoint_model_loop, this)));
   }
 }
 
@@ -830,17 +822,14 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     }
 
     int opt = 1;
-    if (setsockopt(server_sock_, IPPROTO_TCP,
-                TCP_NODELAY, &opt, sizeof(opt))) {
+    if (setsockopt(server_sock_, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt))) {
       throw std::runtime_error("Error setting socket options.");
     }
-    if (setsockopt(server_sock_, SOL_SOCKET,
-                SO_REUSEADDR, &opt, sizeof(opt))) {
+    if (setsockopt(server_sock_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
       throw std::runtime_error("Error forcing port binding");
     }
 
-    if (setsockopt(server_sock_, SOL_SOCKET,
-                SO_REUSEPORT, &opt, sizeof(opt))) {
+    if (setsockopt(server_sock_, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt))) {
       throw std::runtime_error("Error forcing port binding");
     }
 
@@ -850,8 +839,8 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     serv_addr.sin_port = htons(ps_port);
     std::memset(serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
-    int ret = bind(server_sock_,
-            reinterpret_cast<sockaddr*> (&serv_addr), sizeof(serv_addr));
+    int ret = bind(server_sock_, reinterpret_cast<sockaddr*>(&serv_addr),
+                   sizeof(serv_addr));
     if (ret < 0) {
       throw std::runtime_error("Error binding in port " + to_string(ps_port));
     }
@@ -869,7 +858,6 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     fdses[poll_id].at(0).fd = pipefds[poll_id][0];
     fdses[poll_id].at(0).events = POLLIN;
     curr_indexes[poll_id] = 1;
-
   }
 
   pthread_barrier_wait(threads_barrier.get());
@@ -893,11 +881,10 @@ void PSSparseServerTask::loop(int poll_id) {
       } else {
         std::cout << "EINTR" << std::endl;
       }
-    } else if (
-            (poll_id == 0 && fdses[poll_id][1].revents == POLLIN)
-         || (poll_id != 0 && fdses[poll_id][0].revents == POLLIN)) {
-      int posit = (poll_id == 0);        // =1 if main poll thread, 0 otherwise
-      fdses[poll_id][posit].revents = 0; // Reset the event flags
+    } else if ((poll_id == 0 && fdses[poll_id][1].revents == POLLIN) ||
+               (poll_id != 0 && fdses[poll_id][0].revents == POLLIN)) {
+      int posit = (poll_id == 0);         // =1 if main poll thread, 0 otherwise
+      fdses[poll_id][posit].revents = 0;  // Reset the event flags
       char a[1];
       assert(read(pipefds[poll_id][0], a, 1) >= 0);
       // ignore
@@ -911,7 +898,7 @@ void PSSparseServerTask::loop(int poll_id) {
           continue;
         }
         if (curr_fd.revents != POLLIN) {
-          //LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
+          // LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
           if (curr_fd.revents & POLLHUP) {
             std::cout << "PS closing connection " << num_connections
                       << std::endl;
@@ -921,17 +908,16 @@ void PSSparseServerTask::loop(int poll_id) {
           }
         } else if (poll_id == 0 && curr_fd.fd == server_sock_) {
           std::cout << "PS new connection!" << std::endl;
-          int newsock = accept(server_sock_,
-              reinterpret_cast<struct sockaddr*> (&cli_addr),
-              &clilen);
+          int newsock =
+              accept(server_sock_,
+                     reinterpret_cast<struct sockaddr*>(&cli_addr), &clilen);
           if (poll_id == 0 && newsock < 0) {
             throw std::runtime_error("Error accepting socket");
           }
           // If at capacity, reject connection
           if (poll_id == 0 && num_connections > (MAX_CONNECTIONS - 1)) {
-            std::cout << "Rejecting connection "
-              << num_connections
-              << std::endl;
+            std::cout << "Rejecting connection " << num_connections
+                      << std::endl;
             close(newsock);
           } else if (poll_id == 0 && curr_indexes[poll_id] == max_fds) {
             throw std::runtime_error("We reached capacity");
@@ -943,7 +929,6 @@ void PSSparseServerTask::loop(int poll_id) {
             fdses[r][curr_indexes[r]].events = POLLIN;
             curr_indexes[r]++;
             num_connections++;
-
           }
         } else {
 #ifdef DEBUG
@@ -960,7 +945,7 @@ void PSSparseServerTask::loop(int poll_id) {
             curr_fd.fd = -1;
           }
         }
-        curr_fd.revents = 0; // Reset the event flags
+        curr_fd.revents = 0;  // Reset the event flags
       }
     }
     // If at max capacity, try to make room
@@ -968,14 +953,14 @@ void PSSparseServerTask::loop(int poll_id) {
       // Try to purge unused fds, those with fd == -1
       std::cout << "Purging" << std::endl;
       std::remove_if(fdses[poll_id].begin(), fdses[poll_id].end(),
-          std::bind(&PSSparseServerTask::testRemove,
-              this, std::placeholders::_1, poll_id));
+                     std::bind(&PSSparseServerTask::testRemove, this,
+                               std::placeholders::_1, poll_id));
     }
   }
 }
 
 void sig_handler(int) {
-  //std::cout << "Sig handler" << std::endl;
+  // std::cout << "Sig handler" << std::endl;
 }
 
 void PSSparseServerTask::check_tasks_lifetime() {
@@ -1006,9 +991,7 @@ void PSSparseServerTask::check_tasks_lifetime() {
  *
  */
 void PSSparseServerTask::run(const Configuration& config) {
-  std::cout
-    << "PS task initializing model"
-    << std::endl;
+  std::cout << "PS task initializing model" << std::endl;
 
   for (int i = 0; i < NUM_POLL_THREADS; i++) {
     assert(pipe(pipefds[i]) != -1);
@@ -1042,7 +1025,7 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   start_server();
 
-  //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
+  // wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();
@@ -1116,4 +1099,4 @@ void PSSparseServerTask::destroy_pthread_barrier(pthread_barrier_t* barrier) {
   delete barrier;
 }
 
-} // namespace cirrus
+}  // namespace cirrus

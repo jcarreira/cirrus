@@ -55,7 +55,7 @@ std::pair<std::unique_ptr<char[]>, uint64_t> SparseLRSDCAModel::serialize()
 
 void SparseLRSDCAModel::serializeTo(void* mem) const {
 #ifdef DEBUG
-  // std::cout << "Num weights size: " << weights_.size() << std::endl;
+// std::cout << "Num weights size: " << weights_.size() << std::endl;
 #endif
   store_value<int>(mem, weights_.size());
   store_value<int>(mem, coord_weights_.size());

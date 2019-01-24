@@ -64,8 +64,10 @@ class S3SparseIterator : public S3Iterator {
 
   // this contains a pointer to memory where a minibatch can be found
   // the uint64_t in the outer pair is the in
-  // the int in the inner pair tells whether this is the last minibatch of a block of memory
-  CircularBuffer<std::queue<std::pair<std::pair<const void*, int>, uint64_t>>*> minibatches_list;
+  // the int in the inner pair tells whether this is the last minibatch of a
+  // block of memory
+  CircularBuffer<std::queue<std::pair<std::pair<const void*, int>, uint64_t>>*>
+      minibatches_list;
   std::atomic<int> num_minibatches_ready{0};
 
   int to_delete = -1;

@@ -1,22 +1,22 @@
 #ifndef PS_SPARSE_SERVER_INTERFACE_H_
 #define PS_SPARSE_SERVER_INTERFACE_H_
 
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
 #include <unistd.h>
-#include <stdexcept>
 #include <cstring>
 #include <iostream>
 #include <memory>
-#include "ModelGradient.h"
-#include "Utils.h"
-#include "SparseLRModel.h"
-#include "SparseMFModel.h"
+#include <stdexcept>
 #include "Model.h"
+#include "ModelGradient.h"
+#include "SparseLRModel.h"
 #include "SparseLRSDCAModel.h"
+#include "SparseMFModel.h"
+#include "Utils.h"
 
 namespace cirrus {
 
@@ -30,14 +30,21 @@ class PSSparseServerInterface {
   void send_lr_gradient(const LRSparseGradient&);
   void send_lr_sdca_gradient(const LRSDCASparseGradient& gradient);
   void send_mf_gradient(const MFSparseGradient&);
-  
-  SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
-  void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
-  SparseLRSDCAModel get_lr_sdca_model(const Configuration& config);
-  void get_lr_sdca_model_inplace(SparseLRSDCAModel&, const Configuration& config);
-  SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
 
-  std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
+  SparseLRModel get_lr_sparse_model(const SparseDataset& ds,
+                                    const Configuration& config);
+  void get_lr_sparse_model_inplace(const SparseDataset& ds,
+                                   SparseLRModel&,
+                                   const Configuration& config);
+  SparseLRSDCAModel get_lr_sdca_model(const Configuration& config);
+  void get_lr_sdca_model_inplace(SparseLRSDCAModel&,
+                                 const Configuration& config);
+  SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
+                                    uint32_t,
+                                    uint32_t);
+
+  std::unique_ptr<CirrusModel> get_full_model(
+      bool isCollaborativeFiltering);  // XXX use a better argument here
 
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
@@ -81,6 +88,6 @@ class PSSparseServerInterface {
   struct sockaddr_in serv_addr;
 };
 
-} // namespace cirrus
+}  // namespace cirrus
 
-#endif //  PS_SPARSE_SERVER_INTERFACE_H_
+#endif  //  PS_SPARSE_SERVER_INTERFACE_H_
