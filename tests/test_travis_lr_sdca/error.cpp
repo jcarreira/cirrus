@@ -4,7 +4,7 @@
 #include "InputReader.h"
 #include "PSSparseServerInterface.h"
 #include "Serializers.h"
-#include "SparseLRModel.h"
+#include "SparseLRSDCAModel.h"
 #include "Utils.h"
 #include "config.h"
 

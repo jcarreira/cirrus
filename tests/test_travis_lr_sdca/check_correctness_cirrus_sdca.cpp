@@ -9,8 +9,8 @@
 
 #include <Configuration.h>
 #include <InputReader.h>
-#include <SparseLRModel.h>
-#include "SGD.h"
+#include <SparseLRSDCAModel.h>
+#include "SDCA.h"
 
 using namespace cirrus;
 
