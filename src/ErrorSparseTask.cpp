@@ -58,6 +58,9 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
 
   bool use_col_filtering =
       config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+  if (config.get_opt_method() == "sdca") {
+    return psi->get_lr_sdca_model(config).copy();
+  }
   return psi->get_full_model(use_col_filtering);
 }
 
