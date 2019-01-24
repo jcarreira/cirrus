@@ -38,7 +38,7 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
 }
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
-        const std::string& ps_ip, uint64_t ps_port) {
+                                       const std::string& ps_ip, uint64_t ps_port) {
   static PSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
@@ -56,7 +56,7 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   }
 
   bool use_col_filtering =
-    config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
+      config.get_model_type() == Configuration::COLLABORATIVE_FILTERING;
   return psi->get_full_model(use_col_filtering);
 }
 
@@ -107,7 +107,10 @@ void ErrorSparseTask::error_response() {
   }
 }
 
-void ErrorSparseTask::run(const Configuration& config) {
+void ErrorSparseTask::run(const Configuration& config,
+                          bool testing,
+                          int iters,
+                          double test_threshold) {
   std::cout << "Creating error response thread" << std::endl;
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
@@ -136,37 +139,45 @@ void ErrorSparseTask::run(const Configuration& config) {
   // what we are going to use as a test set
   std::vector<std::shared_ptr<SparseDataset>> minibatches_vec;
   std::cout << "[ERROR_TASK] getting minibatches from "
-    << config.get_train_range().first << " to "
-    << config.get_train_range().second
-    << std::endl;
+            << config.get_train_range().first << " to "
+            << config.get_train_range().second
+            << std::endl;
 
   uint32_t minibatches_per_s3_obj =
-    config.get_s3_size() / config.get_minibatch_size();
+      config.get_s3_size() / config.get_minibatch_size();
   for (uint64_t i = 0; i < (right - left) * minibatches_per_s3_obj; ++i) {
     std::shared_ptr<SparseDataset> ds = s3_iter.getNext();
     minibatches_vec.push_back(ds);
   }
 
   std::cout << "[ERROR_TASK] Got "
-    << minibatches_vec.size() << " minibatches"
-    << "\n";
+            << minibatches_vec.size() << " minibatches"
+            << "\n";
   std::cout << "[ERROR_TASK] Building dataset"
-    << "\n";
+            << "\n";
 
   wait_for_start(ERROR_SPARSE_TASK_RANK, nworkers);
   uint64_t start_time = get_time_us();
 
   std::cout << "[ERROR_TASK] Computing accuracies"
-    << "\n";
+            << "\n";
 
+  int iterations = 0;
+  FEATURE_TYPE total_accuracy = 0;
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
-
+    if (iterations >= iters && testing) {
+      exit(EXIT_FAILURE);
+    }
+    if ((total_accuracy / minibatches_vec.size()) >= test_threshold &&
+        testing) {
+      exit(EXIT_SUCCESS);
+    }
     try {
       // first we get the model
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] getting the full model"
-        << "\n";
+                << "\n";
 #endif
       std::unique_ptr<CirrusModel> model = get_model(config, ps_ip, ps_port);
 
@@ -175,10 +186,10 @@ void ErrorSparseTask::run(const Configuration& config) {
 #endif
 
       std::cout
-        << "[ERROR_TASK] computing loss."
-        << std::endl;
+          << "[ERROR_TASK] computing loss."
+          << std::endl;
       FEATURE_TYPE total_loss = 0;
-      FEATURE_TYPE total_accuracy = 0;
+      total_accuracy = 0;
       uint64_t total_num_samples = 0;
       uint64_t total_num_features = 0;
       uint64_t start_index = 0;
@@ -216,8 +227,8 @@ void ErrorSparseTask::run(const Configuration& config) {
     } catch(...) {
       std::cout << "run_compute_error_task unknown id" << std::endl;
     }
+    iterations++;
   }
 }
 
 } // namespace cirrus
-

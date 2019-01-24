@@ -25,10 +25,10 @@ script:
    - g++ --version
    - make -j 10
    - python tests/test_travis_lr/test.py
-   #- ./tests/test_data/jester.sh
-   #- python tests/test_travis_mf/test.py
-   #- ./tests/test_travis/test_register.sh
-   #- ./tests/test_travis/test_keyvalue.sh
+   - ./tests/test_data/jester.sh
+   - python tests/test_travis_mf/test.py
+   - ./tests/test_travis/test_register.sh
+   - ./tests/test_travis/test_keyvalue.sh
 
 env:
   global:
