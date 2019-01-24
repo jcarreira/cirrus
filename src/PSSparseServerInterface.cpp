@@ -312,7 +312,7 @@ void PSSparseServerInterface::get_lr_sdca_model_inplace(
 #ifdef DEBUG
   std::cout << "Sending operation" << std::endl;
 #endif
-  uint32_t operation = GET_LR_SPARSE_MODEL;
+  uint32_t operation = GET_LR_SDCA_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
     throw std::runtime_error("Error getting sparse lr model");
   }
