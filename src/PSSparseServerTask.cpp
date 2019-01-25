@@ -416,10 +416,7 @@ bool PSSparseServerTask::process_get_lr_sdca_model(
   }
 
   lr_sdca_model_copy.serializeTo(thread_buffer.data());
-  std::cout << "Serializing lr sdca model"
-            << " mode checksum: " << lr_sdca_model_copy.checksum()
-            << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
-            << std::endl;
+
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }

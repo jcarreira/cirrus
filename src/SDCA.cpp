@@ -17,8 +17,7 @@ void SDCA::sdca_update(std::unique_ptr<SparseLRSDCAModel>& lr_model,
   for (const auto& w : grad->w) {
     int index = w.first;
     FEATURE_TYPE value = w.second;
-    lr_model->weights_[index] +=
-        value / (learning_rate * lr_model->dual_size());
+    lr_model->weights_[index] += value;
   }
 
   for (const auto& a : grad->a) {
