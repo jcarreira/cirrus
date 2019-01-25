@@ -125,15 +125,24 @@ int LDADataset::get_serialize_size() {
     return serialize_size;
   }
   int D = docs_.size(), V = vocabs_.size(), N = 0, V_letter = 0;
+  // N := the total corpus size
   for (const auto& sample : docs_) {
-    for (const auto& w : sample) {
-      ++N;
-    }
+    N += sample.size();
   }
+  // V_letter := size of all the chars
+  // Note that words are stored as strings here.
+  // Thus the sum of all the char counts is the
+  // same with total token size.
   for (const auto& vocab : vocabs_) {
     V_letter += vocab.size();
   }
-  serialize_size = (2 * N + D + V + 2) * sizeof(int) + V_letter * sizeof(char);
+  serialize_size = (2 * N + D + V + 2) * sizeof(int) +
+                                  // word-count pairs for each entries -> 2 * N
+                                  // sizee for each documents in corpus -> D,
+                                  // size of the corpus -> 1,
+                                  // vocab space -> V + 1
+                   V_letter * sizeof(char);
+                                  // total length for all words -> V_letter
   return serialize_size;
 }
 }  // namespace cirrus
