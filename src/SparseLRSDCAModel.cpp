@@ -213,7 +213,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
     a_grad.push_back(std::make_pair(i + starting_index, grad));
 
-    for (int j = 0; j < primal_size(); j += 1) {
+    for (int j = 0; j < x.size(); j += 1) {
       w_grad_map[x[j].first] += grad * x[j].second;
     }
   }
@@ -223,6 +223,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
   int i = 0;
   for (const auto& pair : w_grad_map) {
     w_grad[i] = pair;
+    i++;
   }
 
   std::unique_ptr<LRSDCASparseGradient> ret =
