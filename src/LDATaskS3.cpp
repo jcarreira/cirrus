@@ -5,7 +5,6 @@
 #include "S3SparseIterator.h"
 #include "Serializers.h"
 #include "Utils.h"
-// #include "S3.h"
 
 #include <pthread.h>
 #include <thread>
@@ -16,12 +15,16 @@ namespace cirrus {
 
 void LDATaskS3::push_gradient(char* gradient_mem,
                               int total_sampled_tokens,
+                              int total_sampled_docs,
                               uint32_t to_send_size) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
 #endif
-  psint->send_lda_update(gradient_mem, total_sampled_tokens, to_send_size);
+  psint->send_lda_update(gradient_mem,
+                         total_sampled_tokens,
+                         total_sampled_docs,
+                         to_send_size + sizeof(int) * 2);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -53,18 +56,13 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
     }
   }
 
-  // uint64_t to_send_size;
-  // char* mem = to_save->serialize(to_send_size);
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
   std::string obj_id_str =
       std::to_string(hash_f(std::to_string(bucket_id).c_str())) + "-LDA";
   s3_client->s3_put_object(obj_id_str, this->config.get_s3_bucket(),
                            std::string(mem_to_send, to_send_size));
 
-  // to_save.reset();
-
   upload_lock = -1;
-  // delete[] mem_to_send;
 }
 
 void LDATaskS3::load_serialized_indices(char* mem_begin) {
@@ -99,7 +97,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
   std::cout << "[WORKER] "
             << "num s3 batches: " << num_s3_batches << std::endl;
-  // wait_for_start(worker, nworkers);
 
   // pre-assign the documents for workers
   auto train_range = config.get_train_range();
@@ -115,12 +112,11 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  // std::shared_ptr<LDAStatistics> s3_local_vars;
 
   int update_bucket = 0;
   int benchmark_time = 5, full_iteration = 0;
   uint32_t to_receive_size, uncompressed_size;
-  int total_sampled_tokens = 0, total_sampled_doc = 0;
+  int total_sampled_tokens = 0, total_sampled_docs = 0;
   uint64_t version = 1;
   upload_lock_indicators.resize(end - start, -1);
 
@@ -145,7 +141,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   load_serialized_indices(slice_indices_mem);
   delete slice_indices_mem;
 
-  int cur = 0, num_runs = 100000 / config.get_slice_size() + 1;
+  int cur = 0, num_runs =  1;
   std::cout << "[WORKER] starting loop" << std::endl;
 
   while (1) {
@@ -156,24 +152,14 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // more than (num_runs) number of word slices
     if (cur >= num_runs) {
       // update_bucket = cur_train_idx;
-      total_sampled_doc += model->get_ndt_size();
+      total_sampled_docs += model->get_ndt_size();
 
-      // // only send to S3 if the next LDAStatistics is not the current one
+      // only send to S3 if the next LDAStatistics is not the current one
       if (end != start + 1) {
         uint64_t size_temp;
         char* mem_to_send = model->serialize_to_S3(size_temp);
         upload_wih_bucket_id_fn(mem_to_send, size_temp,
                                 upload_lock_indicators[0], cur_train_idx);
-
-        // s3_local_vars->store_new_stats(*model.get());
-        //
-        // help_upload_threads.push_back(std::make_unique<std::thread>(
-        //       std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
-        //                 std::placeholders::_1, std::placeholders::_2,
-        //                 std::placeholders::_3, std::placeholders::_4),
-        //       s3_local_vars, std::ref(upload_lock_indicators[update_bucket -
-        // start]), cur_train_idx)
-        // );
       }
 
       // compute the loglikelihood for current LDAStatistics and
@@ -187,8 +173,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       if (cur_train_idx == end) {
         cur_train_idx = start;
         full_iteration += 1;
-
-        // std::cout << "******\n";
 
         // The early exit is added in case that
         // worker expires even if it hasn't stored the
@@ -235,7 +219,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
           std::cout << "--------------------------\n";
           std::cout << "documents/sec: "
-                    << (double) total_sampled_doc /
+                    << (double) total_sampled_docs /
                            ((get_time_ms() - start_time) / 1000)
                     << std::endl;
           std::cout << "tokens/sec: "
@@ -294,7 +278,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       load_serialized_indices(slice_indices_mem);
       delete slice_indices_mem;
 
-      num_runs = 100000 / config.get_slice_size() + 1;
+      num_runs = 3000 / config.get_slice_size() + 1;
       cur = 0;
 
       continue;
@@ -313,6 +297,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     model->update_model(partial_model, to_receive_size, uncompressed_size,
                         psint->slice_id);
     time_create_model += (get_time_ms() - start_time_benchmark) / 1000.0;
+    num_runs = model->get_V() / config.get_slice_size();
 
     // sampling phase
     char* gradient_mem;
@@ -325,7 +310,10 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // push the update to server
     try {
       start_time_benchmark = get_time_ms();
-      push_gradient(gradient_mem, total_sampled_tokens, gradient_size);
+      push_gradient(gradient_mem, total_sampled_tokens, total_sampled_docs, gradient_size);
+
+      total_sampled_docs = 0;
+
       time_update += (get_time_ms() - start_time_benchmark) / 1000.0;
     } catch (...) {
       std::cout << "[WORKER] "
@@ -367,7 +355,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
 
       std::cout << "--------------------------\n";
       std::cout << "documents/sec: "
-                << (double) total_sampled_doc /
+                << (double) total_sampled_docs /
                        ((get_time_ms() - start_time) / 1000)
                 << std::endl;
       std::cout << "tokens/sec: "
@@ -387,7 +375,6 @@ void LDATaskS3::run(const Configuration& config, int worker) {
       benchmark_time += 5;
     }
   }
-  // s3_shutdown_aws();
 }
 
 }  // namespace cirrus

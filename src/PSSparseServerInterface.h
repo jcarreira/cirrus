@@ -33,6 +33,7 @@ class PSSparseServerInterface {
   // void send_lda_update(LDAUpdates&, int total_sampled_tokens);
   void send_lda_update(char* gradient_mem,
                        int total_sampled_tokens,
+                       int total_sampled_docs,
                        uint32_t to_send_size);
 
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);

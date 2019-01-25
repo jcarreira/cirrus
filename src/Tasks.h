@@ -323,6 +323,7 @@ class PSSparseServerTask : public MLTask {
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);
   bool process_deregister_task(int, const Request&, std::vector<char>&, int);
+  bool process_sync_model(int, const Request&, std::vector<char>&, int);
 
   void kill_server();
 
@@ -404,7 +405,7 @@ class PSSparseServerTask : public MLTask {
   std::array<int, 100000> sock_lookup;
   std::array<int, 100000> task_id_lookup;
   std::array<int, 1000> bucket_in_update;
-  int tokens_sampled = 0;
+  int tokens_sampled = 0, docs_sampled = 0;
 
   double num_to_find_partial = 0.;
   double receive_size = 0, send_size = 0;
@@ -528,6 +529,7 @@ class LDATaskS3 : public MLTask {
    */
   void push_gradient(char* gradient_mem,
                      int total_sampled_tokens,
+                     int total_sampled_docs,
                      uint32_t to_send_size);
   /**
    * Load the pre-cached token indices (for the current slice)

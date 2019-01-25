@@ -44,18 +44,15 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
       if (lindex_map[gindex] == -1) {
-        // local_vocab.insert(local_vocab.begin(), gindex);
         local_vocab.push_back(gindex);
         lindex_map[gindex] = 1;
       }
       if (lookup_map[gindex] == -1) {
-        // global_vocab.insert(global_vocab.end(), gindex);
         global_vocab.push_back(gindex);
         lookup_map[gindex] = idx;
         idx++;
       }
       for (int i = 0; i < count; ++i) {
-        // int top = rand() % K;
         int top = topic_scope[gindex][(rand() % topic_scope[gindex].size())];
 
         t.push_back(top);
@@ -63,26 +60,12 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         w.push_back(gindex);
         ndt_row[top] += 1;
 
-        // nvt[gindex * K + top] += 1;
         nvt[lookup_map.at(gindex) * K + top] += 1;
         nt[top] += 1;
       }
     }
     ndt.push_back(ndt_row);
   }
-
-  // for (auto& i: global_vocab) {
-  //   std::cout << i << " ";
-  // }
-  // std::cout << std::endl;
-  //
-  // for (auto& i: global_vocab) {
-  //   std::cout << lookup_map[i]<< " ";
-  // }
-  // std::cout << std::endl;
-
-  // std::vector<int> local_vocab_vec(local_vocab.begin(), local_vocab.end());
-
   return LDAStatistics(K, ndt, local_vocab, t, d, w);
 }
 
@@ -93,7 +76,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   lookup_map.fill(-1);
 
   uint64_t s3_obj_num_samples = config.get_s3_size();
-  // s3_initialize_aws();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
 
   int K = config.get_k();
@@ -124,16 +106,12 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   for (int i = 0; i < K; ++i) {
     temp_global_vocab.push_back(i);
   }
-  int length = K / 2;
+  int length = K;
   nvt_init_rnd_scope.reserve(dataset.num_vocabs());
   for (int i = 0; i < dataset.num_vocabs(); ++i) {
     std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());
     std::vector<int> vi_init_scope(temp_global_vocab.begin(),
                                    temp_global_vocab.begin() + length);
-    // for (int j = 0; j < length; ++j) {
-    //   std::cout << vi_init_scope[j] << " ";
-    // }
-    // std::cout << std::endl;
     nvt_init_rnd_scope.push_back(vi_init_scope);
   }
 
@@ -167,12 +145,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
     delete msg;
   }
 
-  // check_loading(config, s3_client);
-  //
-  // Storing global variables
-  // std::vector<int> global_vocab_vec(global_vocab.begin(),
-  // global_vocab.end());
-
   std::shared_ptr<LDAUpdates> initial_global_var;
   initial_global_var.reset(new LDAUpdates());
   initial_global_var->slice = global_vocab;
@@ -191,8 +163,6 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
                            std::string(s3_obj.get(), len));
-
-  // s3_shutdown_aws();
 
   std::cout << "LOADER-LDA terminated successfully" << std::endl;
 }

@@ -60,6 +60,7 @@ class LDAModel {
   void get_ndt(std::vector<std::vector<int> >& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
   void get_t(std::vector<int>& t_) { t_ = t; }
+  int get_V() { return V_; }
 
   int get_ndt_size() { return ndt.size(); }
 

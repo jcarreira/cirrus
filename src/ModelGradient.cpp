@@ -431,10 +431,6 @@ void MFSparseGradient::check_values() const {
 }
 
 LDAUpdates::LDAUpdates(LDAUpdates&& other) {
-  // change_nvt = std::move(other.change_nvt);
-  // change_nt = std::move(other.change_nt);
-  // slice = std::move(other.slice);
-  // version = other.version;
   change_nvt_ptr = other.change_nvt_ptr;
   change_nt_ptr = other.change_nt_ptr;
   slice = std::move(other.slice);
@@ -442,11 +438,6 @@ LDAUpdates::LDAUpdates(LDAUpdates&& other) {
   sparse_records.fill(-1);
 }
 
-// LDAUpdates::LDAUpdates(const std::vector<int>& nvt, const std::vector<int>&
-// nt)
-//     : change_nvt(nvt), change_nt(nt) {
-//   slice.clear();
-// }
 LDAUpdates::LDAUpdates(const std::vector<int>& nvt,
                        const std::vector<int>& nt) {
   change_nvt_ptr.reset(new std::vector<int>(nvt));
@@ -734,7 +725,6 @@ char* LDAUpdates::get_partial_model(int slice_id,
 
       start_time_ttemp = get_time_ms();
       store_value<int16_t>(mem, sparse_type);
-      // std::cout << sparse_type << std::endl;
 
       // only true if word_id was checked to be stored
       // sparsely in previous iterationos
@@ -809,8 +799,6 @@ char* LDAUpdates::get_partial_model(int slice_id,
   to_send_size = LZ4_compress_default(mem_begin, compressed_mem,
                                       uncompressed_size, max_compressed_size);
   time_compress += (get_time_ms() - start_time_temp) / 1000.0;
-
-  // std::cout << uncompressed_size << " " << to_send_size << std::endl;
 
   double time_taken = (get_time_ms() - start_time_func) / 1000.0;
 

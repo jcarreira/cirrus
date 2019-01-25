@@ -95,7 +95,7 @@ int main_worker(int worker_id) {
     char* gradient_mem;
     gradient_mem = model->sample_model(
         total_sampled_tokens, slice_indices[psi->slice_id], gradient_size);
-    psi->send_lda_update(gradient_mem, total_sampled_tokens, gradient_size);
+    psi->send_lda_update(gradient_mem, total_sampled_tokens, 0, gradient_size);
   }
 
   cirrus::s3_shutdown_aws();

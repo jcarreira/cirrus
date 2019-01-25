@@ -326,6 +326,7 @@ uint32_t PSSparseServerInterface::get_status(uint32_t id) {
 
 void PSSparseServerInterface::send_lda_update(char* gradient_mem,
                                               int total_sampled_tokens,
+                                              int total_sampled_docs,
                                               uint32_t size) {
   uint32_t operation = SEND_LDA_UPDATE;
 #ifdef DEBUG
@@ -350,13 +351,16 @@ void PSSparseServerInterface::send_lda_update(char* gradient_mem,
     throw std::runtime_error("Error sending # of tokens");
   }
 
-  // ret = send_all(sock, mem.get(), size - sizeof(int));
-  ret = send_all(sock, gradient_mem, size - sizeof(int));
+  ret = send_all(sock, &total_sampled_docs, sizeof(int));
+  if (ret == -1) {
+    throw std::runtime_error("Error sending # of docs");
+  }
+
+  ret = send_all(sock, gradient_mem, size - 2 * sizeof(int));
   if (ret == -1 || ret == 0) {
     throw std::runtime_error("Error sending grad");
   }
 
-  // mem.reset();
   delete gradient_mem;
 }
 
