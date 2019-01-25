@@ -89,7 +89,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
          time_sample = 0.0, time_create_model = 0.0;
 
   std::cout << "Starting LDATaskS3" << std::endl;
-  uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
+  uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_file_size();
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);

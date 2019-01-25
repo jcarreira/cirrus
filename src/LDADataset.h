@@ -21,11 +21,12 @@ class LDADataset {
    * @ param vocabs: a vector of string
    */
   LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
-             std::vector<std::string> vocabs);
+             std::vector<std::string> vocabs,
+             double sample_ratio);
   /**
    * Load a dataset from serialized format
    */
-  LDADataset(const char* msg_begin);
+  LDADataset(const char* msg_begin, double sample_ratio);
   /**
    * Return both documents and vocabularies in serialized format
    */
@@ -58,9 +59,10 @@ class LDADataset {
   void check() const;
 
  private:
-  std::vector<std::vector<std::pair<int, int> > > docs_;
-  std::vector<std::string> vocabs_;
-  int sample_size = 0, serialize_size = 0;
+  std::vector<std::vector<std::pair<int, int>>> docs_; //< a vector of (word_id, count) pairs
+  std::vector<std::string> vocabs_;                    //< a vector of words (in string)
+  int sample_size = 0;    //< number of documents to sample (unused)
+  int serialize_size = 0; //< size of serialized LDADataset object
 };
 }  // namespace cirrus
 
