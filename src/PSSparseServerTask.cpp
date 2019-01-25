@@ -239,12 +239,19 @@ bool PSSparseServerTask::process_send_lda_update(
     throw std::runtime_error("Not enough buffer");
   }
 
-  int tokens;
+  int tokens, docs;
   read_all(req.sock, &tokens, sizeof(int));
   tokens_sampled += tokens;
 
+  read_all(req.sock, &docs, sizeof(int));
+  docs_sampled += docs;
+
+  // if (docs != 0) {
+  //   compute_loglikelihood();
+  // }
+
   try {
-    if (read_all(req.sock, thread_buffer.data(), incoming_size - sizeof(int)) ==
+    if (read_all(req.sock, thread_buffer.data(), incoming_size - 2 * sizeof(int)) ==
         0) {
       return false;
     }
@@ -444,7 +451,6 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
     return false;
   }
 
-  // time_process_get += (get_time_ms() - start_time_benchmark) / 1000.0;
   time_send_partial += (get_time_ms() - start_time_temp) / 1000.0;
 
   time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
@@ -631,9 +637,9 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
     unused_slice_id.push_back(sock_lookup[pfd->fd]);
     sock_lookup[pfd->fd] = -1;
   }
-  std::cout << "PS closing connection after process(): " << num_connections
-            << std::endl;
-  std::cout << "Task id: " << task_id_lookup[pfd->fd] + 5 << std::endl;
+  // std::cout << "PS closing connection after process(): " << num_connections
+  //           << std::endl;
+  // std::cout << "Task id: " << task_id_lookup[pfd->fd] + 5 << std::endl;
   pfd->fd = -1;
   pfd->revents = 0;
 }
@@ -918,7 +924,7 @@ void PSSparseServerTask::gradient_f() {
               << operation_to_name[operation] << std::endl;
 #endif
 
-    if (operation_to_f.find(operation) == operation_to_f.end()) {
+    if (operation_to_name.find(operation) == operation_to_name.end()) {
       throw std::runtime_error("Unknown operation");
     }
 
@@ -1134,14 +1140,14 @@ void PSSparseServerTask::loop(int poll_id) {
         if (curr_fd.revents != POLLIN) {
           //LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
           if (curr_fd.revents & POLLHUP) {
-            std::cout << "PS closing connection " << num_connections
-                      << std::endl;
+            // std::cout << "PS closing connection " << num_connections
+            //           << std::endl;
             close(curr_fd.fd);
             curr_fd.fd = -1;
           }
         } else if (poll_id == 0 && curr_fd.fd == server_sock_) {
-          std::cout << poll_id << std::endl;
-          std::cout << "PS new connection!" << std::endl;
+          // std::cout << poll_id << std::endl;
+          // std::cout << "PS new connection!" << std::endl;
           int newsock = accept(server_sock_,
               reinterpret_cast<struct sockaddr*> (&cli_addr),
               &clilen);
@@ -1150,16 +1156,16 @@ void PSSparseServerTask::loop(int poll_id) {
           }
           // If at capacity, reject connection
           if (poll_id == 0 && num_connections > (MAX_CONNECTIONS - 1)) {
-            std::cout << "Rejecting connection "
-              << num_connections
-              << std::endl;
+            // std::cout << "Rejecting connection "
+            //   << num_connections
+            //   << std::endl;
             close(newsock);
           } else if (poll_id == 0 && curr_indexes[poll_id] == max_fds) {
             throw std::runtime_error("We reached capacity");
             close(newsock);
           } else if (poll_id == 0) {
             int r = rand() % NUM_POLL_THREADS;
-            std::cout << "Random: " << r << std::endl;
+            // std::cout << "Random: " << r << std::endl;
             fdses[r][curr_indexes[r]].fd = newsock;
             fdses[r][curr_indexes[r]].events = POLLIN;
             curr_indexes[r]++;
@@ -1176,8 +1182,8 @@ void PSSparseServerTask::loop(int poll_id) {
                         << std::endl;
             }
             num_connections--;
-            std::cout << "PS closing connection after process(): "
-                      << num_connections << std::endl;
+            // std::cout << "PS closing connection after process(): "
+            //           << num_connections << std::endl;
             curr_fd.fd = -1;
           }
         }
@@ -1385,17 +1391,6 @@ void PSSparseServerTask::init_loglikelihood() {
 
   std::cout << "ndt size: " << ndt.size() << std::endl;
 
-  // for (int j = 0; j < ndt.size(); ++j) {
-  //   int ndj = 0;
-  //   for (int k = 0; k < K; ++k) {
-  //     ndj += ndt[j][k];
-  //     if (ndt[j][k] > 0) {
-  //       ll_temp += lda_lgamma(alpha + ndt[j][k]) - lgamma_alpha;
-  //     }
-  //   }
-  //   ll_temp += lda_lgamma(alpha * K) - lda_lgamma(alpha * K + ndj);
-  // }
-
   for (int j = 0; j < ndt.size(); ++j) {
     double ll_single_doc = lda_lgamma(K * alpha) - K * lda_lgamma(alpha);
     int ndj = 0, nz_num = 0;
@@ -1435,16 +1430,6 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
 
   double ll_word = 0.0;
 
-  // for (int i = 0; i < K; ++i) {
-  //   ll_word -= lda_lgamma(eta * V + nt_ptr->operator[](i));
-  //   for (int v = 0; v < V; ++v) {
-  //     if (nvt_ptr->operator[](v* K + i) != 0) {
-  //       ll_word += lda_lgamma(eta + nvt_ptr->operator[](v* K + i)) -
-  //       lgamma_eta;
-  //     }
-  //   }
-  // }
-
   for (int v = 0; v < V; ++v) {
     double ll_single_word = 0.;
     int nz_num = 0;
@@ -1472,6 +1457,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
             << (get_time_ms() - start_time) / 1000.0 << std::endl;
   std::cout << "word ll: " << ll_word << std::endl;
   std::cout << "doc ll" << ll << std::endl;
+  std::cout << "# of sampled docs: " << docs_sampled << std::endl;
   std::cout << "**tokens/sec: "
             << (double) tokens_sampled /
                    ((get_time_ms() - start_time_tokens) / 1000.0)

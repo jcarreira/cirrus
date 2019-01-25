@@ -323,7 +323,6 @@ class PSSparseServerTask : public MLTask {
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);
   bool process_deregister_task(int, const Request&, std::vector<char>&, int);
-  bool process_sync_model(int, const Request&, std::vector<char>&, int);
 
   void kill_server();
 
