@@ -1,8 +1,6 @@
 #include "S3SparseIterator.h"
 #include <unistd.h>
 #include <iostream>
-#include <vector>
-#include "LDAStatistics.h"
 #include "Utils.h"
 
 #include <pthread.h>
