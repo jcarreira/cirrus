@@ -775,7 +775,7 @@ void PSSparseServerTask::start_server() {
   lr_model->randomize();
 
   lr_sdca_model.reset(
-      new SparseLRSDCAModel(model_size, config.get_limit_samples()));
+      new SparseLRSDCAModel(model_size, task_config.get_limit_samples()));
   lr_sdca_model->randomize();
 
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),

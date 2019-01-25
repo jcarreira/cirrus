@@ -83,7 +83,6 @@ void SparseLRSDCAModel::loadSerialized(const void* data) {
   std::cout << "num_weights: " << num_weights << std::endl;
   std::cout << "num_coordinates: " << num_coords << std::endl;
 #endif
-  assert(num_weights > 0 && num_weights < 10000000);
 
   char* data_begin = (char*) data;
 
