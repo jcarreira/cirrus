@@ -38,9 +38,13 @@ class Configuration {
       * Get size of each object in S3
       * @returns s3 object size
       */
+    uint64_t get_s3_file_size() const;
+
     uint64_t get_s3_size() const;
 
     uint32_t get_slice_size() const;
+
+    double get_sample_ratio() const;
 
     /**
       * Get number of classes in the dataset
@@ -76,13 +80,13 @@ class Configuration {
     std::string get_load_input_type() const;
 
     /**
-     * Get the path to the file with vocabularies for lda
-     */
+      * Get the path to the file with vocabularies for lda
+      */
     std::string get_vocab_path() const;
 
     /**
-     * Get the path to the file with statistics representing documents for lda
-     */
+      * Get the path to the file with statistics representing documents for lda
+      */
     std::string get_doc_path() const;
 
     /**
@@ -150,8 +154,8 @@ class Configuration {
     int get_items() const;
 
     /**
-     * LDA specific
-     */
+      * LDA specific
+      */
     int get_k() const;
 
     std::string get_opt_method() const;
@@ -170,11 +174,17 @@ class Configuration {
     uint64_t d = 0;          //< number of sample features
     uint64_t n_workers = 0;  //< number of system workers
 
+    uint32_t K_ = 0;
+
     uint64_t minibatch_size = 0;  //< size of minibatch
-    uint64_t s3_size = 0;  //< size of samples chunk stored in each s3 object
+    uint64_t s3_size = 0;
+    uint64_t s3_file_size = 0;  //< size of samples chunk stored in each s3 object
+
+    uint32_t slice_size = 0;
 
     double learning_rate = 0;     //< sgd learning rate
     double epsilon = 0;           //< regularization rate
+    double sample_ratio = 0.;   //< ratio of documents to sample
 
     uint64_t num_classes = 0;  //< number of sample classes
 
@@ -184,10 +194,8 @@ class Configuration {
     std::string samples_path;  //< path to dataset samples
     std::string labels_path;   //< path to dataset labels
 
-    uint32_t K_ = 0;          //< number of topics
-    uint32_t slice_size = 0;  //< vocab slice dimension
-    std::string vocab_path;   //< path to the vocab file
-    std::string doc_path;     //< path to the corpus
+    std::string vocab_path;
+    std::string doc_path;
 
     Configuration::ModelType model_type = UNKNOWN;  //< type of the model
 

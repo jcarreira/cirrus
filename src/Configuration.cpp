@@ -51,7 +51,7 @@ void Configuration::print() const {
     std::cout << "doc_path: " << get_doc_path() << std::endl;
     std::cout << "K: " << get_k() << std::endl;
     std::cout << "limit_samples: " << get_limit_samples() << std::endl;
-    std::cout << "S3 size: " << get_s3_size() << std::endl;
+    std::cout << "S3 file size: " << get_s3_file_size() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
     std::cout << "s3_bucket_name: " << s3_bucket_name << std::endl;
     std::cout << "slice size: " << get_slice_size() << std::endl;
@@ -59,7 +59,7 @@ void Configuration::print() const {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "load_input_path: " << get_load_input_path() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
-    std::cout << "S3 size: " << get_s3_size() << std::endl;
+    std::cout << "S3 file size: " << get_s3_file_size() << std::endl;
     std::cout << "learning rate: " << get_learning_rate() << std::endl;
     std::cout << "limit_samples: " << get_limit_samples() << std::endl;
     std::cout << "epsilon: " << epsilon << std::endl;
@@ -131,14 +131,21 @@ void Configuration::parse_line(const std::string& line) {
 
     if (s == "minibatch_size:") {
         iss >> minibatch_size;
-        if (s3_size && (s3_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_size not multiple of minibatch_size");
+        if (s3_file_size && (s3_file_size % minibatch_size != 0)) {
+          throw std::runtime_error("s3_file_size not multiple of minibatch_size");
         }
     } else if (s == "s3_size:") {
         iss >> s3_size;
         if (minibatch_size && (s3_size % minibatch_size != 0)) {
           throw std::runtime_error("s3_size not multiple of minibatch_size");
         }
+    } else if (s == "s3_file_size:") {
+        iss >> s3_file_size;
+        if (minibatch_size && (s3_file_size % minibatch_size != 0)) {
+          throw std::runtime_error("s3_file_size not multiple of minibatch_size");
+        }
+    } else if (s == "sample_ratio:") {
+        iss >> sample_ratio;
     } else if (s == "num_features:") {
         iss >> num_features;
     } else if (s == "load_input_path:") {
@@ -305,15 +312,27 @@ double Configuration::get_epsilon() const {
     return epsilon;
 }
 
+double Configuration::get_sample_ratio() const {
+    if (sample_ratio == 0.)
+        throw std::runtime_error("sample ratio not loaded");
+    return sample_ratio;
+}
+
 uint64_t Configuration::get_minibatch_size() const {
     if (minibatch_size == 0)
         throw std::runtime_error("Minibatch size not loaded");
     return minibatch_size;
 }
 
+uint64_t Configuration::get_s3_file_size() const {
+    if (s3_file_size == 0)
+        throw std::runtime_error("S3 file size not loaded");
+    return s3_file_size;
+}
+
 uint64_t Configuration::get_s3_size() const {
     if (s3_size == 0)
-        throw std::runtime_error("Minibatch size not loaded");
+        throw std::runtime_error("S3 size not loaded");
     return s3_size;
 }
 

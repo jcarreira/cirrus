@@ -1139,7 +1139,7 @@ LDADataset InputReader::read_lda_input(const std::string& input_doc_file,
   }
 
   std::cout << "Read a total of " << samples.size() << " samples" << std::endl;
-  return LDADataset(std::move(samples), vocabs);
+  return LDADataset(std::move(samples), vocabs, config.get_sample_ratio());
 }
 
 void InputReader::parse_read_lda_input_thread(

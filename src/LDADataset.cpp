@@ -9,15 +9,15 @@ namespace cirrus {
 LDADataset::LDADataset() {}
 
 LDADataset::LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
-                       std::vector<std::string> vocabs) {
+                       std::vector<std::string> vocabs,
+                       double sample_ratio) {
   docs_ = docs;
   vocabs_ = vocabs;
-  sample_size = (docs_.size()) / 100;
+  sample_size = (docs_.size()) * sample_ratio;
 }
 
-LDADataset::LDADataset(const char* msg_begin) {
+LDADataset::LDADataset(const char* msg_begin, double sample_ratio) {
   std::vector<std::pair<int, int> > doc;
-  doc.clear();
 
   int D = load_value<int>(msg_begin);
   docs_.clear();
@@ -44,7 +44,7 @@ LDADataset::LDADataset(const char* msg_begin) {
     msg_begin = reinterpret_cast<const char*>(
         reinterpret_cast<const char*>(msg_begin) + len);
   }
-  sample_size = (docs_.size()) / 100;
+  sample_size = (docs_.size()) * sample_ratio;
 }
 
 uint64_t LDADataset::num_docs() const {
