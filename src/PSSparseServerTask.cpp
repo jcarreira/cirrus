@@ -246,6 +246,7 @@ bool PSSparseServerTask::process_send_lda_update(
   read_all(req.sock, &docs, sizeof(int));
   docs_sampled += docs;
 
+  // XXX for exp comparison
   // if (docs != 0) {
   //   compute_loglikelihood();
   // }
@@ -392,9 +393,6 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
   read_all(req.sock, &previous_slice_id, sizeof(int));
   read_all(req.sock, &local_model_id, sizeof(int));
 
-  task_id_lookup[req.poll_fd.fd] =
-      local_model_id - task_config.get_train_range().first;
-
   slice_lock.lock();
 
   start_time_temp = get_time_ms();
@@ -513,9 +511,7 @@ bool PSSparseServerTask::process_send_ll_update(
   }
 
   auto train_range = task_config.get_train_range();
-  ll_lock.lock();
   ll_ndt[bucket_id - train_range.first] = ll;
-  ll_lock.unlock();
 
   return true;
 }
@@ -538,15 +534,13 @@ bool PSSparseServerTask::process_send_time(int sock,
     return false;
   }
 
-  benchmark_lock.lock();
-
   worker_sampling_time.push_back(sampling_time);
   worker_communication_time.push_back(comm_time);
 
   if (worker_sampling_time.size() >= nworkers ||
       worker_communication_time.size() >= nworkers) {
     double avg_sampling = 0., avg_comm = 0.;
-    double cur_time = (get_time_ms() - start_time) / 1000.;
+    double cur_time = (get_time_ms() - start_time_iter) / 1000.;
 
     for (int i = 0; i < worker_sampling_time.size(); ++i) {
       avg_sampling += worker_sampling_time[i];
@@ -566,7 +560,6 @@ bool PSSparseServerTask::process_send_time(int sock,
     worker_communication_time.clear();
   }
 
-  benchmark_lock.unlock();
   return true;
 }
 
@@ -637,9 +630,6 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
     unused_slice_id.push_back(sock_lookup[pfd->fd]);
     sock_lookup[pfd->fd] = -1;
   }
-  // std::cout << "PS closing connection after process(): " << num_connections
-  //           << std::endl;
-  // std::cout << "Task id: " << task_id_lookup[pfd->fd] + 5 << std::endl;
   pfd->fd = -1;
   pfd->revents = 0;
 }
@@ -1006,8 +996,6 @@ void PSSparseServerTask::start_server() {
 
     std::srand(std::time(nullptr));
     sock_lookup.fill(-1);
-    bucket_in_update.fill(-1);
-    task_id_lookup.fill(-1);
 
     worker_sampling_time.reserve(nworkers);
     worker_communication_time.reserve(nworkers);
@@ -1342,11 +1330,9 @@ void PSSparseServerTask::checkpoint_model_file(
 
 double PSSparseServerTask::compute_loglikelihood() {
   double ll = ll_base;
-  ll_lock.lock();
   for (int i = 0; i < ll_ndt.size(); ++i) {
     ll += ll_ndt[i];
   }
-  ll_lock.unlock();
   compute_ll_threads.push_back(std::make_unique<std::thread>(
       std::bind(&PSSparseServerTask::update_ll_word_thread, this,
                 std::placeholders::_1),
@@ -1409,8 +1395,7 @@ void PSSparseServerTask::init_loglikelihood() {
   ll_ndt.clear();
   ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
 
-  start_time = get_time_ms();
-  start_time_tokens = get_time_ms();
+  start_time_iter = get_time_ms();
   compute_loglikelihood();
 }
 
@@ -1420,7 +1405,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
 
-  double current_time = (get_time_ms() - start_time) / 1000.0;
+  double current_time = (get_time_ms() - start_time_iter) / 1000.0;
   double alpha = 0.05, eta = .01;
 
   K = nt_ptr->size();
@@ -1454,21 +1439,21 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   std::cout << "word-ll: " << ll_word << std::endl;
   std::cout << "norm-ll: " << ll_norm << std::endl;
   std::cout << "**log-likelihood: " << ll + ll_word + ll_norm << " "
-            << (get_time_ms() - start_time) / 1000.0 << std::endl;
+            << (get_time_ms() - start_time_iter) / 1000.0 << std::endl;
   std::cout << "word ll: " << ll_word << std::endl;
   std::cout << "doc ll" << ll << std::endl;
   std::cout << "# of sampled docs: " << docs_sampled << std::endl;
   std::cout << "**tokens/sec: "
             << (double) tokens_sampled /
-                   ((get_time_ms() - start_time_tokens) / 1000.0)
+                   ((get_time_ms() - start_time_iter) / 1000.0)
             << std::endl;
   std::cout << "**send(mbs)/sec: "
             << (double) send_size /
-                   ((get_time_ms() - start_time_tokens) / 1000.0)
+                   ((get_time_ms() - start_time_iter) / 1000.0)
             << std::endl;
   std::cout << "**receive(mbs)/sec: "
             << (double) receive_size /
-                   ((get_time_ms() - start_time_tokens) / 1000.0)
+                   ((get_time_ms() - start_time_iter) / 1000.0)
             << std::endl;
   std::cout << "time: " << current_time << std::endl;
   std::cout << "----------------------------------------------------------\n";
@@ -1476,14 +1461,10 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
             << time_whole / num_to_find_partial << std::endl;
   std::cout << "Avg Time to find partial model: "
             << time_find_partial / num_to_find_partial << std::endl;
-  std::cout << "Avg Time to find partial model (excluding waiting): "
-            << time_pure_find_partial / num_to_find_partial << std::endl;
   std::cout << "Avg Time to send the sizes: "
             << time_send_sizes / num_to_find_partial << std::endl;
   std::cout << "Avg Time to send the partial model: "
             << time_send_partial / num_to_find_partial << std::endl;
-  std::cout << "Avg Time to assign slice id: "
-            << time_assign_slice_id / num_to_find_partial << std::endl;
   std::cout << "----------------------------------------------------------\n";
   std::cout << "global model count: " << lda_global_vars->counts << std::endl;
   std::cout << "Avg Time (find_partial) function: "
@@ -1517,10 +1498,10 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
   tokens_sampled = 0;
   send_size = 0;
   receive_size = 0;
-  start_time_tokens = get_time_ms();
+  start_time_iter = get_time_ms();
 }
 void PSSparseServerTask::pre_assign_slices(int slice_size) {
-  num_slices = lda_global_vars->pre_assign_slices(slice_size);
+  int num_slices = lda_global_vars->pre_assign_slices(slice_size);
 
   unused_slice_id.reserve(num_slices);
   for (int i = 0; i < num_slices; ++i) {
