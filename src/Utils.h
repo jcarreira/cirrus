@@ -10,8 +10,6 @@
 #include <random>
 #include <cfloat>
 
-// #include <codecfactory.h>
-
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
             __builtin_clzll((X)) - 1)
 
