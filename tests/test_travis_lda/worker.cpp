@@ -12,7 +12,7 @@
 #include <PSSparseServerInterface.h>
 #include <SparseLRModel.h>
 #include <Tasks.h>
-// #include "S3Client.h"
+
 #include "S3.h"
 #include "SGD.h"
 #include "Serializers.h"
@@ -40,7 +40,6 @@ void load_serialized_indices(char* mem_begin,
 }
 
 int main_worker(int worker_id) {
-  // int worker_id = 1;
   cirrus::Configuration config = cirrus::Configuration("configs/lda_test.cfg");
 
   cirrus::s3_initialize_aws();
