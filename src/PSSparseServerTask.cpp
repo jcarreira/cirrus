@@ -236,7 +236,7 @@ bool PSSparseServerTask::process_get_mf_sparse_model(
   uint32_t to_send_size =
       minibatch_size *
           (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
-      k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
+      k_items * ((NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 #ifdef DEBUG
   std::cout << "k_items: " << k_items << std::endl;
   std::cout << "base_user_id: " << base_user_id << std::endl;

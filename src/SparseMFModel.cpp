@@ -69,7 +69,10 @@ SparseMFModel::SparseMFModel(uint64_t users, uint64_t items, uint64_t nfactors) 
   initialize_weights(users, items, nfactors);
 }
 
-SparseMFModel::SparseMFModel(const void* data, std::vector<uint32_t> seen_indices, uint64_t minibatch_size, uint64_t num_items) {
+SparseMFModel::SparseMFModel(const void* data,
+                             std::vector<uint32_t> seen_indices,
+                             uint64_t minibatch_size,
+                             uint64_t num_items) {
   initialize_weights(0, 0, 0);
   loadSerialized(data, seen_indices, minibatch_size, num_items);
 }
@@ -196,7 +199,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
 }
 
 void SparseMFModel::loadSerialized(const void* data,
-								   std::vector<uint32_t> seen_indicies,
+                                   std::vector<uint32_t> seen_indicies,
                                    uint64_t minibatch_size,
                                    uint64_t num_item_ids) {
 #ifdef DEBUG
@@ -244,7 +247,7 @@ void SparseMFModel::loadSerialized(const void* data,
  * This is used to unserialize for sharded PS
  */
 void SparseMFModel::loadSerializedSparse(const void* data,
-										 std::vector<uint32_t> seen_indices, 
+                                         std::vector<uint32_t> seen_indices,
                                          uint64_t num_users,
                                          uint64_t num_items,
                                          const Configuration& config,

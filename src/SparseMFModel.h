@@ -27,64 +27,70 @@ class SparseMFModel : public CirrusModel {
       * @param minibatch_size 
       * @param num_items
       */
-    SparseMFModel(const void* w, std::vector<uint32_t> seen_indices, uint64_t minibatch_size, uint64_t num_items);
-    SparseMFModel(uint64_t users, uint64_t items, uint64_t factors);
+  SparseMFModel(const void* w,
+                std::vector<uint32_t> seen_indices,
+                uint64_t minibatch_size,
+                uint64_t num_items);
+  SparseMFModel(uint64_t users, uint64_t items, uint64_t factors);
 
-    /**
-     * Set the model weights to values between 0 and 1
-     */
-    void randomize();
+  /**
+   * Set the model weights to values between 0 and 1
+   */
+  void randomize();
 
-    /**
-     * Loads model weights from serialized memory
-     * @param mem Memory where model is serialized
-     */
-    void loadSerialized(const void*) { throw std::runtime_error("Not implemented"); }
-    void loadSerialized(const void* mem, std::vector<uint32_t> seen_indices, uint64_t, uint64_t);
-    void loadSerializedShard(const void* mem,
-                             const Configuration& config,
-                             int server_id,
-                             int num_ps);
-    void loadSerializedSparse(const void* mem,
-							  std::vector<uint32_t> seen_indicies,
-                              uint64_t num_users,
-                              uint64_t num_items,
-                              const cirrus::Configuration& config,
-                              int server_id,
-                              int num_ps);
-    /**
-      * serializes this model into memory
-      * @return pair of memory pointer and size of serialized model
-      */
-    std::pair<std::unique_ptr<char[]>, uint64_t>
-        serialize() const;
+  /**
+   * Loads model weights from serialized memory
+   * @param mem Memory where model is serialized
+   */
+  void loadSerialized(const void*) {
+    throw std::runtime_error("Not implemented");
+  }
+  void loadSerialized(const void* mem,
+                      std::vector<uint32_t> seen_indices,
+                      uint64_t,
+                      uint64_t);
+  void loadSerializedShard(const void* mem,
+                           const Configuration& config,
+                           int server_id,
+                           int num_ps);
+  void loadSerializedSparse(const void* mem,
+                            std::vector<uint32_t> seen_indicies,
+                            uint64_t num_users,
+                            uint64_t num_items,
+                            const cirrus::Configuration& config,
+                            int server_id,
+                            int num_ps);
+  /**
+   * serializes this model into memory
+   * @return pair of memory pointer and size of serialized model
+   */
+  std::pair<std::unique_ptr<char[]>, uint64_t> serialize() const;
 
-    /**
-      * serializes this model into memory pointed by mem
-      */
-    void serializeTo(void* mem) const;
+  /**
+   * serializes this model into memory pointed by mem
+   */
+  void serializeTo(void* mem) const;
 
-    /**
-     * Create new model from serialized weights
-     * @param data Memory where the serialized model lives
-     * @param size Size of the serialized model
-     */
-    std::unique_ptr<CirrusModel> deserialize(void* data,
-            uint64_t size) const;
+  /**
+   * Create new model from serialized weights
+   * @param data Memory where the serialized model lives
+   * @param size Size of the serialized model
+   */
+  std::unique_ptr<CirrusModel> deserialize(void* data, uint64_t size) const;
 
-    /**
-     * Performs a deep copy of this model
-     * @return New model
-     */
-    std::unique_ptr<CirrusModel> copy() const;
+  /**
+   * Performs a deep copy of this model
+   * @return New model
+   */
+  std::unique_ptr<CirrusModel> copy() const;
 
-    /**
-     * Performs an SGD update in the direction of the input gradient
-     * @param learning_rate Learning rate to be used
-     * @param gradient Gradient to be used for the update
-     */
-    void sgd_update(double /*learning_rate*/, const ModelGradient* /*gradient*/) {
-      throw std::runtime_error("Not implemented");
+  /**
+   * Performs an SGD update in the direction of the input gradient
+   * @param learning_rate Learning rate to be used
+   * @param gradient Gradient to be used for the update
+   */
+  void sgd_update(double /*learning_rate*/, const ModelGradient* /*gradient*/) {
+    throw std::runtime_error("Not implemented");
     }
 
     /**
