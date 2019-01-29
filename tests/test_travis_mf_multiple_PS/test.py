@@ -4,8 +4,8 @@ import sys
 import os
 import signal
 
-ps_command_1 = ["./tests/test_travis_mf_multiple_PS/test_ps 1338"]
-ps_command_2 = ["./tests/test_travis_mf_multiple_PS/test_ps 1340"]
+ps_command_1 = ["./tests/test_travis_mf_multiple_PS/test_ps", "1338"]
+ps_command_2 = ["./tests/test_travis_mf_multiple_PS/test_ps", "1340"]
 worker_command = ["./tests/test_travis_mf_multiple_PS/worker"]
 error_command = ["./tests/test_travis_mf_multiple_PS/error"]
 
@@ -16,7 +16,8 @@ try:
   p2 = subprocess.Popen(worker_command, stderr=subprocess.STDOUT)
   time.sleep(5)
   p3 = subprocess.Popen(error_command, stderr=subprocess.STDOUT)
-except:
+except Exception as e:
+  print(e)
   sys.exit(-1)
 
 # Check Error

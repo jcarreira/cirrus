@@ -178,7 +178,7 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
   // Perform count
   for (const auto& w : weights) {
     int index = w.first;
-    uint32_t hashed_index = 0;
+    uint32_t hashed_index;
     MurmurHash3_x86_32(&index, sizeof(uint32_t), SEED, &hashed_index);
     starts[hashed_index % parts]++;
   }

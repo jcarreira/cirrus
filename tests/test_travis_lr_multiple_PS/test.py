@@ -4,8 +4,8 @@ import sys
 import os
 import signal
 
-ps_command_1 = ["./tests/test_travis_lr_multiple_PS/test_ps 1337"]
-ps_command_2 = ["./tests/test_travis_lr_multiple_PS/test_ps 1339"]
+ps_command_1 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1337"]
+ps_command_2 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1339"]
 worker_command = ["./tests/test_travis_lr_multiple_PS/worker"]
 error_command = ["./tests/test_travis_lr_multiple_PS/error"]
 
