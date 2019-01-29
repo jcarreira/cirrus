@@ -45,3 +45,6 @@ using FEATURE_TYPE = float;
 
 // fixed size number of characters for key name
 #define KEY_SIZE (10)
+
+// Seed value for murmurhash
+#define SEED 42

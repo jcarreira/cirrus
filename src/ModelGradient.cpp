@@ -1,10 +1,10 @@
 #include <ModelGradient.h>
-#include <iostream>
-#include <algorithm>
 #include <Utils.h>
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 #include "Constants.h"
-
+#include "MurmurHash3.h"
 namespace cirrus {
 
 /**
@@ -171,12 +171,16 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
       starts_out;  // starts_out[i] stores <starting_offset(bytes), size(bytes)>
                    // of where the ith gradient
                    // serialize starts and its size relative to mem.
+
   // TODO: Change to murmurhash
   std::hash<uint32_t> hash;  // hash function
 
   // Perform count
   for (const auto& w : weights) {
-    starts[hash(w.first) % parts]++;
+    int index = w.first;
+    uint32_t hashed_index = 0;
+    MurmurHash3_x86_32(&index, sizeof(uint32_t), SEED, &hashed_index);
+    starts[hashed_index % parts]++;
   }
 
   // starts[i] now will store how many weights into mem does the ith gradient
@@ -223,7 +227,9 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
     FEATURE_TYPE weight = w.second;
 
     // TODO: Fix to murmur hash
-    int ps_num = hash(index) % parts;
+    uint32_t hashed_index;
+    MurmurHash3_x86_32(&index, sizeof(uint32_t), SEED, &hashed_index);
+    int ps_num = hashed_index % parts;
     int position = starts[ps_num];
 
     // Determine the offset from mem start to write the index and weight
@@ -480,7 +486,10 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
 
   // Perform count of items
   for (const auto& item_bias : items_bias_grad) {
-	int index_hash = hashfunc(item_bias.first) % num_ps;
+    int bias_index = item_bias.first;
+    int index_hash;
+    MurmurHash3_x86_32(&bias_index, sizeof(uint32_t), SEED, &index_hash);
+    index_hash = index_hash % num_ps;
     starts[index_hash] += bias_grad_size;
     icnts[index_hash]++;
   }
@@ -552,7 +561,9 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
   for (const auto& bias_grad : items_bias_grad) {
     int index = bias_grad.first;
     FEATURE_TYPE v = bias_grad.second;
-    int ps_num = hashfunc(index) % num_ps;
+    int hashed_index;
+    MurmurHash3_x86_32(&index, sizeof(uint32_t), SEED, &hashed_index);
+    int ps_num = hashed_index % num_ps;
     int position = starts[ps_num];
     put_value<int>(mem, index, position);
     put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
@@ -581,7 +592,9 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
   assert(items_weights_grad.size() == items_bias_grad.size());
   for (const auto& item : items_weights_grad) {
     int index = item.first;
-    int ps_num = hashfunc(index) % num_ps;
+    int hashed_index;
+    MurmurHash3_x86_32(&index, sizeof(uint32_t), SEED, &hashed_index);
+    int ps_num = hashed_index % num_ps;
     int position = starts[ps_num];
     put_value<int>(mem, index, position);
     starts[ps_num] += sizeof(int);

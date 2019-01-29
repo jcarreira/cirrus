@@ -169,10 +169,10 @@ class MFSparseGradient : public ModelGradient {
     void serialize(void*) const override;
     uint64_t getSerializedSize() const override;
 
-	// Gets the serialization size for shard_serialize
+    // Gets the serialization size for shard_serialize
     uint64_t getShardSerializedSize(int num_shards) const;
 
-	// Serializes the gradient for multiple parameter servers
+    // Serializes the gradient for multiple parameter servers
     std::array<std::tuple<int, int>, MAX_NUM_PS>
     shard_serialize(void* mem, uint32_t minibatch_size, uint32_t parts) const;
 
