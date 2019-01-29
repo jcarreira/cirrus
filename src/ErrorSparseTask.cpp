@@ -37,8 +37,9 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              ps_ips,
              ps_ports) {
   std::atomic_init(&curr_error, 0.0);
+
+  // Set the error response port to one after the last PS port
   port_num = ps_ports.at(ps_ports.size() - 1) + 1;
-  std::atomic_init(&curr_error, 0.0);
 }
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,

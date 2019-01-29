@@ -163,9 +163,9 @@ class ErrorSparseTask : public MLTask {
   private:
    // Stores last recorded time/loss values
    int port_num;  // Error Response port number
-   double last_time = 0.0;
-   double last_error = 0.0;
-   std::atomic<double> curr_error;
+   double last_time = 0.0; // time of last request for error
+   double last_error = 0.0; // error value for the last error request
+   std::atomic<double> curr_error; // current error of the experiment
    std::atomic<double> total_loss;
 };
 

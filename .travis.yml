@@ -27,14 +27,10 @@ script:
    - python tests/test_travis_lr/test.py
    - ./tests/test_data/jester.sh
    - python tests/test_travis_mf/test.py
-   - for i in "./tests/test_travis_lr_multiple_PS/test.sh & sleep 1" "./tests/test_travis_lr_multiple_PS/error"; do eval ${i}; done
-   - sleep 70
-   - for i in "./tests/test_travis_mf_multiple_PS/test.sh & sleep 1" "./tests/test_travis_mf_multiple_PS/error"; do eval ${i}; done
-   - sleep 70
+   - python tests/test_travis_lr_multiple_PS/test.py
+   - python tests/test_travis_mf_multiple_PS/test.py
    - ./tests/test_travis/test_register.sh
-   - sleep 70
    - ./tests/test_travis/test_keyvalue.sh
-   - sleep 70
 
 env:
   global:

@@ -64,7 +64,15 @@ class SparseLRModel : public CirrusModel {
       * serializes this model into memory pointed by mem
       */
     void serializeTo(void* mem) const;
-    uint64_t serializeTo(void* mem, int server_number, int num_ps) const;
+
+    /**
+	 * serializes the dense weights of this model assuming model is on server (server_number)
+	 * @param mem Memory where model is serialized
+	 * @param server_number the paremter server number
+	 * @param num_ps total number of parameter servers
+	 * @return size of serialized data stored at mem
+	 */
+	uint64_t serializeTo(void* mem, int server_number, int num_ps) const;
 
     /**
      * Create new model from serialized weights

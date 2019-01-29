@@ -192,7 +192,7 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
                       // begining of mem.
 
   for (int i = 0; i < parts; i++) {
-    if (i != (parts - 1) and i != 0) {
+    if (i != (parts - 1) && i != 0) {
       count_next = starts[i + 1];
       starts[i + 1] = starts[i] + count;
     }
@@ -480,8 +480,9 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
 
   // Perform count of items
   for (const auto& item_bias : items_bias_grad) {
-    starts[hashfunc(item_bias.first) % num_ps] += bias_grad_size;
-    icnts[hashfunc(item_bias.first) % num_ps]++;
+	int index_hash = hashfunc(item_bias.first) % num_ps;
+    starts[index_hash] += bias_grad_size;
+    icnts[index_hash]++;
   }
 
   // starts[i] = mem + starts[i] is where the next term of the ith gradient
