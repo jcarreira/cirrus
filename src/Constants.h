@@ -27,7 +27,4 @@ enum PS_OP {
 
 #define MAGIC_NUMBER (0x1337)
 
-// Greater than the possible vocab dim 
-#define VOCAB_DIM_UPPER (1000000)
-
 #endif // _CONSTANTS_H_

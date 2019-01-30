@@ -43,3 +43,9 @@ using FEATURE_TYPE = float;
 
 // fixed size number of characters for key name
 #define KEY_SIZE (10)
+
+// the greatest possible vocab dim
+#define VOCAB_DIM_UPPER (1000000)
+
+// the greatest possible socket id
+#define SOCKET_DIM_UPPER (100000)

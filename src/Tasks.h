@@ -3,7 +3,6 @@
 
 #include <Configuration.h>
 
-#include "Constants.h"
 #include "LDAModel.h"
 #include "LDAStatistics.h"
 #include "LRModel.h"
@@ -412,7 +411,7 @@ class PSSparseServerTask : public MLTask {
   std::vector<int> unused_slice_id;
 
   // map the given socket id to its assigned vocab slice id
-  std::array<int, 100000> sock_lookup;
+  std::array<int, SOCKET_DIM_UPPER> sock_lookup;
 
   int tokens_sampled = 0;     //< number of sampled tokens in the last iteration
   int docs_sampled = 0;       //< number of visited documents
