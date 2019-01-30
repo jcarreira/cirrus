@@ -172,7 +172,6 @@ std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
                    // of where the ith gradient
                    // serialize starts and its size relative to mem.
 
-
   // Perform count
   for (const auto& w : weights) {
     int index = w.first;

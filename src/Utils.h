@@ -177,7 +177,6 @@ std::vector<T> csv_to_vector(const std::string& csv) {
   return items;
 }
 
-
 } // namespace cirrus
 
 #endif  // _UTILS_H_

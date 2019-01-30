@@ -166,8 +166,7 @@ uint32_t hash_int(const int s) {
   uint32_t hash_otpt;
   MurmurHash3_x86_32(&s, sizeof(int), seed, &hash_otpt);
 
-  //std::cout << "MurmurHash3_x64_128 hash: " << hash_otpt[0] << std::endl;
+  // std::cout << "MurmurHash3_x64_128 hash: " << hash_otpt[0] << std::endl;
   return hash_otpt;
 }
-
 }

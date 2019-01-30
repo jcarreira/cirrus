@@ -159,7 +159,8 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint64_t i = 0; i < nitems_; ++i) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = i;
-    if (item_id >= config.get_items() or hash_int(item_id) % num_ps != server_id) {
+    if (item_id >= config.get_items() or
+        hash_int(item_id) % num_ps != server_id) {
       FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
       continue;
     }
@@ -282,7 +283,7 @@ void SparseMFModel::loadSerializedSparse(const void* data,
       FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
       std::get<1>(item_model).push_back(item_weight);
     }
-	std::cout << item_id << std::endl;
+    std::cout << item_id << std::endl;
     item_models[item_id] = item_model;
   }
 }
