@@ -1,5 +1,13 @@
 #!/bin/bash
 
+cd ./tests/test_data
+./nytimes.sh
+
+mv nyt_data.txt nytimes.txt
+mv nyt_vocab.dat nytimes_vocab.txt
+
+cd ../../
+#
 timeout 10 ./tests/test_travis_lda/load&
 wait
 
@@ -11,3 +19,6 @@ sleep 1
 
 timeout 50 ./tests/test_travis_lda/w2&
 sleep 1
+
+rm ./tests/test_data/nytimes.txt
+rm ./tests/test_data/nytimes_vocab.txt

@@ -84,7 +84,7 @@ int main_worker(int worker_id) {
 
     // load one word slice from server
     char* partial_model =
-        psi->get_lda_model(worker_id, to_receive_size, uncompressed_size);
+        psi->get_lda_model(to_receive_size, uncompressed_size);
 
     // update current model with vocab slice
     model->update_model(partial_model, to_receive_size, uncompressed_size,
