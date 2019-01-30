@@ -20,8 +20,8 @@ class LDADataset {
    * @ param docs: vector of pairs (word index, counts)
    * @ param vocabs: a vector of string
    */
-  LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
-             std::vector<std::string> vocabs,
+  LDADataset(const std::vector<std::vector<std::pair<int, int> > >& docs,
+             const std::vector<std::string>& vocabs,
              double sample_ratio);
   /**
    * Load a dataset from serialized format

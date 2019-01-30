@@ -8,8 +8,8 @@
 namespace cirrus {
 LDADataset::LDADataset() {}
 
-LDADataset::LDADataset(std::vector<std::vector<std::pair<int, int> > > docs,
-                       std::vector<std::string> vocabs,
+LDADataset::LDADataset(const std::vector<std::vector<std::pair<int, int> > >& docs,
+                       const std::vector<std::string>& vocabs,
                        double sample_ratio) {
   docs_ = docs;
   vocabs_ = vocabs;
