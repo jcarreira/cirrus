@@ -21,9 +21,7 @@ void LDATaskS3::push_gradient(char* gradient_mem,
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
 #endif
-  psint->send_lda_update(gradient_mem,
-                         total_sampled_tokens,
-                         total_sampled_docs,
+  psint->send_lda_update(gradient_mem, total_sampled_tokens, total_sampled_docs,
                          to_send_size + sizeof(int) * 2);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
@@ -89,7 +87,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
          time_sample = 0.0, time_create_model = 0.0;
 
   std::cout << "Starting LDATaskS3" << std::endl;
-  uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_file_size();
+  uint64_t num_s3_batches =
+      config.get_limit_samples() / config.get_s3_file_size();
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
@@ -141,7 +140,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
   load_serialized_indices(slice_indices_mem);
   delete slice_indices_mem;
 
-  int cur = 0, num_runs =  1;
+  int cur = 0, num_runs = 1;
   std::cout << "[WORKER] starting loop" << std::endl;
 
   while (1) {
@@ -310,7 +309,8 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     // push the update to server
     try {
       start_time_benchmark = get_time_ms();
-      push_gradient(gradient_mem, total_sampled_tokens, total_sampled_docs, gradient_size);
+      push_gradient(gradient_mem, total_sampled_tokens, total_sampled_docs,
+                    gradient_size);
 
       total_sampled_docs = 0;
 

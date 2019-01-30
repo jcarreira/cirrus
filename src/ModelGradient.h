@@ -283,7 +283,7 @@ class LDAUpdates {
   // w_slices[i][j] := pre-cached word indices for words in the i^{th} S3 object
   //                   and the j^{th} vocab slice
   std::vector<std::vector<std::vector<int>>> w_slices;
-  
+
   std::vector<std::vector<int>> change_nvt_indices;
   std::vector<std::set<int>> sparse_nvt_indices;
   std::vector<std::vector<int>> fixed_slices;

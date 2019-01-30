@@ -8,9 +8,10 @@
 namespace cirrus {
 LDADataset::LDADataset() {}
 
-LDADataset::LDADataset(const std::vector<std::vector<std::pair<int, int> > >& docs,
-                       const std::vector<std::string>& vocabs,
-                       double sample_ratio) {
+LDADataset::LDADataset(
+    const std::vector<std::vector<std::pair<int, int> > >& docs,
+    const std::vector<std::string>& vocabs,
+    double sample_ratio) {
   docs_ = docs;
   vocabs_ = vocabs;
   sample_size = (docs_.size()) * sample_ratio;
@@ -137,12 +138,13 @@ int LDADataset::get_serialize_size() {
     V_letter += vocab.size();
   }
   serialize_size = (2 * N + D + V + 2) * sizeof(int) +
-                                  // word-count pairs for each entries -> 2 * N
-                                  // sizee for each documents in corpus -> D,
-                                  // size of the corpus -> 1,
-                                  // vocab space -> V + 1
+                   // word-count pairs for each entries -> 2 * N
+                   // sizee for each documents in corpus -> D,
+                   // size of the corpus -> 1,
+                   // vocab space -> V + 1
                    V_letter * sizeof(char);
-                                  // total length for all words -> V_letter
+                   // total length for all words -> V_letter
+                   
   return serialize_size;
 }
 }  // namespace cirrus

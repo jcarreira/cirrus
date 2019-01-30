@@ -132,22 +132,23 @@ void Configuration::parse_line(const std::string& line) {
     if (s == "minibatch_size:") {
         iss >> minibatch_size;
         if (s3_file_size && (s3_file_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_file_size not multiple of minibatch_size");
+          throw std::runtime_error(
+              "s3_file_size not multiple of minibatch_size");
         }
     } else if (s == "s3_size:") {
-        iss >> s3_size;
-        if (minibatch_size && (s3_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_size not multiple of minibatch_size");
-        }
+      iss >> s3_size;
+      if (minibatch_size && (s3_size % minibatch_size != 0)) {
+        throw std::runtime_error("s3_size not multiple of minibatch_size");
+      }
     } else if (s == "s3_file_size:") {
-        iss >> s3_file_size;
-        if (minibatch_size && (s3_file_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_file_size not multiple of minibatch_size");
-        }
+      iss >> s3_file_size;
+      if (minibatch_size && (s3_file_size % minibatch_size != 0)) {
+        throw std::runtime_error("s3_file_size not multiple of minibatch_size");
+      }
     } else if (s == "sample_ratio:") {
-        iss >> sample_ratio;
+      iss >> sample_ratio;
     } else if (s == "num_features:") {
-        iss >> num_features;
+      iss >> num_features;
     } else if (s == "load_input_path:") {
       iss >> load_input_path;
     } else if (s == "samples_path:") {
@@ -301,39 +302,39 @@ std::string Configuration::get_doc_path() const {
 }
 
 double Configuration::get_learning_rate() const {
-    if (learning_rate == -1)
-        throw std::runtime_error("learning rate not loaded");
-    return learning_rate;
+  if (learning_rate == -1)
+      throw std::runtime_error("learning rate not loaded");
+  return learning_rate;
 }
 
 double Configuration::get_epsilon() const {
-    if (epsilon == -1)
-        throw std::runtime_error("epsilon not loaded");
-    return epsilon;
+  if (epsilon == -1)
+    throw std::runtime_error("epsilon not loaded");
+  return epsilon;
 }
 
 double Configuration::get_sample_ratio() const {
-    if (sample_ratio == 0.)
-        throw std::runtime_error("sample ratio not loaded");
-    return sample_ratio;
+  if (sample_ratio == 0.)
+    throw std::runtime_error("sample ratio not loaded");
+  return sample_ratio;
 }
 
 uint64_t Configuration::get_minibatch_size() const {
-    if (minibatch_size == 0)
-        throw std::runtime_error("Minibatch size not loaded");
-    return minibatch_size;
+  if (minibatch_size == 0)
+    throw std::runtime_error("Minibatch size not loaded");
+  return minibatch_size;
 }
 
 uint64_t Configuration::get_s3_file_size() const {
-    if (s3_file_size == 0)
-        throw std::runtime_error("S3 file size not loaded");
-    return s3_file_size;
+  if (s3_file_size == 0)
+    throw std::runtime_error("S3 file size not loaded");
+  return s3_file_size;
 }
 
 uint64_t Configuration::get_s3_size() const {
-    if (s3_size == 0)
-        throw std::runtime_error("S3 size not loaded");
-    return s3_size;
+  if (s3_size == 0)
+    throw std::runtime_error("S3 size not loaded");
+  return s3_size;
 }
 
 uint32_t Configuration::get_slice_size() const {

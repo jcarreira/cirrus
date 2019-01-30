@@ -20,7 +20,7 @@ class LDADataset {
    * @ param docs: vector of pairs (word index, counts)
    * @ param vocabs: a vector of string
    */
-  LDADataset(const std::vector<std::vector<std::pair<int, int> > >& docs,
+  LDADataset(const std::vector<std::vector<std::pair<int, int>>>& docs,
              const std::vector<std::string>& vocabs,
              double sample_ratio);
   /**
@@ -38,7 +38,7 @@ class LDADataset {
   /**
    * Return partial documents (in vectors) of size equal sample_size
    */
-  void get_some_docs(std::vector<std::vector<std::pair<int, int> > >& docs);
+  void get_some_docs(std::vector<std::vector<std::pair<int, int>>>& docs);
   /**
    * @param s
    * Set the sample_size equal parameter s
@@ -59,10 +59,11 @@ class LDADataset {
   void check() const;
 
  private:
-  std::vector<std::vector<std::pair<int, int>>> docs_; //< a vector of (word_id, count) pairs
-  std::vector<std::string> vocabs_;                    //< a vector of words (in string)
-  int sample_size = 0;    //< number of documents to sample (unused)
-  int serialize_size = 0; //< size of serialized LDADataset object
+  std::vector<std::vector<std::pair<int, int>>>
+      docs_;                         //< a vector of (word_id, count) pairs
+  std::vector<std::string> vocabs_;  //< a vector of words (in string)
+  int sample_size = 0;               //< number of documents to sample (unused)
+  int serialize_size = 0;            //< size of serialized LDADataset object
 };
 }  // namespace cirrus
 

@@ -45,8 +45,7 @@ class PSSparseServerInterface {
    * @return to_receive_size: the size of compressed vocab slice
    * @return uncompressed_size: the size of original vocab slice
    */
-  char* get_lda_model(uint32_t& to_receive_size,
-                      uint32_t& uncompressed_size);
+  char* get_lda_model(uint32_t& to_receive_size, uint32_t& uncompressed_size);
   /**
    * Request the pre-cached word indices for the current S3 object
    * from the server

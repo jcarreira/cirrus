@@ -391,18 +391,18 @@ class PSSparseServerTask : public MLTask {
 
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
-  std::unique_ptr<LDAUpdates> lda_global_vars; //< Global LDA model
+  std::unique_ptr<LDAUpdates> lda_global_vars;  //< Global LDA model
 
-  std::vector<double> ll_ndt;   //< a vector of floats each of which stores the
-                                //< the latest document log-likelihood for one
-                                //< chunk in S3.
+  std::vector<double> ll_ndt;  //< a vector of floats each of which stores the
+                               //< the latest document log-likelihood for one
+                               //< chunk in S3.
   // helper variables that cached the constant term in LDA-ll computation
   double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
 
-  int K = 0;    //< number of potential topics
-  int V = 0;    //< global vocabulary dimension
+  int K = 0;  //< number of potential topics
+  int V = 0;  //< global vocabulary dimension
 
-  std::mutex slice_lock; //< lock for vocab slice assignment
+  std::mutex slice_lock;  //< lock for vocab slice assignment
 
   // thread to compute log-likelihood for LDA
   std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
@@ -413,14 +413,14 @@ class PSSparseServerTask : public MLTask {
   // map the given socket id to its assigned vocab slice id
   std::array<int, SOCKET_DIM_UPPER> sock_lookup;
 
-  int tokens_sampled = 0;     //< number of sampled tokens in the last iteration
-  int docs_sampled = 0;       //< number of visited documents
+  int tokens_sampled = 0;  //< number of sampled tokens in the last iteration
+  int docs_sampled = 0;    //< number of visited documents
 
-  double num_to_find_partial = 0.;        //< number of requests from workers
-                                          //< to get partial model from server
+  double num_to_find_partial = 0.;  //< number of requests from workers
+                                    //< to get partial model from server
 
-  double receive_size = 0;   //< total sizes of received data (in Mbs)
-  double send_size = 0;      //< total sizes of sent data (in Mbs)
+  double receive_size = 0;  //< total sizes of received data (in Mbs)
+  double send_size = 0;     //< total sizes of sent data (in Mbs)
 
   // time variables for benchmarking
   double time_find_partial = 0.0, time_send_sizes = 0.0,
@@ -430,7 +430,7 @@ class PSSparseServerTask : public MLTask {
   // spent by workers on sampling / communication
   std::vector<double> worker_sampling_time, worker_communication_time;
 
-  uint64_t start_time_iter;          //<  starting time of the current iteration
+  uint64_t start_time_iter;  //<  starting time of the current iteration
 
   Configuration task_config;                //< config for parameter server
   uint32_t num_connections = 0;             //< num of current connections
@@ -591,8 +591,8 @@ class LoadingLDATaskS3 : public MLTask {
       std::vector<int>& global_vocab,
       std::vector<std::vector<int>>& topic_scope);
 
-  private:
-    std::array<int, VOCAB_DIM_UPPER> lookup_map;
+ private:
+  std::array<int, VOCAB_DIM_UPPER> lookup_map;
 };
 }
 

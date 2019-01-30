@@ -252,8 +252,8 @@ bool PSSparseServerTask::process_send_lda_update(
   // }
 
   try {
-    if (read_all(req.sock, thread_buffer.data(), incoming_size - 2 * sizeof(int)) ==
-        0) {
+    if (read_all(req.sock, thread_buffer.data(),
+                 incoming_size - 2 * sizeof(int)) == 0) {
       return false;
     }
   } catch (...) {
@@ -1447,8 +1447,7 @@ void PSSparseServerTask::update_ll_word_thread(double ll) {
                    ((get_time_ms() - start_time_iter) / 1000.0)
             << std::endl;
   std::cout << "**send(mbs)/sec: "
-            << (double) send_size /
-                   ((get_time_ms() - start_time_iter) / 1000.0)
+            << (double) send_size / ((get_time_ms() - start_time_iter) / 1000.0)
             << std::endl;
   std::cout << "**receive(mbs)/sec: "
             << (double) receive_size /
