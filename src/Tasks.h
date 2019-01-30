@@ -3,6 +3,7 @@
 
 #include <Configuration.h>
 
+#include "Constants.h"
 #include "LDAModel.h"
 #include "LDAStatistics.h"
 #include "LRModel.h"
@@ -590,6 +591,9 @@ class LoadingLDATaskS3 : public MLTask {
       int K,
       std::vector<int>& global_vocab,
       std::vector<std::vector<int>>& topic_scope);
+
+  private:
+    std::array<int, VOCAB_DIM_UPPER> lookup_map;
 };
 }
 

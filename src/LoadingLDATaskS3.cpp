@@ -13,9 +13,6 @@ namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
 
-std::array<int, 1000000> lookup_map;
-std::array<int, 1000000> lindex_map;
-
 int idx = 0;
 
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
@@ -36,6 +33,7 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   std::vector<std::vector<int> > ndt;
   std::vector<int> local_vocab;
 
+  std::array<int, VOCAB_DIM_UPPER> lindex_map;
   lindex_map.fill(-1);
 
   for (const auto& doc : docs) {
