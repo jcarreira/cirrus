@@ -59,7 +59,7 @@ void Configuration::print() const {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "load_input_path: " << get_load_input_path() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
-    std::cout << "S3 file size: " << get_s3_file_size() << std::endl;
+    std::cout << "S3 file size: " << get_s3_size() << std::endl;
     std::cout << "learning rate: " << get_learning_rate() << std::endl;
     std::cout << "limit_samples: " << get_limit_samples() << std::endl;
     std::cout << "epsilon: " << epsilon << std::endl;
