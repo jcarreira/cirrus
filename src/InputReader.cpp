@@ -1198,7 +1198,6 @@ void InputReader::parse_read_lda_input_line(
   strncpy(str, line.c_str(), LDA_STR_SIZE - 1);
   char* s = str;
 
-  uint64_t col = 0;
   std::string delim2 = ":";
 
   // on each line,
