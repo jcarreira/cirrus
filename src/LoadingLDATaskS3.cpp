@@ -88,6 +88,9 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   if (num_s3_objs * s3_obj_num_samples != dataset.num_docs()) {
     num_s3_objs += 1;
   }
+
+  // num_s3_objs number of partial doc models (assigned to workers)
+  // and one vocab model (received by the server)
   std::cout << "[LOADER-SPARSE] "
             << "Adding " << dataset.num_docs()
             << " #s3 objs: " << num_s3_objs + 1
