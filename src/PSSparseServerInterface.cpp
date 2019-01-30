@@ -364,7 +364,7 @@ void PSSparseServerInterface::send_lda_update(char* gradient_mem,
   delete gradient_mem;
 }
 
-void PSSparseServerInterface::update_ll_ndt(int bucket_id, double ll) {
+void PSSparseServerInterface::update_ll_ndt(int local_model_id, double ll) {
   // 1. Send operation
   uint32_t operation = SEND_LL_NDT;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
@@ -408,8 +408,7 @@ void PSSparseServerInterface::send_time_dist(double sampling_time,
   }
 }
 
-char* PSSparseServerInterface::get_lda_model(int local_model_id,
-                                             uint32_t& to_receive_size,
+char* PSSparseServerInterface::get_lda_model(uint32_t& to_receive_size,
                                              uint32_t& uncompressed_size) {
   auto start_time_benchmark = get_time_ms();
 
@@ -430,10 +429,6 @@ char* PSSparseServerInterface::get_lda_model(int local_model_id,
   // 3. Send slice id
   if (send_all(sock, &slice_id, size_send) == -1) {
     throw std::runtime_error("Error sending slice_id");
-  }
-
-  if (send_all(sock, &local_model_id, size_send) == -1) {
-    throw std::runtime_error("Error sending local_model_id");
   }
 
   time_send += (get_time_ms() - start_time_temp) / 1000.0;

@@ -289,7 +289,7 @@ void LDATaskS3::run(const Configuration& config, int worker) {
     start_time_benchmark = get_time_ms();
     // load one word slice from server
     char* partial_model =
-        psint->get_lda_model(cur_train_idx, to_receive_size, uncompressed_size);
+        psint->get_lda_model(to_receive_size, uncompressed_size);
     time_get_model += (get_time_ms() - start_time_benchmark) / 1000.0;
 
     start_time_benchmark = get_time_ms();

@@ -389,9 +389,8 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
   auto start_time_benchmark = get_time_ms();
   auto start_time_temp = get_time_ms();
 
-  int previous_slice_id, local_model_id;
+  int previous_slice_id;
   read_all(req.sock, &previous_slice_id, sizeof(int));
-  read_all(req.sock, &local_model_id, sizeof(int));
 
   slice_lock.lock();
 
@@ -420,7 +419,7 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
   auto pure_partial_benchmark = get_time_ms();
   char* data_to_send;
   data_to_send = lda_global_vars->get_partial_model(
-      slice_id_to_send, to_send_size, uncompressed_size, local_model_id);
+      slice_id_to_send, to_send_size, uncompressed_size);
 
   time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
   num_to_find_partial += 1.;

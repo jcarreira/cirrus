@@ -527,7 +527,6 @@ void LDAUpdates::loadSerialized(const char* mem) {
   ws_ptr->reserve(len_temp);
   for (int i = 0; i < len_temp; ++i) {
     len = load_value<int32_t>(mem);
-    std::cout << "len: " << len << std::endl;
     std::vector<int> w;
     w.reserve(len);
     for (int j = 0; j < len; ++j) {
@@ -672,8 +671,7 @@ int LDAUpdates::update(const char* mem) {
 
 char* LDAUpdates::get_partial_model(int slice_id,
                                     uint32_t& to_send_size,
-                                    uint32_t& uncompressed_size,
-                                    int local_model_id) {
+                                    uint32_t& uncompressed_size) {
   auto start_time_func = get_time_ms();
 
   int N = 0, S = 0, word_idx;
@@ -809,6 +807,8 @@ char* LDAUpdates::get_partial_model(int slice_id,
 
 int LDAUpdates::pre_assign_slices(int slice_size) {
   int num_slices = slice.size() / slice_size;
+
+  // mapping global word id to its slice id
   std::array<int, 1000000> gindex_2_slice_id;
   gindex_2_slice_id.fill(-1);
 
@@ -816,6 +816,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
             << " slice_size: " << slice_size << " num_slices: " << num_slices
             << std::endl;
 
+  // memory reserved for pre-cached word indices
   fixed_slices.clear();
   fixed_slices.reserve(num_slices);
   for (int i = 0; i < num_slices; ++i) {
@@ -823,11 +824,13 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
     to_push.reserve(slice_size);
     fixed_slices.push_back(to_push);
   }
+
+  // sequentially assign word id to slice
   int cur = 0;
   for (int i = 0; i < slice.size(); ++i) {
     fixed_slices[cur].push_back(slice[i]);
     gindex_2_slice_id[slice[i]] = cur;
-    cur += 1;
+    cur += 1; // sequentially
     if (cur == num_slices) {
       cur = 0;
     }
@@ -843,6 +846,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
     }
     for (int j = 0; j < ws_ptr->operator[](i).size(); ++j) {
       int gindex = ws_ptr->operator[](i)[j];
+      // w_slice_i[p] := word indices for the p^{th} vocab slice
       w_slice_i[gindex_2_slice_id[gindex]].push_back(j);
     }
     w_slices.push_back(w_slice_i);

@@ -30,7 +30,6 @@ class PSSparseServerInterface {
 
   void send_lr_gradient(const LRSparseGradient&);
   void send_mf_gradient(const MFSparseGradient&);
-  // void send_lda_update(LDAUpdates&, int total_sampled_tokens);
   void send_lda_update(char* gradient_mem,
                        int total_sampled_tokens,
                        int total_sampled_docs,
@@ -39,12 +38,38 @@ class PSSparseServerInterface {
   SparseLRModel get_lr_sparse_model(const SparseDataset& ds, const Configuration& config);
   void get_lr_sparse_model_inplace(const SparseDataset& ds, SparseLRModel&, const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds, uint32_t, uint32_t);
-  char* get_lda_model(int local_model_id,
-                      uint32_t& to_receive_size,
-                      uint32_t& uncompressed_size);
 
+  /**
+   * Request a new vocabulary slice from the server
+   *
+   * @return to_receive_size: the size of compressed vocab slice
+   * @return uncompressed_size: the size of original vocab slice
+   */
+  char* get_lda_model(uint32_t& to_receive_size,
+                      uint32_t& uncompressed_size);
+  /**
+   * Request the pre-cached word indices for the current S3 object
+   * from the server
+   *
+   * @param local_model_id the current vocab slice id
+   */
   char* get_slices_indices(int local_model_id);
-  void update_ll_ndt(int bucket_id, double ll);
+
+  /**
+   * Send the log-likelihood update corresponding to
+   * the doc-ll of the given S3_object
+   *
+   * @param local_model_id the current vocab slice id
+   */
+  void update_ll_ndt(int local_model_id, double ll);
+
+  /**
+   * Send the time distribution on the worker side
+   * XXX can be removed (for the use of benchmarking only)
+   *
+   * @param sampling_time: the sampling time
+   * @param comm_time: the communication time
+   */
   void send_time_dist(double sampling_time, double comm_time);
 
   std::unique_ptr<CirrusModel> get_full_model(bool isCollaborativeFiltering); //XXX use a better argument here
@@ -52,8 +77,11 @@ class PSSparseServerInterface {
   void set_status(uint32_t id, uint32_t status);
   uint32_t get_status(uint32_t id);
 
+  // time variable for the use of benchmarking
   double time_send = 0.0, time_receive = 0.0, num_get_lda_model = 0.0,
          time_whole = 0.0, time_create_model = 0.0, time_receive_size = 0.0;
+
+  // the last-assigned slice id for the current worker
   int slice_id = -1;
   /*
    * Set key-value pair
