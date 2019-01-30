@@ -143,8 +143,8 @@ int LDADataset::get_serialize_size() {
                    // size of the corpus -> 1,
                    // vocab space -> V + 1
                    V_letter * sizeof(char);
-                   // total length for all words -> V_letter
-                   
+  // total length for all words -> V_letter
+
   return serialize_size;
 }
 }  // namespace cirrus

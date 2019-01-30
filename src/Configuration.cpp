@@ -303,7 +303,7 @@ std::string Configuration::get_doc_path() const {
 
 double Configuration::get_learning_rate() const {
   if (learning_rate == -1)
-      throw std::runtime_error("learning rate not loaded");
+    throw std::runtime_error("learning rate not loaded");
   return learning_rate;
 }
 

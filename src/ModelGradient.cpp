@@ -830,7 +830,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
   for (int i = 0; i < slice.size(); ++i) {
     fixed_slices[cur].push_back(slice[i]);
     gindex_2_slice_id[slice[i]] = cur;
-    cur += 1; // sequentially
+    cur += 1;  // sequentially
     if (cur == num_slices) {
       cur = 0;
     }
