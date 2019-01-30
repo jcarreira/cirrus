@@ -158,6 +158,7 @@ ssize_t send_all(int sock, void* data, size_t len);
 ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
+uint32_t hash_int(const int s);
 
 // For reading the CSV for ps ips and ps ports
 template <typename T>
@@ -175,6 +176,7 @@ std::vector<T> csv_to_vector(const std::string& csv) {
   }
   return items;
 }
+
 
 } // namespace cirrus
 

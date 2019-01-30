@@ -78,10 +78,9 @@ uint64_t SparseLRModel::serializeTo(void* mem,
   void* mem_begin = mem;
   store_value<uint32_t>(mem, -1);
   store_value<uint32_t>(mem, -1);
-  std::hash<uint32_t> hash;
   int largest_weight = -1;
   for (int i = 0; i < weights_.size(); i++) {
-    if ((hash(i) % num_ps) == server_number) {
+    if ((hash_int(i) % num_ps) == server_number) {
       store_value<FEATURE_TYPE>(mem, weights_[i]);
       size++;
       largest_weight = i;
@@ -100,7 +99,6 @@ uint64_t SparseLRModel::serializeTo(void* mem,
 void SparseLRModel::loadSerialized(const void* data,
                                    int server_id,
                                    int num_ps) {
-  std::hash<uint32_t> hash;
   uint32_t num_weights = load_value<uint32_t>(data);
   uint32_t largest_weight = load_value<uint32_t>(data);
   assert(num_weights > 0 && num_weights < 10000000);
@@ -110,7 +108,7 @@ void SparseLRModel::loadSerialized(const void* data,
   }
 
   for (int i = 0; i < largest_weight; i++) {
-    if (hash(i) % num_ps == server_id) {
+    if (hash_int(i) % num_ps == server_id) {
       uint32_t new_index = i;
       FEATURE_TYPE w = load_value<FEATURE_TYPE>(data);
       weights_[new_index] = w;
