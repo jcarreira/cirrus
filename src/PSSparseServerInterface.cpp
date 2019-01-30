@@ -376,7 +376,7 @@ void PSSparseServerInterface::update_ll_ndt(int local_model_id, double ll) {
   send_all(sock, &size_send, sizeof(int));
 
   // 3. Send bucket id
-  if (send_all(sock, &bucket_id, sizeof(int)) == -1) {
+  if (send_all(sock, &local_model_id, sizeof(int)) == -1) {
     throw std::runtime_error("Error sending bucket id");
   }
 
