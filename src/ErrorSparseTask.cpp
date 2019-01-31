@@ -166,12 +166,12 @@ void ErrorSparseTask::run(const Configuration& config,
   FEATURE_TYPE total_accuracy = 0;
   while (1) {
     usleep(ERROR_INTERVAL_USEC);
-    if (iterations >= iters && testing) {
-      exit(EXIT_FAILURE);
-    }
     if ((total_accuracy / minibatches_vec.size()) >= test_threshold &&
         testing) {
       exit(EXIT_SUCCESS);
+    }
+    if (iterations >= iters && testing) {
+      exit(EXIT_FAILURE);
     }
     try {
       // first we get the model
