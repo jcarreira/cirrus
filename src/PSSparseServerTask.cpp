@@ -1344,7 +1344,7 @@ void PSSparseServerTask::init_loglikelihood() {
   lda_global_vars->get_nvt_pointer(nvt_ptr);
   lda_global_vars->get_nt_pointer(nt_ptr);
 
-  double alpha = 0.05, eta = .01;
+  double alpha = 0.1, eta = .1;
 
   K = nt_ptr->size();
   V = nvt_ptr->size() / K;

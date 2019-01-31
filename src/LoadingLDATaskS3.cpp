@@ -57,7 +57,7 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         ndt_row[top] += 1;
 
         // ensure the i^{th} row in nvt-stat corresponds to the i^{th} word
-        // in the slice 
+        // in the slice
         nvt[lookup_map[gindex] * K + top] += 1;
         nt[top] += 1;
       }
