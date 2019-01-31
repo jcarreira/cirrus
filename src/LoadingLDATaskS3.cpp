@@ -13,8 +13,6 @@ namespace cirrus {
 
 #define READ_INPUT_THREADS (10)
 
-int idx = 0;
-
 LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
   InputReader input;
   return input.read_lda_input(config.get_doc_path(), config.get_vocab_path(),
@@ -58,7 +56,9 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
         w.push_back(gindex);
         ndt_row[top] += 1;
 
-        nvt[lookup_map.at(gindex) * K + top] += 1;
+        // ensure the i^{th} row in nvt-stat corresponds to the i^{th} word
+        // in the slice 
+        nvt[lookup_map[gindex] * K + top] += 1;
         nt[top] += 1;
       }
     }
@@ -107,7 +107,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   for (int i = 0; i < K; ++i) {
     temp_global_vocab.push_back(i);
   }
-  int length = K / 2;
+  int length = K;
   nvt_init_rnd_scope.reserve(dataset.num_vocabs());
   for (int i = 0; i < dataset.num_vocabs(); ++i) {
     std::random_shuffle(temp_global_vocab.begin(), temp_global_vocab.end());
