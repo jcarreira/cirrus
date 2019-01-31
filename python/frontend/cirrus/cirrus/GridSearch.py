@@ -3,19 +3,38 @@ import logging
 import os
 import threading
 import time
+import boto3
+import math
 
 import graph
 from utils import *
-from MLJob import MLJob
+from . import automate
+from . import configuration
+from . import parameter_server
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
 
-class GridSearch(MLJob):
+class GridSearch(object):
+    # All searches that are currently running.
+    _running_searches = []
+
+
+    @classmethod
+    def kill_all_searches(cls):
+        for search in list(cls._running_searches):
+            search.kill_all()
 
 
     # TODO: Add some sort of optional argument checking
-    def __init__(self, task=None, param_base=None, hyper_vars=[], hyper_params=[], machines=[], num_jobs=10, timeout=-1, base_port=1337, config_num = 0):
-
+    def __init__(self,
+                 task=None,
+                 param_base=None,
+                 hyper_vars=[],
+                 hyper_params=[],
+                 instances=[],
+                 num_jobs=1,
+                 timeout=-1,
+                 ):
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
         self.infos = []       # Stores metadata associated with each experiment
@@ -33,7 +52,7 @@ class GridSearch(MLJob):
         self.set_timeout = timeout # Timeout. -1 means never timeout
         self.num_jobs = num_jobs     # Number of threads checking check_queue
         self.hyper_vars = hyper_vars
-        self.machines = machines
+        self.instances = instances
 
         # Setup
         self.set_task_parameters(
@@ -41,9 +60,9 @@ class GridSearch(MLJob):
                 param_base=param_base,
                 hyper_vars=hyper_vars,
                 hyper_params=hyper_params,
-                machines=machines)
+                instances=instances)
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
@@ -51,24 +70,23 @@ class GridSearch(MLJob):
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
-    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], machines=[]):
+    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[]):
         possibilities = list(itertools.product(*hyper_params))
         base_port = self.base_port
         index = 0
-        num_machines = len(machines)
-        for machine in self.machines:
-            self.command_dict[machine[0]] = []
-        for p in possibilities:
+        num_machines = len(instances)
+        for i, p in enumerate(possibilities):
             configuration = zip(hyper_vars, p)
             modified_config = param_base.copy()
             for var_name, var_value in configuration:
                 modified_config[var_name] = var_value
-            modified_config['ps_ip_port'] = base_port
-            modified_config['ps_ip_public'] = machines[index][0]
-            modified_config['ps_ip_private'] = machines[index][1]
-            print(machines[index][0], machines[index][1])
+            modified_config["ps"] = parameter_server.ParameterServer(
+                instances[index], base_port, base_port+1,
+                modified_config["n_workers"])
             index = (index + 1) % num_machines
             base_port += 2
+
+            modified_config["experiment_id"] = i
 
             c = task(**modified_config)
             self.cirrus_objs.append(c)
@@ -79,6 +97,7 @@ class GridSearch(MLJob):
 
     def get_command_dict(self):
         return self.command_dict
+
 
 
     # Fetches custom metadata from experiment i
@@ -106,15 +125,8 @@ class GridSearch(MLJob):
         return sum([c.get_num_lambdas(fetch=False) for c in self.cirrus_objs])
 
     # Gets x-axis values of specified metric from experiment i 
-    def get_xs_for(self, i, metric="LOSS"):
-        if metric == "LOSS":
-            lst = self.loss_lst[i]
-        elif metric == "UPS":
-            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
-        elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
-        else:
-            raise Exception('Metric not available')
+    def get_xs_for(self, i, metric):
+        lst = self.cirrus_objs[i].fetch_metric(metric)
         return [item[0] for item in lst]
 
     # Helper method that collapses a list of commands into a single one
@@ -125,19 +137,11 @@ class GridSearch(MLJob):
         return ' '.join(cmd_lst)
 
     # TODO: Fix duplicate methods
-    def get_ys_for(self, i, metric="LOSS"):
-        if metric == "LOSS":
-            lst = self.loss_lst[i]
-        elif metric == "UPS":
-            lst = self.cirrus_objs[i].get_updates_per_second(fetch=False)
-        elif metric == "CPS":
-            lst = self.cirrus_objs[i].get_cost_per_second()
-        else:
-            raise Exception('Metric not available')
+    def get_ys_for(self, i, metric):
+        lst = self.cirrus_objs[i].fetch_metric(metric)
         return [item[1] for item in lst]
 
-    def start_queue_threads(self, run = True):
-
+    def start_queue_threads(self):
         # Function that checks each experiment to restore lambdas, grab metrics
         def custodian(cirrus_objs, thread_id, num_jobs):
             index = thread_id
@@ -145,69 +149,60 @@ class GridSearch(MLJob):
             start_time = time.time()
 
             time.sleep(5)  # HACK: Sleep for 5 seconds to wait for PS to start
-            while True:
+            while self.custodians_should_continue:
                 cirrus_obj = cirrus_objs[index]
 
-                cirrus_obj.relaunch_lambdas(config_num=self.config_num)
                 loss = cirrus_obj.get_time_loss()
                 self.loss_lst[index] = loss
 
-                print("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
+                logging.info("Thread", thread_id, "exp", index, "loss", self.loss_lst[index])
 
+
+                round_loss_lst = [(round(a, 3), round(float(b), 4))
+                        for (a,b) in self.loss_lst[index]]
+                logging.debug("Thread", thread_id, "exp", index,
+                        "loss", round_loss_lst)
+                
                 index += num_jobs
                 if index >= len(cirrus_objs):
                     index = thread_id
 
-                    # Dampener to prevent too many calls at once
-                    if time.time() - start_time < 1:
-                        time.sleep(1 - time.time() + start_time)
+                    time.sleep(0.5)
                     start_time = time.time()
 
-        # Dictionary of commands per machine
-        command_dict = {}
-        for machine in self.machines:
-            command_dict[machine[0]] = []
 
-        # Grab commands each machine needs to run
-        for c in self.cirrus_objs:
-            c.get_command(command_dict)
+        def unbuffer_instance(instance):
+            status, stdout, stderr = instance.buffer_commands(False)
+            if status != 0:
+                print("An error occurred while unbuffering commands on an"
+                      " instance. The exit code was %d and the stderr was:"
+                      % status)
+                print(stderr)
+                raise RuntimeError("An error occured while unbuffering"
+                                   " commands on an instance.")
 
-        # Write those commands into bash files
-        if run:
-            command_dict_to_file(command_dict)
 
-        # Number of threads
-        copy_threads = min(len(self.machines), self.num_jobs)
+        for instance in self.instances:
+            instance.buffer_commands(True)
 
-        # Copies bash files to machines and starts experiment
-        def copy_and_run(thread_id):
-            while True:
-                if thread_id >= len(self.machines):
-                    return
-                
-                sh_file = "machine_%d.sh" % thread_id
-                ubuntu_machine = "ubuntu@%s" % self.machines[thread_id][0]
+        for cirrus_obj in self.cirrus_objs:
+            cirrus_obj.run(False)
 
-                cmd = "scp %s %s:~/python_files" % (sh_file, ubuntu_machine)
-                print cmd
-                os.system(cmd)
-                cmd = 'ssh %s "chmod +x python_files/%s; ./python_files/%s &"' % (ubuntu_machine, sh_file, sh_file)
-                os.system(cmd)
-                thread_id += copy_threads
-
-        if run: 
-            p_lst = []
-            for i in range(copy_threads):
-                p = threading.Thread(target=copy_and_run, args=(i,))
-                p.start()
-                p_lst.append(p)
-
-            [p.join() for p in p_lst]
+        threads = []
+        for instance in self.instances:
+            t = threading.Thread(
+                target=unbuffer_instance,
+                args=(instance,))
+            t.start()
+            threads.append(t)
+        [t.join() for t in threads]
 
         # Start custodian threads
+        self.custodians_should_continue = True
         for i in range(self.num_jobs):
             p = threading.Thread(target=custodian, args=(self.cirrus_objs, i, self.num_jobs))
             p.start()
+
 
     def get_number_experiments(self):
         return len(self.cirrus_objs)
@@ -219,14 +214,39 @@ class GridSearch(MLJob):
         return self.get_number_experiments()
 
     def set_threads(self, n):
-        self.num_jobs = n
+        self.num_jobs = min(n, self.get_number_experiments())
 
-        self.adjust_num_threads();
+        self.adjust_num_threads()
 
 
     # Start threads to maintain all experiments
-    def run(self, UI=False, run=True):
-        self.start_queue_threads(run)
+    def run(self, UI=False):
+        # Check that the AWS account has enough reserved concurrent executions
+        #   available to create a Lambda with capacity_each reserved concurrent
+        #   executions for each of the len(self.cirrus_objs) tasks.
+        capacity_each = \
+            int(configuration.config()["aws"]["lambda_concurrency_limit"])
+        capacity_total = capacity_each * len(self.cirrus_objs)
+        capacity_available = automate.get_available_concurrency()
+        if capacity_total > capacity_available:
+            raise RuntimeError("This grid search consists of %d tasks and "
+                "Cirrus was configured to reserve %d worker capacity for each "
+                "task using the setup script. This means that this grid search "
+                "would require %d*%d=%d reserved worker capacity, however the "
+                "AWS account only has %d worker capacity available. Please "
+                "resolve this issue by (1) decreasing the number of tasks in "
+                "this grid search by decreasing the number of hyperparameter "
+                "combinations, (2) decreasing the reserved worker capacity per "
+                "task by re-running the setup script, (3) deleting any "
+                "existing Lambda functions in this AWS account, or (4) "
+                "requesting an increased limit from AWS." %
+                (len(self.cirrus_objs), capacity_each, len(self.cirrus_objs),
+                 capacity_each, capacity_total, capacity_available))
+
+        # Add this grid search to the list of running grid searches.
+        self._running_searches.append(self)
+
+        self.start_queue_threads()
 
         if UI:
             def ui_func(self):
@@ -238,8 +258,13 @@ class GridSearch(MLJob):
 
     # Stop all experiments
     def kill_all(self):
+        # Remove this grid search from the list of running grid searches.
+        self._running_searches.remove(self)
+
         for cirrus_ob in self.cirrus_objs:
             cirrus_ob.kill()
+
+        self.custodians_should_continue = False
 
     # Get data regarding experiment i.
     def get_info(self, i, param=None):
