@@ -176,6 +176,7 @@ void ErrorSparseTask::run(const Configuration& config,
     usleep(ERROR_INTERVAL_USEC);
 
     if (iterations >= iters && testing) {
+	  std::cout << "Test failed. Got: " << total_accuracy / minibatches_vec.size() << " Expected: " << test_threshold << std::endl;
       exit(EXIT_FAILURE);
     }
     if ((total_accuracy / minibatches_vec.size()) >= test_threshold &&
