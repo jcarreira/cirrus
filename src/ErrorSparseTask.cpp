@@ -108,7 +108,6 @@ void ErrorSparseTask::error_response() {
 }
 
 void ErrorSparseTask::run(const Configuration& config) {
-  s3_initialize_aws();
   std::cout << "Creating error response thread" << std::endl;
   std::thread error_thread(std::bind(&ErrorSparseTask::error_response, this));
 
