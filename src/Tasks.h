@@ -593,6 +593,7 @@ class LoadingLDATaskS3 : public MLTask {
 
  private:
   std::array<int, VOCAB_DIM_UPPER> lookup_map;
+  int idx = 0;  //< Dummy indicator 
 };
 }
 
