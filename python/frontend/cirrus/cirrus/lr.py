@@ -18,6 +18,8 @@ class LogisticRegressionTask(BaseTask):
         else:
             grad_t = 0
 
+        print(self.test_set)
+
         config = "load_input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
                  "load_input_type: csv\n" + \
                  "num_classes: 2 \n" + \

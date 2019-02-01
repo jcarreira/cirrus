@@ -75,7 +75,6 @@ class BaseTask(object):
         self.id = 0
         self.kill_signal = threading.Event()
         self.num_lambdas = 0
-        self.cross_validation=cross_validation
         self.cost_model = CostModel(
                     'm5.large',
                     self.n_ps,
@@ -144,9 +143,8 @@ class BaseTask(object):
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
-            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d, "config_path": \"%s\"}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port, "configs/criteo_kaggle_" + str(config_num) + ".cfg")
-            p_lst = []
+            payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
+                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
                     response = lambda_client.invoke(

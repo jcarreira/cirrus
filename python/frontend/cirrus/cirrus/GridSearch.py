@@ -34,6 +34,7 @@ class GridSearch(object):
                  instances=[],
                  num_jobs=1,
                  timeout=-1,
+                 cross_validation=False
                  ):
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
@@ -44,9 +45,6 @@ class GridSearch(object):
         self.kill_signal = threading.Event()
         self.loss_lst = []
         self.start_time = time.time()
-        self.base_port = base_port
-        self.command_dict = {}
-        self.config_num = config_num
 
         # User inputs
         self.set_timeout = timeout # Timeout. -1 means never timeout
@@ -60,19 +58,24 @@ class GridSearch(object):
                 param_base=param_base,
                 hyper_vars=hyper_vars,
                 hyper_params=hyper_params,
-                instances=instances)
+                instances=instances,
+                cross_validation=cross_validation)
 
         self.adjust_num_threads()
 
     def adjust_num_threads(self):
         # make sure we don't have more threads than experiments
-        self.num_jobs = len(self.cirrus_objs)
+        self.num_jobs = min(self.num_jobs, len(self.cirrus_objs))
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
-    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[]):
-        possibilities = list(itertools.product(*hyper_params))
-        base_port = self.base_port
+    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[], cross_validation=False):
+        if not cross_validation:
+            possibilities = list(itertools.product(*hyper_params))
+        else:
+            possibilities = [(hyper_params[0][i], hyper_params[1][i]) for i in range(len(hyper_params[0]))]
+        print(possibilities)
+        base_port = 1337
         index = 0
         num_machines = len(instances)
         for i, p in enumerate(possibilities):
@@ -93,11 +96,6 @@ class GridSearch(object):
             self.infos.append({'color': get_random_color()})
             self.loss_lst.append({})
             self.param_lst.append(modified_config)
-            c.get_command(self.command_dict)
-
-    def get_command_dict(self):
-        return self.command_dict
-
 
 
     # Fetches custom metadata from experiment i
@@ -206,12 +204,6 @@ class GridSearch(object):
 
     def get_number_experiments(self):
         return len(self.cirrus_objs)
-
-    def get_number_experiments_ups(self):
-        return self.get_number_experiments()
-
-    def get_number_experiments_cps(self):
-        return self.get_number_experiments()
 
     def set_threads(self, n):
         self.num_jobs = min(n, self.get_number_experiments())

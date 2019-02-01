@@ -259,7 +259,7 @@ def make_executables(path, image_owner_name, username):
     instance.start()
 
     log.debug("Building Cirrus.")
-    instance.run_command("git clone https://github.com/jcarreira/cirrus.git")
+    instance.run_command("git clone https://github.com/yangryan0/cirrus-1.git --branch cross_validation --single-branch cirrus")
     instance.run_command("cd cirrus; ./bootstrap.sh")
     instance.run_command("cd cirrus; make -j 16")
 
