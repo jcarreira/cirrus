@@ -131,7 +131,7 @@ void SparseLRSDCAModel::sgd_update(double learning_rate,
   for (const auto& w : grad->w) {
     int index = w.first;
     FEATURE_TYPE value = w.second;
-    weights_[index] += value / (learning_rate * dual_size());
+    weights_[index] += value;
   }
 
   for (const auto& a : grad->a) {
@@ -199,6 +199,8 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
   std::unordered_map<int, FEATURE_TYPE> w_grad_map;
 
+  double scaling_factor = 1.0 / (learning_rate * dataset.num_samples());
+
   for (int i = 0; i < dataset.num_samples(); i += 1) {
     const std::vector<std::pair<int, FEATURE_TYPE>>& x = dataset.get_row(i);
     FEATURE_TYPE numerator =
@@ -208,15 +210,16 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
     FEATURE_TYPE denominator = std::max(
         1.0,
-        0.25 + (norm_squared(x) / (learning_rate * dataset.num_samples())));
+        0.25 + (norm_squared(x) * scaling_factor));
 
     FEATURE_TYPE grad = numerator / denominator;
 
     a_grad.push_back(std::make_pair(i + starting_index, grad));
 
+
     for (int j = 0; j < x.size(); j += 1) {
       w_grad_map[x[j].first] +=
-          grad * x[j].second / (learning_rate * dataset.num_samples());
+          grad * x[j].second * scaling_factor;
     }
   }
 
@@ -233,10 +236,6 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
                                              std::move(a_grad));
 #ifdef DEBUG
   auto after_4 = get_time_us();
-#endif
-  // std::unique_ptr<LRGradient> ret = std::make_unique<LRGradient>(res);
-
-#ifdef DEBUG
   ret->check_values();
   std::cout << " Elapsed1: " << (after_1 - start)
             << " Elapsed2: " << (after_2 - after_1)
