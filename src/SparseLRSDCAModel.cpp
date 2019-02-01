@@ -203,10 +203,17 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
   for (int i = 0; i < dataset.num_samples(); i += 1) {
     const std::vector<std::pair<int, FEATURE_TYPE>>& x = dataset.get_row(i);
+    double label = dataset.labels_[i];
+
+    // Making the classes -1 and 1, to work with logistic regression.
+    if (label == 0.0) {
+      label = -1.0;
+    }
+
     FEATURE_TYPE numerator =
-        1.0 + std::exp(dot_product(x, weights_) * dataset.labels_[i]);
+        1.0 + std::exp(dot_product(x, weights_) * label);
     numerator =
-        (dataset.labels_[i] / numerator) - coord_weights_[i + starting_index];
+        (label / numerator) - coord_weights_[i + starting_index];
 
     FEATURE_TYPE denominator = std::max(
         1.0,
