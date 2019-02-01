@@ -215,9 +215,8 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     numerator =
         (label / numerator) - coord_weights_[i + starting_index];
 
-    FEATURE_TYPE denominator = std::max(
-        1.0,
-        0.25 + (norm_squared(x) * scaling_factor));
+    FEATURE_TYPE denominator =
+        std::max(1.0, 0.25 + (norm_squared(x) * scaling_factor));
 
     FEATURE_TYPE grad = numerator / denominator;
 
@@ -225,8 +224,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
 
     for (int j = 0; j < x.size(); j += 1) {
-      w_grad_map[x[j].first] +=
-          grad * x[j].second * scaling_factor;
+      w_grad_map[x[j].first] += grad * x[j].second * scaling_factor;
     }
   }
 
