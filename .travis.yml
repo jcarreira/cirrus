@@ -41,6 +41,8 @@ before_install:
 
 
 install:
+  - git checkout automate_deployment
+  - git checkout $TRAVIS_COMMIT
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq -y
   - sudo apt-get install -qq -y g++-7
@@ -52,7 +54,6 @@ install:
   - sudo ln -s -f /usr/bin/g++-7 /usr/local/bin/g++
   - mv src/Makefile.am src/Makefile_centos.am
   - mv src/Makefile_ubuntu.am src/Makefile.am
-  - git fetch origin automate_deployment
   - .travis/check-git-clang-format-output.sh  
   - ./bootstrap.sh
   - gcc --version
