@@ -42,7 +42,7 @@ before_install:
 
 install:
   - local build_head=$(git rev-parse HEAD)
-  - git config --repalce-all remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
+  - git config --replace-all remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
   - git fetch
   - for branch in $(git branch -r|grep -v HEAD); do git checkout -qf ${branch#origin/} done
   - git checkout ${build_head}
