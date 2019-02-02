@@ -22,7 +22,6 @@ while p3.poll() is None:
   time.sleep(5)
 if p1.poll() is not None:
   if p1.returncode != 0:
-    p2.terminate()
     print(p1.returncode)
     print("PS crashed")
     sys.exit(p1.returncode)
@@ -32,7 +31,6 @@ if p2.poll() is not None:
     print("worker crashed")
     sys.exit(p2.returncode)
 p1.terminate();
-p2.terminate();
 
 return_code = p3.returncode
 print(return_code)

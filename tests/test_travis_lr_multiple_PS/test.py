@@ -26,7 +26,6 @@ while p3.poll() is None:
 # Check PS1
 if ps1.poll() is not None:
   if ps1.returncode != 0:
-    p2.terminate()
     print(ps1.returncode)
     print("PS crashed")
     sys.exit(ps1.returncode)
@@ -34,7 +33,6 @@ if ps1.poll() is not None:
 # Check PS1
 if ps2.poll() is not None:
   if ps2.returncode != 0:
-    p2.terminate()
     print(ps2.returncode)
     print("PS crashed")
     sys.exit(ps2.returncode)
