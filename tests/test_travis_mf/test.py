@@ -12,6 +12,7 @@ try:
   p1 = subprocess.Popen(ps_command, stderr=subprocess.STDOUT)
   time.sleep(10)
   p2 = subprocess.Popen(worker_command, stderr=subprocess.STDOUT)
+  p2.wait()
   time.sleep(5)
   p3 = subprocess.Popen(error_command, stderr=subprocess.STDOUT)
 except:

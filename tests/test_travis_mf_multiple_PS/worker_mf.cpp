@@ -47,7 +47,7 @@ int main() {
   }
 
   int version = 0;
-  while (1) {
+  for (int t = 0; t < 10000; t++) {
     for (uint32_t i = 0; i < nusers; i += batch_size) {
       SparseMFModel model(nusers, njokes, nfactors);
       int actual_batch_size = batch_size;

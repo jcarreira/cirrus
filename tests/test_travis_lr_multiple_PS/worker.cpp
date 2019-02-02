@@ -42,7 +42,7 @@ int main() {
   }
 
   int version = 0;
-  while (1) {
+  for(int i = 0; i < 10000; i++) {
     SparseDataset minibatch = train_dataset.random_sample(20);
     psi.get_lr_sparse_model_inplace(minibatch, model, config);
     auto gradient = model.minibatch_grad_sparse(minibatch, config);

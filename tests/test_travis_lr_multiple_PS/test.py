@@ -14,7 +14,7 @@ try:
   ps2 = subprocess.Popen(ps_command_2, stderr=subprocess.STDOUT)
   time.sleep(10)
   p2 = subprocess.Popen(worker_command, stderr=subprocess.STDOUT)
-  time.sleep(5)
+  p2.wait()
   p3 = subprocess.Popen(error_command, stderr=subprocess.STDOUT)
 except:
   sys.exit(-1)
