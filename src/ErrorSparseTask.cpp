@@ -181,7 +181,8 @@ void ErrorSparseTask::run(const Configuration& config,
                 << " Expected: " << test_threshold << std::endl;
       exit(EXIT_FAILURE);
     }
-    if ((total_accuracy / minibatches_vec.size()) >= test_threshold &&
+
+    if ((total_accuracy / minibatches_vec.size()) <= test_threshold &&
         testing) {
       exit(EXIT_SUCCESS);
     }

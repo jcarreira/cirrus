@@ -124,14 +124,7 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
     psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
   }
 
-  while (true) {
-    try {
-      psint->connect();
-      break;
-    } catch (const std::exception& exc) {
-      std::cout << exc.what();
-    }
-  }
+  repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
 
   std::cout << "[WORKER] starting loop" << std::endl;
   while (1) {

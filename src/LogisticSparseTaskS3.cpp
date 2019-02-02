@@ -71,7 +71,8 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
 }
 
 void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
-  std::cout << "Starting LogisticSparseTaskS3 " << ps_ips.size() << std::endl;
+  std::cout << "Starting LogisticSparseTaskS3. Number of PS:  " << ps_ips.size()
+            << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -97,14 +98,8 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
     psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
                                                               ps_ports);
   }
-  while (true) {
-    try {
-      psint->connect();
-      break;
-    } catch (const std::exception& exc) {
-      std::cout << exc.what();
-    }
-  }
+  
+  repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
 
   bool printed_rate = false;
   int count = 0;
