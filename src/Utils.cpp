@@ -171,14 +171,13 @@ uint32_t hash_int(const int s) {
 }
 
 void repeat(const std::function<void()>& f) {
-	while (true) {
-		try {
-			f();
-			break;
-		} catch (const std::exception& exc) {
-			std::cout << exc.what();
-		}
-	}
+  while (true) {
+    try {
+      f();
+      break;
+    } catch (const std::exception& exc) {
+      std::cout << exc.what();
+    }
+  }
 }
-
 }

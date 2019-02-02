@@ -25,8 +25,8 @@ void MultiplePSSparseServerInterface::connect() {
   for (auto ptr : psints) {
     std::cout << "Attempting connection to " << ptr->ip << ":" << ptr->port
               << std::endl;
-   	repeat(std::bind(&PSSparseServerInterface::connect, ptr)); 
-	std::cout << "Connected!!!" << std::endl;
+    repeat(std::bind(&PSSparseServerInterface::connect, ptr));
+    std::cout << "Connected!!!" << std::endl;
   }
 }
 

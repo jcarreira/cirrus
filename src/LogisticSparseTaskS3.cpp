@@ -98,7 +98,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
     psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
                                                               ps_ports);
   }
-  
+
   repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
 
   bool printed_rate = false;
