@@ -73,7 +73,7 @@ bool MFNetflixTask::get_dataset_minibatch(
   return true;
 }
 
-void MFNetflixTask::run(const Configuration& config, int worker) {
+void MFNetflixTask::run(const Configuration& config, int worker, int work_iters) {
   std::cout << "Starting MFNetflixTask"
     << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
@@ -127,6 +127,7 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
   repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
 
   std::cout << "[WORKER] starting loop" << std::endl;
+  int count = 0;
   while (1) {
     SparseMFModel model(config.get_users(), config.get_items(), NUM_FACTORS);
     // get data, labels and model
@@ -178,6 +179,12 @@ void MFNetflixTask::run(const Configuration& config, int worker) {
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
+
+	count++;
+	if (work_iters > 0 && work_iters > count) {
+	  exit(0);
+	}
+
   }
 }
 

@@ -93,7 +93,7 @@ class LogisticSparseTaskS3 : public MLTask {
     * Worker here is a value 0..nworkers - 1
     */
 
-   void run(const Configuration& config, int worker);
+   void run(const Configuration& config, int worker, int work_iters);
 
   private:
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
@@ -442,7 +442,7 @@ class MFNetflixTask : public MLTask {
    /**
     * Worker here is a value 0..nworkers - 1
     */
-   void run(const Configuration& config, int worker);
+   void run(const Configuration& config, int worker, int work_iters);
 
   private:
    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
