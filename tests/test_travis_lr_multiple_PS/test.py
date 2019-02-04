@@ -4,15 +4,15 @@ import sys
 import os
 import signal
 
-ps_command_1 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1337"]
-ps_command_2 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1339"]
+ps_command_1 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1037"]
+ps_command_2 = ["./tests/test_travis_lr_multiple_PS/test_ps", "1039"]
 worker_command = ["./tests/test_travis_lr_multiple_PS/worker"]
 error_command = ["./tests/test_travis_lr_multiple_PS/error"]
 
 try:
   ps1 = subprocess.Popen(ps_command_1, stderr=subprocess.STDOUT)
   ps2 = subprocess.Popen(ps_command_2, stderr=subprocess.STDOUT)
-  time.sleep(10)
+  time.sleep(5)
   p2 = subprocess.Popen(worker_command, stderr=subprocess.STDOUT)
   p2.wait()
   p3 = subprocess.Popen(error_command, stderr=subprocess.STDOUT)
