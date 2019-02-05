@@ -283,7 +283,6 @@ void SparseMFModel::loadSerializedSparse(const void* data,
       FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
       std::get<1>(item_model).push_back(item_weight);
     }
-    std::cout << item_id << std::endl;
     item_models[item_id] = item_model;
   }
 }
@@ -419,8 +418,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
         std::make_pair(item_id, std::move(item_weights)));
   }
 
-  std::cout << "Training rmse: "
-            << std::sqrt(training_rmse / training_rmse_count) << std::endl;
 #ifdef DEBUG
   std::cout << "Training rmse: "
             << std::sqrt(training_rmse / training_rmse_count) << std::endl;
