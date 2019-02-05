@@ -49,21 +49,21 @@ int main() {
   int version = 0;
 
   for (int t = 0; t < 2; t++) {
-	  for (uint32_t i = 0; i < nusers; i += batch_size) {
-	  SparseMFModel model(nusers, njokes, nfactors);
-	  int actual_batch_size = batch_size;
-	  if (i + batch_size >= nusers) {
-		break;
-	  }
-	  SparseDataset ds = train_dataset.sample_from(i, actual_batch_size);
-	  psi.get_mf_sparse_model_inplace(ds, model, config, i, actual_batch_size);
-	  auto gradient = model.minibatch_grad(ds, config, i);
-	  gradient->setVersion(version++);
-	  MFSparseGradient* mfg = dynamic_cast<MFSparseGradient*>(gradient.get());
-	  if (mfg == nullptr) {
-		throw std::runtime_error("Error in dynamic cast");
-	  }
-	  psi.send_mf_gradient(*mfg);
-	};
+    for (uint32_t i = 0; i < nusers; i += batch_size) {
+      SparseMFModel model(nusers, njokes, nfactors);
+      int actual_batch_size = batch_size;
+      if (i + batch_size >= nusers) {
+        break;
+      }
+      SparseDataset ds = train_dataset.sample_from(i, actual_batch_size);
+      psi.get_mf_sparse_model_inplace(ds, model, config, i, actual_batch_size);
+      auto gradient = model.minibatch_grad(ds, config, i);
+      gradient->setVersion(version++);
+      MFSparseGradient* mfg = dynamic_cast<MFSparseGradient*>(gradient.get());
+      if (mfg == nullptr) {
+        throw std::runtime_error("Error in dynamic cast");
+      }
+      psi.send_mf_gradient(*mfg);
+    };
   }
 }
