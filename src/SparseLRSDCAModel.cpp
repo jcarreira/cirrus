@@ -199,7 +199,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
   std::unordered_map<int, FEATURE_TYPE> w_grad_map;
 
-  double scaling_factor = 1.0 / (learning_rate * config.get_limit_samples());
+  double scaling_factor = 1.0 / (learning_rate * );
 
   for (int i = 0; i < dataset.num_samples(); i += 1) {
     const std::vector<std::pair<int, FEATURE_TYPE>>& x = dataset.get_row(i);

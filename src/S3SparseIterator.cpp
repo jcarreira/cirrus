@@ -195,6 +195,7 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss, uint64_t obj_id) {
 
 uint64_t S3SparseIterator::getObjId(uint64_t left, uint64_t right) {
   if (random_access) {
+    std::cout << "RANDOM ACCESS" << std::endl;
     // std::random_device rd;
     // auto seed = rd();
     // std::default_random_engine re2(seed);
@@ -206,6 +207,7 @@ uint64_t S3SparseIterator::getObjId(uint64_t left, uint64_t right) {
               << " left: " << left << " right: " << right << std::endl;
     return sampled;
   } else {
+    std::cout << "NOT RANDOM ACCESS" << std::endl;
     auto ret = current++;
     if (current == right_id)
       current = left_id;
