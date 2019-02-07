@@ -29,11 +29,9 @@ namespace cirrus {
 // worker_id goes from 0 to #workers-1
 RingReduce::RingReduce(
     const std::vector<std::pair<std::string, int>>& workers,
-    int worker_id,
-    const std::vector<float>& params) :
+    int worker_id) :
   workers(workers),
-  worker_id(worker_id),
-  params(params) {
+  worker_id(worker_id) {
     std::cout << "Starting ring reduce" << std::endl;
 
     for (const auto& v : workers) {
@@ -146,7 +144,7 @@ void RingReduce::connect_to_neighbor(std::string ip, int port) {
   std::cout << "Connected" << std::endl;
 }
 
-void RingReduce::send_to_neighbor(int neighbor_id) {
+void RingReduce::send_to_neighbor(int neighbor_id, const std::vector<float>& params) {
   // send all the floats
 
   std::cout << "Sending data to neighbor " << neighbor_id << std::endl;
@@ -212,7 +210,7 @@ std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
     std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
         std::bind(&RingReduce::receive_from_neighbor, this));
 
-    send_to_neighbor(i);
+    send_to_neighbor(i, params);
     
     receive_mutex.lock();
   }

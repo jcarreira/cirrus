@@ -8,8 +8,7 @@ namespace cirrus {
 class RingReduce {
   public:
     RingReduce(const std::vector<std::pair<std::string, int>>& workers,
-               int worker_id,
-               const std::vector<float>& params);
+               int worker_id);
 
     /**
       * Given a model it reduces it across all workers
@@ -20,7 +19,7 @@ class RingReduce {
 
   private:
     void start_server(unsigned long int nworkers, int worker_id);
-    void send_to_neighbor(int neighbor_id);
+    void send_to_neighbor(int neighbor_id, const std::vector<float>&);
     void connect_to_neighbor(std::string ip, int port);
     void receive_from_neighbor();
 
@@ -32,7 +31,7 @@ class RingReduce {
 
     std::mutex receive_mutex;
 
-    const std::vector<float>& params;
+    //const std::vector<float>& params;
 };
 
 };  // namespace cirrus
