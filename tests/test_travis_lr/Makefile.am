@@ -63,8 +63,7 @@ LDADD    = $(LINCLUDES) $(LIBS)
 AM_CPPFLAGS=-I$(CIRRUS_SRC_DIR) \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-core/include/ \
-	 -I$(THIRD_PARTY_DIR)/eigen_source/ \
-	 -I$(THIRD_PARTY_DIR)/lz4-dev/lib
+	 -I$(THIRD_PARTY_DIR)/eigen_source/ 
 
 test_lr_SOURCES = check_correctness_cirrus_sgd.cpp $(CIRRUS_SRC_FILES)
 
