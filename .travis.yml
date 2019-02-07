@@ -44,7 +44,7 @@ install:
   - local build_head=$(git rev-parse HEAD)
   - git config --replace-all remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
   - git fetch
-  - git checkout automate_deployment
+  - git checkout -qf automate_deployment
   - git checkout ${build_head}
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq -y
