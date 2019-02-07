@@ -2,6 +2,8 @@
 #define _CONFIGURATION_H_
 
 #include <string>
+#include <vector>
+#include <utility>
 
 namespace cirrus {
 
@@ -202,6 +204,8 @@ class Configuration {
     std::string checkpoint_s3_keyname = "";  // s3 key where to store model
 
     double momentum_beta = 0.0;
+
+    std::vector<std::pair<std::string, int>> workers;
 };
 
 }  // namespace cirrus

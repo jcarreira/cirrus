@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <Utils.h>
 
 namespace cirrus {
@@ -110,9 +111,11 @@ void Configuration::check() const {
   */
 void Configuration::parse_line(const std::string& line) {
     std::istringstream iss(line);
+    std::istringstream iss2(line);
 
     std::string s;
     iss >> s;
+    iss2 >> s;
 
     std::cout << "Parsing line: " << line << std::endl;
 
@@ -174,6 +177,26 @@ void Configuration::parse_line(const std::string& line) {
        iss >> checkpoint_s3_bucket;
     } else if (s == "checkpoint_s3_keyname:") {
        iss >> checkpoint_s3_keyname;
+    } else if (strncmp("workers:", s.c_str(), strlen("workers:")) == 0) {
+      std::string pair, pair2;
+      while (iss2 >> pair) {
+        if (iss2.fail())
+          break;
+        iss >> pair2;
+        std::cout << "pair: " << pair << std::endl;
+        std::cout << "pair2: " << pair2 << std::endl;
+        std::cout << iss.fail() << std::endl;
+        std::cout << "iss2 fail: " << iss2.fail() << std::endl;
+        std::cout << s.find_first_not_of("\t\n\v\f\r") << std::endl;
+        size_t pos = -1;
+        pos = pair.find(':');
+        std::string ip = pair.substr(0, pos);
+        int port = string_to<int>(pair.substr(pos + 1));
+        workers.push_back(std::make_pair(ip, port));
+
+      }
+      std::cout << iss.fail() << std::endl;
+      std::cout << s.find_first_not_of("\t\n\v\f\r") << std::endl;
     } else if (s == "normalize:") {
       int n;
       iss >> n;
