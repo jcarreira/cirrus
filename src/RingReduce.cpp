@@ -95,7 +95,8 @@ void RingReduce::start_server(unsigned long int nworkers, int worker_id) {
     throw std::runtime_error("Error binding in port " + to_string(port));
   }
 
-  std::cout << "Doing listen" << std::endl;
+  std::cout << "Doing listen worker_id: " << worker_id
+            << " port: " << port << std::endl;
   if (listen(server_sock_, SOMAXCONN) == -1) {
     throw std::runtime_error("Error listening on port " + to_string(port));
   }
@@ -109,11 +110,12 @@ void RingReduce::start_server(unsigned long int nworkers, int worker_id) {
       &clilen);
 
   neighbor_receive = newsock;
-
-  sleep(1000);
 }
 
-void RingReduce::connect_to_neighbor(std::string ip, int port) {
+void RingReduce::connect_to_neighbor(int neighbor_id) {
+  std::string ip = workers[neighbor_id].first;
+  int port = 9300 + neighbor_id;
+
   int sock;
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     throw std::runtime_error("Error when creating socket.");
@@ -139,9 +141,9 @@ void RingReduce::connect_to_neighbor(std::string ip, int port) {
         ip + " port: " + std::to_string(port) + "\n");
   }
 
-  neighbor_receive = ret;
+  neighbor_send = sock;
 
-  std::cout << "Connected" << std::endl;
+  std::cout << "Connected neighbor_send " << neighbor_send << std::endl;
 }
 
 void RingReduce::send_to_neighbor(int neighbor_id, const std::vector<float>& params) {
@@ -152,34 +154,45 @@ void RingReduce::send_to_neighbor(int neighbor_id, const std::vector<float>& par
   int left_index = (params.size() / workers.size()) * worker_id;
   int right_index = left_index + params.size() / workers.size(); // exclusive
   
-  std::cout << "left_index: " << left_index << " right_index: " << right_index << std::endl;
-
   // last worker might be assigned more data
   if (worker_id == workers.size() - 1) {
     right_index = params.size();
   }
-
+  
   int size = (right_index - left_index) * sizeof(float);
+  
+  std::cout << "left_index: " << left_index
+            << " right_index: " << right_index
+            << " size: " << size
+            << std::endl;
+
   const float* data = static_cast<const float*>(params.data());
   int ret = send_all(neighbor_send,
                      const_cast<void*>(reinterpret_cast<const void*>(data + left_index)),
                      size);
+  std::cout << "send_all ret: " << ret << std::endl;
   if (ret != size) {
     throw std::string("send error");
   }
 }
 
 void RingReduce::receive_from_neighbor() {
-  char data[10000];
+  char data[1000];
   int size = 100 * sizeof(float);
 
   std::cout << "Receiving from neighbor " << std::endl;
   int ret = read_all(neighbor_receive, data, size);
   if (ret != size) {
-    throw std::string("Error in read_all");
+    std::cout << "Error in read_all" << std::endl;
+    //throw std::string("Error in read_all");
   }
+
+  std::cout << "Read from neighbour bytes: " << ret << std::endl;
+
+  receive_mutex.unlock();
 }
 
+void RingReduce::test() {}
 
 // we do ring reduce here
 std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
@@ -189,15 +202,17 @@ std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
       std::bind(&RingReduce::start_server, this,
         std::placeholders::_1, std::placeholders::_2),
         workers.size(), worker_id);
+
+  sleep(2);
   
   //start_server(workers.size(), worker_id);
 
   // connect to worker
   int neighbor_send_id = (worker_id + 1) % workers.size();
-  int neighbor_receive = worker_id == 0 ? workers.size() - 1 : worker_id - 1;
-  connect_to_neighbor(
-      workers[neighbor_send_id].first,
-      workers[neighbor_send_id].second);
+  int neighbor_receive_id = worker_id == 0 ? workers.size() - 1 : worker_id - 1;
+  connect_to_neighbor(neighbor_send_id);
+
+  t->join();
 
   // #workers rounds
   int reduce_rounds = workers.size() - 1;
@@ -209,10 +224,15 @@ std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
     receive_mutex.lock();
     std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
         std::bind(&RingReduce::receive_from_neighbor, this));
+    //std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
+    //    std::bind(&RingReduce::test, this));
 
-    send_to_neighbor(i, params);
+    send_to_neighbor(neighbor_send_id, params);
     
     receive_mutex.lock();
+    receive_mutex.unlock();
+
+    t->join();
   }
 }
 

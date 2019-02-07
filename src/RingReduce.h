@@ -20,8 +20,10 @@ class RingReduce {
   private:
     void start_server(unsigned long int nworkers, int worker_id);
     void send_to_neighbor(int neighbor_id, const std::vector<float>&);
-    void connect_to_neighbor(std::string ip, int port);
+    void connect_to_neighbor(int neighbor_id);
     void receive_from_neighbor();
+
+    void test();
 
     std::vector<std::pair<std::string,int>> workers;
     int worker_id;
