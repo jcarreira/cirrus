@@ -18,22 +18,26 @@ class RingReduce {
         const std::vector<float>& params);
 
   private:
+    std::pair<int, int> calculate_receive_data(int, const std::vector<float>& params, int);
+    //std::pair<int, int> calculate_data(int, const std::vector<float>& params);
     void start_server(unsigned long int nworkers, int worker_id);
-    void send_to_neighbor(int neighbor_id, const std::vector<float>&);
-    void connect_to_neighbor(int neighbor_id);
-    void receive_from_neighbor();
+    void send_to_neighbor(const std::vector<float>&, int iter);
+    void connect_to_neighbor();
+    void receive_from_neighbor(const std::vector<float>& params, int iter);
 
     void test();
 
     std::vector<std::pair<std::string,int>> workers;
     int worker_id;
 
-    int neighbor_receive;
-    int neighbor_send;
+    int neighbor_receive = 0;
+    int neighbor_send = 0;
+    int neighbor_send_id = 0;
+    int neighbor_receive_id = 0;
 
     std::mutex receive_mutex;
 
-    //const std::vector<float>& params;
+    std::vector<float> result;
 };
 
 };  // namespace cirrus

@@ -39,21 +39,6 @@ RingReduce::RingReduce(
     }
 }
 
-//void RingReduce::receive_new_connection() {
-//  struct sockaddr_in cli_addr;
-//  socklen_t clilen = sizeof(cli_addr);
-//  int newsock = accept(server_sock_,
-//      reinterpret_cast<struct sockaddr*> (&cli_addr),
-//      &clilen);
-//
-//  uint32_t worker_id = 0;
-//  if (read_all(newsock, &worker_id, sizeof(uint32_t)) == 0) {
-//    throw std::string("Error in read_all");
-//  }
-//
-//  worker_to_fd[worker_id] = newsock;
-//}
-
 // starts server, receives connections
 void RingReduce::start_server(unsigned long int nworkers, int worker_id) {
   std::cout << "Starting server" << std::endl;
@@ -112,9 +97,9 @@ void RingReduce::start_server(unsigned long int nworkers, int worker_id) {
   neighbor_receive = newsock;
 }
 
-void RingReduce::connect_to_neighbor(int neighbor_id) {
-  std::string ip = workers[neighbor_id].first;
-  int port = 9300 + neighbor_id;
+void RingReduce::connect_to_neighbor() {
+  std::string ip = workers[neighbor_send_id].first;
+  int port = 9300 + neighbor_send_id;
 
   int sock;
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -146,29 +131,71 @@ void RingReduce::connect_to_neighbor(int neighbor_id) {
   std::cout << "Connected neighbor_send " << neighbor_send << std::endl;
 }
 
-void RingReduce::send_to_neighbor(int neighbor_id, const std::vector<float>& params) {
-  // send all the floats
+//std::pair<int, int> RingReduce::calculate_send_data(
+//    int id, const std::vector<float>& params, int iter) {
+//  // this worker is going to send block id - iter
+//  int block_to_be_received = 0;
+//  if (iter > id) {
+//    block_to_be_received = workers.size() - (iter - id);
+//  } else {
+//    block_to_be_received = id - iter;
+//  }
+//
+//  int left_index = (params.size() / workers.size()) * id;
+//  int right_index = left_index + params.size() / workers.size(); // exclusive
+//  
+//  // last worker might be assigned more data
+//  if (id == workers.size() - 1) {
+//    right_index = params.size();
+//  }
+//  
+//  int size = (right_index - left_index);
+//
+//  return std::make_pair(left_index, size);
+//}
 
-  std::cout << "Sending data to neighbor " << neighbor_id << std::endl;
+std::pair<int, int> RingReduce::calculate_receive_data(
+    int id, const std::vector<float>& params, int iter) {
 
-  int left_index = (params.size() / workers.size()) * worker_id;
+  // neighbor is going to send block id - iter
+  int block_to_be_received = 0;
+  if (iter > id) {
+    block_to_be_received = workers.size() - (iter - id);
+  } else {
+    block_to_be_received = id - iter;
+  }
+
+  int left_index = (params.size() / workers.size()) * block_to_be_received;
   int right_index = left_index + params.size() / workers.size(); // exclusive
   
   // last worker might be assigned more data
-  if (worker_id == workers.size() - 1) {
+  if (block_to_be_received == workers.size() - 1) {
     right_index = params.size();
   }
   
-  int size = (right_index - left_index) * sizeof(float);
+  int size = (right_index - left_index);
+
+  return std::make_pair(left_index, size);
+}
+
+void RingReduce::send_to_neighbor(const std::vector<float>& params, int iter) {
+  // send all the floats
+
+  std::cout << "Sending data to neighbor " << neighbor_send_id << std::endl;
+
+  auto data_size = calculate_receive_data(worker_id, params, iter);
+  //auto data_size = calculate_send_data(worker_id, params, iter);
   
-  std::cout << "left_index: " << left_index
-            << " right_index: " << right_index
+  int size = data_size.second * sizeof(float);
+  
+  std::cout << "left_index: " << data_size.first
             << " size: " << size
             << std::endl;
 
-  const float* data = static_cast<const float*>(params.data());
+  const float* data = static_cast<const float*>(result.data());
   int ret = send_all(neighbor_send,
-                     const_cast<void*>(reinterpret_cast<const void*>(data + left_index)),
+                     const_cast<void*>(
+                       reinterpret_cast<const void*>(data + data_size.first)),
                      size);
   std::cout << "send_all ret: " << ret << std::endl;
   if (ret != size) {
@@ -176,18 +203,34 @@ void RingReduce::send_to_neighbor(int neighbor_id, const std::vector<float>& par
   }
 }
 
-void RingReduce::receive_from_neighbor() {
-  char data[1000];
-  int size = 100 * sizeof(float);
+void RingReduce::receive_from_neighbor(const std::vector<float>& params, int iter) {
+  // we can calculate how much data we will receive
+  auto data_size = calculate_receive_data(neighbor_receive_id, params, iter);
+  std::shared_ptr<float[]> data =
+    std::shared_ptr<float[]>(new float[data_size.second]);
 
+  int size = data_size.second * sizeof(float);
   std::cout << "Receiving from neighbor " << std::endl;
-  int ret = read_all(neighbor_receive, data, size);
+  int ret = read_all(neighbor_receive, data.get(), size);
   if (ret != size) {
-    std::cout << "Error in read_all" << std::endl;
-    //throw std::string("Error in read_all");
+    //std::cout << "Error in read_all" << std::endl;
+    throw std::string("Error in read_all");
   }
 
   std::cout << "Read from neighbour bytes: " << ret << std::endl;
+  std::cout << "Summing left_index : " << data_size.first << std::endl;
+
+  if (worker_id == 0) {
+    for (int i = 0; i < 10; ++i) {
+      std::cout << data.get()[i] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  // now we sum
+  for (int i = 0; i < data_size.second; ++i) {
+    result[data_size.first + i] += data.get()[i];
+  }
 
   receive_mutex.unlock();
 }
@@ -196,6 +239,8 @@ void RingReduce::test() {}
 
 // we do ring reduce here
 std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
+
+  result = params; // first we copy
   
   // starts server that waits for neighbor connection
   std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
@@ -208,9 +253,9 @@ std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
   //start_server(workers.size(), worker_id);
 
   // connect to worker
-  int neighbor_send_id = (worker_id + 1) % workers.size();
-  int neighbor_receive_id = worker_id == 0 ? workers.size() - 1 : worker_id - 1;
-  connect_to_neighbor(neighbor_send_id);
+  neighbor_send_id = (worker_id + 1) % workers.size();
+  neighbor_receive_id = worker_id == 0 ? workers.size() - 1 : worker_id - 1;
+  connect_to_neighbor();
 
   t->join();
 
@@ -218,22 +263,44 @@ std::vector<float> RingReduce::reduce(const std::vector<float>& params) {
   int reduce_rounds = workers.size() - 1;
   //// scatter reduce
   for (int i = 0; i < reduce_rounds; ++i) {
-    // worker 0 sends block 0 to worker 1 and receives block N-1 from worker N-1
+    std::cout << "Round: " << i << std::endl;
+    // worker w sends block w - i
 
     // send block i to worker i + 1
     receive_mutex.lock();
     std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
-        std::bind(&RingReduce::receive_from_neighbor, this));
-    //std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
-    //    std::bind(&RingReduce::test, this));
+        std::bind(&RingReduce::receive_from_neighbor, this,
+          std::placeholders::_1, std::placeholders::_2),
+        std::ref(params), i);
 
-    send_to_neighbor(neighbor_send_id, params);
+    send_to_neighbor(params, i);
     
     receive_mutex.lock();
     receive_mutex.unlock();
 
     t->join();
   }
+  
+  //for (int i = 0; i < reduce_rounds; ++i) {
+  //  std::cout << "Round: " << i << std::endl;
+  //  // worker w sends block w - i
+
+  //  // send block i to worker i + 1
+  //  receive_mutex.lock();
+  //  std::shared_ptr<std::thread> t = std::make_shared<std::thread>(
+  //      std::bind(&RingReduce::receive_from_neighbor, this,
+  //        std::placeholders::_1, std::placeholders::_2),
+  //      std::ref(params), i);
+
+  //  send_to_neighbor(params, i);
+  //  
+  //  receive_mutex.lock();
+  //  receive_mutex.unlock();
+
+  //  t->join();
+  //}
+
+  return result;
 }
 
 };
