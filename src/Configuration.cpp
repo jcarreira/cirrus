@@ -433,4 +433,8 @@ std::string Configuration::get_checkpoint_s3_keyname() const {
   return checkpoint_s3_keyname;
 }
 
+std::vector<std::pair<std::string, int>> Configuration::get_workers() const {
+  return workers;
+}
+
 }  // namespace cirrus

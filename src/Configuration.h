@@ -124,6 +124,8 @@ class Configuration {
 
     uint64_t get_model_bits() const;
 
+    std::vector<std::pair<std::string, int>> get_workers() const;
+
     /**
       * Model checkpointing
       */
