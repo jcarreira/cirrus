@@ -42,7 +42,7 @@ before_install:
 
 install:
   - local build_head=$(git rev-parse HEAD)
-  - git config --replace-all remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
+  - git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
   - git fetch
   - git checkout -qf automate_deployment
   - git checkout ${build_head}
