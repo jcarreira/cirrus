@@ -20,10 +20,12 @@ DEFINE_int64(ps_port, PS_PORT, "parameter server port");
 static const uint64_t GB = (1024*1024*1024);
 static const uint32_t SIZE = 1;
 
-void run_tasks(int rank, int nworkers,
-    int batch_size, const cirrus::Configuration& config,
-    const std::string& ps_ip,
-    uint64_t ps_port) {
+void run_tasks(int rank,
+               int nworkers,
+               int batch_size,
+               const cirrus::Configuration& config,
+               const std::string& ps_ip,
+               uint64_t ps_port) {
 
   std::cout << "Run tasks rank: " << rank << std::endl;
   int features_per_sample = config.get_num_features();
