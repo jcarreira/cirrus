@@ -81,8 +81,7 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_ranges = config.get_train_range();
-  S3SparseIterator s3_iter(train_ranges, config, config.get_s3_size(),
-		           config.get_minibatch_size(), true, worker);
+  S3SparseIterator s3_iter(train_ranges, config, config.get_s3_size(), config.get_minibatch_size(), true, worker);
 
   std::cout << "[WORKER] starting loop" << std::endl;
 
