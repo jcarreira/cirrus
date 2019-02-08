@@ -45,7 +45,7 @@ install:
   - git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origins/*
   - git fetch
   - git checkout -qf automate_deployment
-  - git checkout ${build_head}
+  - git pr $(TRAVIS_PULL_REQUEST)
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq -y
   - sudo apt-get install -qq -y g++-7
