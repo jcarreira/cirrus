@@ -223,7 +223,7 @@ void LRSDCASparseGradient::loadSerialized(const void* mem) {
   // clear weights
   w.resize(0);
 
-  for (int i = 0; i < num_weights; ++i) {
+  for (int i = 0; i < num_weights; i++) {
     assert(std::distance(data_begin, (char*) mem) < size);
     int index = load_value<int>(mem);
     FEATURE_TYPE weight = load_value<FEATURE_TYPE>(mem);
@@ -232,7 +232,7 @@ void LRSDCASparseGradient::loadSerialized(const void* mem) {
 
   a.resize(0);
 
-  for (int i = 0; i < num_coords; ++i) {
+  for (int i = 0; i < num_coords; i++) {
     assert(std::distance(data_begin, (char*) mem) < size);
     int index = load_value<int>(mem);
     FEATURE_TYPE weight = load_value<FEATURE_TYPE>(mem);

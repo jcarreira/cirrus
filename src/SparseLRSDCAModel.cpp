@@ -59,11 +59,12 @@ void SparseLRSDCAModel::serializeTo(void* mem) const {
 #endif
   store_value<int>(mem, weights_.size());
   store_value<int>(mem, coord_weights_.size());
-  std::copy(weights_.data(), weights_.data() + weights_.size(),
-            reinterpret_cast<FEATURE_TYPE*>(mem));
-  std::copy(coord_weights_.data(),
-            coord_weights_.data() + coord_weights_.size(),
-            reinterpret_cast<FEATURE_TYPE*>(mem));
+  for (int i = 0; i < weights_.size(); i++) {
+    store_value<FEATURE_TYPE >(mem, weights_[i]);
+  }
+  for (int i = 0; i < coord_weights_.size(); i++) {
+    store_value<FEATURE_TYPE >(mem, coord_weights_[i]);
+  }
 }
 
 uint64_t SparseLRSDCAModel::getSerializedSize() const {
@@ -84,21 +85,15 @@ void SparseLRSDCAModel::loadSerialized(const void* data) {
   std::cout << "num_coordinates: " << num_coords << std::endl;
 #endif
 
-  char* data_begin = (char*) data;
-
   weights_.resize(num_weights);
-  std::copy(reinterpret_cast<FEATURE_TYPE*>(data_begin),
-            (reinterpret_cast<FEATURE_TYPE*>(data_begin)) + num_weights,
-            weights_.data());
-
-  advance_ptr(data, sizeof(FEATURE_TYPE) * num_weights);
-
-  char* coord_begin = (char*) data;
+  for (int i = 0; i < num_weights; i++) {
+    weights_[i] = load_value<FEATURE_TYPE>(data);
+  }
 
   coord_weights_.resize(num_coords);
-  std::copy(reinterpret_cast<FEATURE_TYPE*>(coord_begin),
-            (reinterpret_cast<FEATURE_TYPE*>(coord_begin)) + num_coords,
-            coord_weights_.data());
+  for (int i = 0; i < num_coords; i++) {
+    coord_weights_[i] = load_value<FEATURE_TYPE>(data);
+  }
 }
 
 void SparseLRSDCAModel::randomize() {
