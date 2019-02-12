@@ -1,22 +1,17 @@
 import logging
 import time
-import socket
 import io
 import zipfile
-import pipes
 import json
 import threading
 import inspect
 import datetime
 
-import boto3
-import botocore
-
 from . import handler
 from . import configuration
 from .instance import Instance
 from . import utilities
-from .clients import clients
+from .resources import resources
 
 # The type of instance to use for compilation.
 BUILD_INSTANCE_TYPE = "c4.4xlarge"
@@ -24,12 +19,11 @@ BUILD_INSTANCE_TYPE = "c4.4xlarge"
 # The disk size, in GB, to use for compilation.
 BUILD_INSTANCE_SIZE = 32
 
-# The type of instance to use for parameter servers.
-SERVER_INSTANCE_TYPE = "m5a.2xlarge"
+# The type of instance to use for creating server images.
+SERVER_INSTANCE_TYPE = "m4.2xlarge"
 
 # The disk size, in GB, to use for parameter servers.
-SERVER_INSTANCE_SIZE = 32
-
+SERVER_INSTANCE_SIZE = 1
 
 # The base AMI to use for making the Amazon Linux build image. Gives the AMI ID
 #   for each supported region. This is "amzn-ami-hvm-2017.03.1.20170812
@@ -111,258 +105,6 @@ MIN_GENERATION_TIME = 10
 _MINIMUM_UNRESERVED_CONCURRENCY = 100
 
 
-class ParameterServer(object):
-    """A parameter server and its associated error task.
-    """
-
-    # The maximum amount of time that a parameter server can take to start, in
-    #   seconds.
-    MAX_START_TIME = 60
-
-
-    def __init__(self, instance, ps_port, error_port, num_workers):
-        """Create a parameter server.
-
-        Args:
-            instance (instance.Instance): The instance on which this parameter
-                server should be run.
-            ps_port (int): The port that the parameter server should listen on.
-            error_port (int): The port that the error task should listen on.
-            num_workers (int): A value for the parameter server's `nworkers`
-                command-line argument.
-        """
-        # TODO: Figure out exactly what "nworkers" is used for.
-        self._instance = instance
-        self._ps_port = ps_port
-        self._error_port = error_port
-        self._num_workers = num_workers
-
-        self._log = logging.getLogger("cirrus.automate.ParameterServer")
-
-
-    def public_ip(self):
-        """Get the public IP address which the parameter server is accessible
-            from.
-        
-        Returns:
-            str: The IP address.
-        """
-        return self._instance.public_ip()
-
-
-    def private_ip(self):
-        """Get the private IP address which the parameter server is accessible
-            from.
-        
-        Returns:
-            str: The IP address.
-        """
-        return self._instance.private_ip()
-
-
-    def ps_port(self):
-        """Get the port number which the parameter server is accessible from.
-        
-        Returns:
-            int: The port.
-        """
-        return self._ps_port
-
-
-    def error_port(self):
-        """Get the port number which the error task is accessible from.
-
-        Returns:
-            int: The port.
-        """
-        return self._error_port
-
-
-    def start(self, config):
-        """Start this parameter server and its associated error task.
-
-        Does not block until the parameter server has finished startup. See
-            `wait_until_started` for that.
-
-        Args:
-            config (str): The contents of a parameter server configuration file.
-        """
-        self._log.debug("start: Uploading configuration.")
-        config_filename = "config_%d.txt" % self._ps_port
-        self._instance.run_command(
-            "echo %s > %s" % (pipes.quote(config), config_filename))
-
-        self._log.debug("start: Starting parameter server.")
-        ps_start_command = " ".join((
-            "ulimit -c unlimited;",
-            "nohup",
-            "./parameter_server",
-            "--config", config_filename,
-            "--nworkers", str(self._num_workers),
-            "--rank", "1",
-            "--ps_port", str(self._ps_port),
-            "&>", "ps_out_%d" % self._ps_port,
-            "&"
-        ))
-        status, _, stderr = self._instance.run_command(ps_start_command)
-        if status != 0:
-            print("An error occurred while starting the parameter server."
-                  " The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while starting the parameter"
-                               " server.")
-
-
-        self._log.debug("start: Retreiving parameter server PID.")
-        status, _, stderr = self._instance.run_command(
-            "echo $! > ps_%d.pid" % self._ps_port)
-        if status != 0:
-            print("An error occurred while getting the PID of the parameter"
-                  " server. The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while getting the PID of the"
-                               " parameter server.")
-
-
-        self._log.debug("start: Starting error task.")
-        error_start_command = " ".join((
-            "ulimit -c unlimited;",
-            "nohup",
-            "./parameter_server",
-            "--config", config_filename,
-            "--nworkers", str(self._num_workers),
-            "--rank 2",
-            "--ps_ip", self._instance.private_ip(),
-            "--ps_port", str(self.ps_port()),
-            "&> error_out_%d" % self.ps_port(),
-            "&"
-        ))
-        status, _, stderr = self._instance.run_command(error_start_command)
-        if status != 0:
-            print("An error occurred while starting the error task."
-                  " The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while starting the error"
-                               " task.")
-
-
-        self._log.debug("start: Retreiving error task PID.")
-        status, _, stderr = self._instance.run_command(
-            "echo $! > error_%d.pid" % self.ps_port())
-        if status != 0:
-            print("An error occurred while getting the PID of the error task. "
-                  " The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while getting the PID of the"
-                               " error task.")
-
-
-    def wait_until_started(self):
-        """Block until this parameter server has started.
-
-        The parameter server is considered to have started once attempts to
-            connect to it begin succeeding.
-
-        Raises:
-            RuntimeError: If this parameter server takes too long to start (or,
-                presumably, crashes).
-        """
-        total_attempts = self.MAX_START_TIME // handler.PS_CONNECTION_TIMEOUT
-
-        for attempt in range(1, total_attempts + 1):
-            self._log.debug("start: Making connection attempt #%d to %s."
-                            % (attempt, self))
-            start = time.time()
-            if self.reachable():
-                self._log.debug("start: %s launched." % self)
-                return
-            elapsed = time.time() - start
-
-            remaining = handler.PS_CONNECTION_TIMEOUT - elapsed
-            if remaining > 0:
-                time.sleep(remaining)
-
-        raise RuntimeError("%s appears not to have started successfully."
-                           % self)
-
-
-    def stop(self):
-        """Stop this parameter server and its associated error task.
-
-        Sends SIGKILL to both processes.
-        """
-        for task in ("error", "ps"):
-            kill_command = "kill -n 9 $(cat %s_%d.pid)" % (task, self.ps_port())
-            _, _, _ = self._instance.run_command(kill_command)
-            # TODO: Here we should probably wait for the process to die and
-            #   raise an error if it doesn't in a certain amount of time.
-
-
-    def ps_output(self):
-        """Get the output of this parameter server so far.
-
-        Combines the parameter server's stdout and stderr.
-
-        Returns:
-            str: The output.
-        """
-        command = "cat ps_out_%d" % self.ps_port()
-        status, stdout, stderr = self._instance.run_command(command)
-        if status != 0:
-            print("An error occurred while getting the output of the parameter "
-                  "server. The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while getting the output of "
-                               " the parameter server.")
-        return stdout
-
-
-    def error_output(self):
-        """Get the output of the error task so far.
-
-        Combines the error task's stdout and stderr.
-
-        Returns:
-            str: The output.
-        """
-        command = "cat error_out_%d" % self.ps_port()
-        status, stdout, stderr = self._instance.run_command(command)
-        if status != 0:
-            print("An error occurred while getting the output of the error "
-                  "task. The exit code was %d and the stderr was:" % status)
-            print(stderr)
-            raise RuntimeError("An error occurred while getting the output of "
-                               " the error task.")
-        return stdout
-
-
-    def reachable(self):
-        """Return whether this parameter server is reachable.
-
-        This parameter server is reachable if attempts to connect to it succeed.
-
-        Returns:
-            bool: Whether this parameter server is reachable.
-        """
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(handler.PS_CONNECTION_TIMEOUT)
-            sock.connect((self.public_ip(), self.ps_port()))
-            sock.close()
-            return True
-        except:
-            return False
-
-
-    def __str__(self):
-        """Return a string representation of this parameter server.
-
-        Returns:
-            str: The string representation.
-        """
-        return "ParameterServer@%s:%d" % (self.public_ip(), self.ps_port())
-
-
 def make_amazon_build_image(name):
     """Make an Amazon Linux AMI suitable for compiling Cirrus on.
 
@@ -374,11 +116,10 @@ def make_amazon_build_image(name):
     """
     log = logging.getLogger("cirrus.automate.make_amazon_build_image")
 
-    log.debug("make_amazon_build_image: Deleting any existing images with the "
-              "same name.")
+    log.debug("Deleting any existing images with the same name.")
     Instance.delete_images(name)
 
-    log.debug("make_amazon_build_image: Launching an instance.")
+    log.debug("Launching an instance.")
     region = configuration.config()["aws"]["region"]
     instance = Instance("cirrus_make_amazon_build_image",
                         ami_id=AMAZON_BASE_IMAGES[region],
@@ -387,7 +128,7 @@ def make_amazon_build_image(name):
                         username="ec2-user")
     instance.start()
 
-    log.debug("make_amazon_build_image: Setting up the environment.")
+    log.debug("Setting up the environment.")
 
     # Install some necessary packages.
     instance.run_command("yes | sudo yum install git "
@@ -439,10 +180,10 @@ def make_amazon_build_image(name):
                          "/usr/lib64/libpthread.a")
     instance.run_command("sudo cp ~/glibc_build/lib/libc.a /usr/lib64/libc.a")
 
-    log.debug("make_amazon_build_image: Saving the image.")
-    instance.save_image(name)
+    log.debug("Saving the image.")
+    instance.save_image(name, False)
 
-    log.debug("make_amazon_build_image: Terminating the instance.")
+    log.debug("Terminating the instance.")
     instance.cleanup()
 
 
@@ -457,11 +198,10 @@ def make_ubuntu_build_image(name):
     """
     log = logging.getLogger("cirrus.automate.make_ubuntu_build_image")
 
-    log.debug("make_ubuntu_build_image: Deleting any existing images with the "
-              "same name.")
+    log.debug("Deleting any existing images with the same name.")
     Instance.delete_images(name)
 
-    log.debug("make_ubuntu_build_image: Launching an instance.")
+    log.debug("Launching an instance.")
     region = configuration.config()["aws"]["region"]
     instance = Instance("cirrus_make_ubuntu_build_image",
                         ami_id=UBUNTU_BASE_IMAGES[region],
@@ -470,11 +210,14 @@ def make_ubuntu_build_image(name):
                         username="ubuntu")
     instance.start()
 
-    log.debug("make_ubuntu_build_image: Setting up the environment.")
-    # Why twice? Sometimes it doesn't work the first time. It might also just be
-    #   a timing thing.
-    instance.run_command("sudo apt-get update")
-    instance.run_command("sudo apt-get update", False)
+    log.debug("Setting up the environment.")
+
+    # Sometimes `apt-get update` doesn't work, returning exit code 100.
+    while True:
+        status, _, _ = instance.run_command("sudo apt-get update", False)
+        if status == 0:
+            break
+
     instance.run_command("yes | sudo apt-get install build-essential cmake \
                           automake zlib1g-dev libssl-dev libcurl4-nss-dev \
                           bison libldap2-dev libkrb5-dev")
@@ -485,10 +228,10 @@ def make_ubuntu_build_image(name):
     instance.run_command("yes | sudo apt-get install htop")
     instance.run_command("yes | sudo apt-get install mosh")
 
-    log.debug("make_ubuntu_build_image: Saving the image.")
-    instance.save_image(name)
+    log.debug("Saving the image.")
+    instance.save_image(name, False)
 
-    log.debug("make_ubuntu_build_image: Terminating the instance.")
+    log.debug("Terminating the instance.")
     instance.cleanup()
 
 
@@ -507,7 +250,7 @@ def make_executables(path, image_owner_name, username):
     """
     log = logging.getLogger("cirrus.automate.make_executables")
 
-    log.debug("make_executables: Launching an instance.")
+    log.debug("Launching an instance.")
     instance = Instance("cirrus_make_executables",
                         ami_owner_name=image_owner_name,
                         disk_size=BUILD_INSTANCE_SIZE,
@@ -515,20 +258,20 @@ def make_executables(path, image_owner_name, username):
                         username=username)
     instance.start()
 
-    log.debug("make_executables: Building Cirrus.")
+    log.debug("Building Cirrus.")
     instance.run_command("git clone https://github.com/jcarreira/cirrus.git")
     instance.run_command("cd cirrus; ./bootstrap.sh")
     instance.run_command("cd cirrus; make -j 16")
 
-    log.debug("make_executables: Publishing executables.")
+    log.debug("Publishing executables.")
     for executable in EXECUTABLES:
         instance.upload_s3("~/cirrus/src/%s" % executable,
                            path + "/" + executable, public=True)
 
-    log.debug("make_executables: Terminating the instance.")
+    log.debug("Terminating the instance.")
     instance.cleanup()
 
-    log.debug("make_executables: Done.")
+    log.debug("Done.")
 
 
 def make_lambda_package(path, executables_path):
@@ -544,43 +287,43 @@ def make_lambda_package(path, executables_path):
 
     log = logging.getLogger("cirrus.automate.make_lambda_package")
 
-    log.debug("make_lambda_package: Initializing ZIP file.")
+    log.debug("Initializing ZIP file.")
     file = io.BytesIO()
     with zipfile.ZipFile(file, "w", LAMBDA_COMPRESSION) as zip:
-        log.debug("make_lambda_package: Writing handler.")
+        log.debug("Writing handler.")
         info = zipfile.ZipInfo(LAMBDA_HANDLER_FILENAME)
         info.external_attr = 0o777 << 16  # Gives execute permission.
         handler_source = inspect.getsource(handler)
         zip.writestr(info, handler_source)
 
-        log.debug("make_lambda_package: Initializing S3.")
+        log.debug("Initializing S3.")
         executable = io.BytesIO()
 
-        log.debug("make_lambda_package: Downloading executable.")
+        log.debug("Downloading executable.")
         executables_path += "/amazon/parameter_server"
         bucket, key = _split_s3_url(executables_path)
-        clients.s3.meta.client.download_fileobj(bucket, key, executable)
+        resources.s3_client.download_fileobj(bucket, key, executable)
 
-        log.debug("make_lambda_package: Writing executable.")
+        log.debug("Writing executable.")
         info = zipfile.ZipInfo("parameter_server")
         info.external_attr = 0o777 << 16  # Gives execute permission.
         executable.seek(0)
         zip.writestr(info, executable.read())
 
-    log.debug("make_lambda_package: Uploading package.")
+    log.debug("Uploading package.")
     file.seek(0)
     bucket, key = _split_s3_url(path)
-    clients.s3.meta.client.upload_fileobj(file, bucket, key,
-                                          ExtraArgs={"ACL": "public-read"})
+    resources.s3_client.upload_fileobj(file, bucket, key,
+                                            ExtraArgs={"ACL": "public-read"})
 
-    log.debug("make_lambda_package: Waiting for changes to take effect.")
+    log.debug("Waiting for changes to take effect.")
     # Waits for S3's eventual consistency to catch up. Ideally, something more
     #   sophisticated would be used since the delay distribution is
     #   heavy-tailed. But this should in most cases ensure the package is
     #   visible on S3 upon return.
     time.sleep(S3_CONSISTENCY_DELAY)
 
-    log.debug("make_lambda_package: Done.")
+    log.debug("Done.")
 
 
 def make_server_image(name, executables_path):
@@ -595,10 +338,10 @@ def make_server_image(name, executables_path):
 
     log = logging.getLogger("cirrus.automate.make_server_image")
 
-    log.debug("make_server_image: Checking for already-existent images.")
+    log.debug("Checking for already-existent images.")
     Instance.delete_images(name)
 
-    log.debug("make_server_image: Launching an instance.")
+    log.debug("Launching an instance.")
     region = configuration.config()["aws"]["region"]
     instance = Instance("cirrus_make_server_image",
                         ami_id=UBUNTU_BASE_IMAGES[region],
@@ -607,33 +350,20 @@ def make_server_image(name, executables_path):
                         username="ubuntu")
     instance.start()
 
-    log.debug("make_server_image: Installing the AWS CLI.")
-    # Why twice? Sometimes it didn't know about the awscli package unless I
-    #   updated twice. It might just be due to timing.
-    instance.run_command("sudo apt update")
-    instance.run_command("sudo apt update", False)
-    instance.run_command("yes | sudo apt install awscli")
-
-    # Install some useful tools.
-    instance.run_command("yes | sudo apt-get install gdb")
-    instance.run_command("yes | sudo apt-get install htop")
-    instance.run_command("yes | sudo apt-get install mosh")
-
-    log.debug("make_server_image: Putting parameter_server executable on "
-              "instance.")
+    log.debug("Putting parameter_server executable on instance.")
     instance.download_s3(executables_path + "/ubuntu/parameter_server",
                          "~/parameter_server")
 
-    log.debug("make_server_image: Setting permissions of executable.")
+    log.debug("Setting permissions of executable.")
     instance.run_command("chmod +x ~/parameter_server")
 
-    log.debug("make_server_image: Creating image from instance.")
-    instance.save_image(name)
+    log.debug("Creating image from instance.")
+    instance.save_image(name, False)
 
-    log.debug("make_server_image: Terminating the instance.")
+    log.debug("Terminating the instance.")
     instance.cleanup()
 
-    log.debug("make_server_image: Done.")
+    log.debug("Done.")
 
 
 def get_bucket_name():
@@ -644,8 +374,8 @@ def get_bucket_name():
     """
     log = logging.getLogger("cirrus.automate.get_bucket_name")
 
-    log.debug("get_bucket_name: Retreiving account ID.")
-    account_id = clients.sts.get_caller_identity().get("Account")
+    log.debug("Retreiving account ID.")
+    account_id = resources.sts_client.get_caller_identity().get("Account")
 
     return BUCKET_BASE_NAME + "-" + account_id
 
@@ -655,8 +385,8 @@ def set_up_bucket():
     """
     log = logging.getLogger("cirrus.automate.set_up_bucket")
 
-    log.debug("set_up_bucket: Checking for existing bucket.")
-    response = clients.s3.meta.client.list_buckets()
+    log.debug("Checking for existing bucket.")
+    response = resources.s3_client.list_buckets()
     exists = False
     bucket_name = get_bucket_name()
     for bucket_info in response["Buckets"]:
@@ -665,21 +395,29 @@ def set_up_bucket():
             break
 
     if exists:
-        log.debug("set_up_bucket: Deleting contents of existing bucket.")
-        bucket = clients.s3.Bucket(bucket_name)
+        log.debug("Deleting contents of existing bucket.")
+        bucket = resources.s3_resource.Bucket(bucket_name)
         for obj in bucket.objects.all():
             obj.delete()
-        log.debug("set_up_bucket: Deleting existing bucket.")
+        log.debug("Deleting existing bucket.")
         bucket.delete()
 
-    log.debug("set_up_bucket: Creating bucket.")
+    log.debug("Creating bucket.")
+    constraint = configuration.config()["aws"]["region"]
     bucket_config = {
-        "LocationConstraint": configuration.config()["aws"]["region"]
+        "LocationConstraint": constraint
     }
-    clients.s3.create_bucket(
-        Bucket=bucket_name,
-        CreateBucketConfiguration=bucket_config
-    )
+    # Per https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region, no
+    #   constraint should be provided when referring to the us-east-1 region.
+    if constraint == "us-east-1":
+        resources.s3_resource.create_bucket(
+            Bucket=bucket_name
+        )
+    else:
+        resources.s3_resource.create_bucket(
+            Bucket=bucket_name,
+            CreateBucketConfiguration=bucket_config
+        )
 
 
 def get_available_concurrency():
@@ -691,12 +429,12 @@ def get_available_concurrency():
     """
     log = logging.getLogger("cirrus.automate.get_available_concurrency")
 
-    log.debug("get_available_concurrency: Getting account settings.")
-    response = clients.lamb.get_account_settings()
+    log.debug("Getting account settings.")
+    response = resources.lambda_client.get_account_settings()
     unreserved = response["AccountLimit"]["UnreservedConcurrentExecutions"]
     available = unreserved - _MINIMUM_UNRESERVED_CONCURRENCY
 
-    log.debug("get_available_concurrency: Done.")
+    log.debug("Done.")
     return available
 
 
@@ -711,20 +449,20 @@ def set_up_lambda_role(name):
     """
     log = logging.getLogger("cirrus.automate.set_up_lambda_role")
 
-    log.debug("set_up_lambda_role: Checking for an already-existing role.")
+    log.debug("Checking for an already-existing role.")
     try:
-        role = clients.iam.Role(name)
+        role = resources.iam_resource.Role(name)
         for policy in role.attached_policies.all():
             role.detach_policy(PolicyArn=policy.arn)
         role.delete()
-        log.info("set_up_lambda_role: There was an already-existing role.")
+        log.info("There was an already-existing role.")
     except Exception:
         # FIXME: This is a hack. An error may be caused by something other than
         #   the role not existing. We should catch only that specific error.
-        log.info("set_up_lambda_role: There was not an already-existing role.")
+        log.info("There was not an already-existing role.")
 
-    log.debug("set_up_lambda_role: Creating role.")
-    role = clients.iam.create_role(
+    log.debug("Creating role.")
+    role = resources.iam_resource.create_role(
         RoleName=name,
         AssumeRolePolicyDocument=\
         """{
@@ -743,7 +481,7 @@ def set_up_lambda_role(name):
     role.attach_policy(PolicyArn=S3_READ_ONLY_ARN)
     role.attach_policy(PolicyArn=CLOUDWATCH_WRITE_ARN)
 
-    log.debug("set_up_lambda_role: Done.")
+    log.debug("Done.")
 
 
 def make_lambda(name, lambda_package_path, lambda_size, concurrency=-1):
@@ -774,24 +512,24 @@ def make_lambda(name, lambda_package_path, lambda_size, concurrency=-1):
 
     log = logging.getLogger("cirrus.automate.make_lambda")
 
-    log.debug("make_lambda: Deleting any existing Lambda.")
+    log.debug("Deleting any existing Lambda.")
     try:
-        clients.lamb.delete_function(FunctionName=name)
+        resources.lambda_client.delete_function(FunctionName=name)
     except Exception:
         # This is a hack. An error may be caused by something other than the
         #   Lambda not existing.
         pass
 
-    log.debug("make_lambda: Copying package to user's bucket.")
+    log.debug("Copying package to user's bucket.")
     bucket_name = get_bucket_name()
-    bucket = clients.s3.Bucket(bucket_name)
+    bucket = resources.s3_resource.Bucket(bucket_name)
     src_bucket, src_key = _split_s3_url(lambda_package_path)
     src = {"Bucket": src_bucket, "Key": src_key}
     bucket.copy(src, src_key)
 
-    log.debug("make_lambda: Creating Lambda.")
-    role_arn = clients.iam.Role(setup.LAMBDA_ROLE_NAME).arn
-    clients.lamb.create_function(
+    log.debug("Creating Lambda.")
+    role_arn = resources.iam_resource.Role(setup.LAMBDA_ROLE_NAME).arn
+    resources.lambda_client.create_function(
         FunctionName=name,
         Runtime=LAMBDA_RUNTIME,
         Role=role_arn,
@@ -805,14 +543,13 @@ def make_lambda(name, lambda_package_path, lambda_size, concurrency=-1):
     )
 
     if concurrency != -1:
-        log.debug("make_lambda: Allocating reserved concurrent executions to "
-                  "the Lambda.")
-        clients.lamb.put_function_concurrency(
+        log.debug("Allocating reserved concurrent executions to the Lambda.")
+        resources.lambda_client.put_function_concurrency(
             FunctionName=name,
             ReservedConcurrentExecutions=concurrency
         )
 
-    log.debug("make_lambda: Done.")
+    log.debug("Done.")
 
 
 def delete_lambda(name):
@@ -823,8 +560,8 @@ def delete_lambda(name):
     """
     log = logging.getLogger("cirrus.automate.delete_lambda")
 
-    log.debug("delete_lambda: Deleting Lambda function %s." % name)
-    clients.lamb.delete_function(FunctionName=name)
+    log.debug("Deleting Lambda function %s." % name)
+    resources.lambda_client.delete_function(FunctionName=name)
 
 
 @utilities.jittery_exponential_backoff(("TooManyRequestsException",), 2, 4, 3)
@@ -846,7 +583,7 @@ def launch_worker(lambda_name, task_id, config, num_workers, ps):
     """
     log = logging.getLogger("cirrus.automate.launch_worker")
 
-    log.debug("launch_worker: Launching Task %d." % task_id)
+    log.debug("Launching Task %d." % task_id)
     payload = {
         "config": config,
         "num_workers": num_workers,
@@ -855,7 +592,7 @@ def launch_worker(lambda_name, task_id, config, num_workers, ps):
         "task_id": task_id,
         "log_level": LAMBDA_LOG_LEVEL
     }
-    response = clients.lamb_no_retries.invoke(
+    response = resources.lambda_client_no_retries.invoke(
         FunctionName=lambda_name,
         InvocationType="RequestResponse",
         LogType="Tail",
@@ -863,7 +600,7 @@ def launch_worker(lambda_name, task_id, config, num_workers, ps):
     )
 
     status = response["StatusCode"]
-    message = "launch_worker: Task %d completed with status code %d." \
+    message = "Task %d completed with status code %d." \
               % (task_id, status)
     if status == 200:
         log.debug(message)

@@ -10,13 +10,9 @@ import graph
 from utils import *
 from . import automate
 from . import configuration
+from . import parameter_server
 
 logging.basicConfig(filename="cirrusbundle.log", level=logging.WARNING)
-
-# NOTE: This is a temporary measure. Ideally this zip would be on the cloud.
-# Due to constant updates to bundle.zip, its more convienient to have it local
-
-bundle_zip_location="/home/camus/code/cirrus-1/python/frontend/cirrus/cirrus/bundle.zip"
 
 class GridSearch(object):
     # All searches that are currently running.
@@ -81,8 +77,9 @@ class GridSearch(object):
             modified_config = param_base.copy()
             for var_name, var_value in configuration:
                 modified_config[var_name] = var_value
-            modified_config["ps"] = automate.ParameterServer(instances[index], base_port, base_port+1,
-                                                             modified_config["n_workers"] * 2)
+            modified_config["ps"] = parameter_server.ParameterServer(
+                instances[index], base_port, base_port+1,
+                modified_config["n_workers"])
             index = (index + 1) % num_machines
             base_port += 2
 

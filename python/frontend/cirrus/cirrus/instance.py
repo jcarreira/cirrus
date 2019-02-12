@@ -9,7 +9,7 @@ import threading
 
 import paramiko
 
-from .clients import clients
+from .resources import resources
 
 # The ARN of an IAM policy that allows full access to S3.
 S3_FULL_ACCESS_ARN = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
@@ -34,10 +34,18 @@ class Instance(object):
     """An EC2 instance."""
 
     # The interval at which to poll for an AMI becoming available, in seconds.
-    IMAGE_POLL_INTERVAL = 5
+    IMAGE_POLL_INTERVAL = 3
 
     # The maximum number of times to poll for an AMI becoming available.
     IMAGE_POLL_MAX = (5 * 60) // IMAGE_POLL_INTERVAL
+
+    # The interval (in seconds) at which to poll for an instance entering the
+    #   "running" state.
+    _RUNNING_POLL_INTERVAL = 3
+
+    # The maximum amount of time (in seconds) to wait for an instance to enter
+    #    the "running" state.
+    _RUNNING_POLL_TIMEOUT = 3 * 60
 
     # The name of the key pair used by Instances.
     KEY_PAIR_NAME = "cirrus_key_pair"
@@ -73,12 +81,12 @@ class Instance(object):
         """
         log = logging.getLogger("cirrus.instance.Instance")
 
-        log.debug("images_exist: Describing images.")
-        response = clients.ec2.describe_images(
+        log.debug("Describing images.")
+        response = resources.ec2_client.describe_images(
             Filters=[{"Name": "name", "Values": [name]}], Owners=["self"])
         result = len(response["Images"]) > 0
 
-        log.debug("images_exist: Done.")
+        log.debug("Done.")
 
         return result
 
@@ -92,16 +100,16 @@ class Instance(object):
         """
         log = logging.getLogger("cirrus.instance.Instance")
 
-        log.debug("delete_images: Describing images.")
-        response = clients.ec2.describe_images(
+        log.debug("Describing images.")
+        response = resources.ec2_client.describe_images(
             Filters=[{"Name": "name", "Values": [name]}], Owners=["self"])
 
         for info in response["Images"]:
             image_id = info["ImageId"]
-            log.debug("delete_images: Deleting image %s." % image_id)
-            clients.ec2_resource.Image(info["ImageId"]).deregister()
+            log.debug("Deleting image %s." % image_id)
+            resources.ec2_resource.Image(info["ImageId"]).deregister()
 
-        log.debug("delete_images: Done.")
+        log.debug("Done.")
 
 
     @classmethod
@@ -115,24 +123,25 @@ class Instance(object):
 
         log = logging.getLogger("cirrus.instance.Instance.set_up_key_pair")
 
-        log.debug("set_up_key_pair: Checking for an existing key pair.")
+        log.debug("Checking for an existing key pair.")
         filter = {"Name": "key-name", "Values": [cls.KEY_PAIR_NAME]}
-        response = clients.ec2.describe_key_pairs(Filters=[filter])
+        response = resources.ec2_client.describe_key_pairs(Filters=[filter])
         if len(response["KeyPairs"]) > 0:
-            log.debug("set_up_key_pair: Deleting an existing key pair.")
-            clients.ec2.delete_key_pair(KeyName=cls.KEY_PAIR_NAME)
+            log.debug("Deleting an existing key pair.")
+            resources.ec2_client.delete_key_pair(KeyName=cls.KEY_PAIR_NAME)
 
-        log.debug("set_up_key_pair: Creating key pair.")
-        response = clients.ec2.create_key_pair(KeyName=cls.KEY_PAIR_NAME)
+        log.debug("Creating key pair.")
+        response = resources.ec2_client.create_key_pair(
+            KeyName=cls.KEY_PAIR_NAME)
 
-        log.debug("set_up_key_pair: Saving private key.")
+        log.debug("Saving private key.")
         path = os.path.expanduser(cls.PRIVATE_KEY_PATH)
         if not os.path.exists(os.path.dirname(path)):
             os.path.makedirs(os.path.dirname(path))
         with open(path, "w") as f:
             f.write(response["KeyMaterial"])
 
-        log.debug("set_up_key_pair: Done.")
+        log.debug("Done.")
 
 
     @classmethod
@@ -146,17 +155,17 @@ class Instance(object):
         log = logging.getLogger(
             "cirrus.instance.Instance.set_up_security_group")
 
-        log.debug("set_up_security_group: Checking for existing security "
-                  "groups.")
+        log.debug("Checking for existing security groups.")
         filter = {"Name": "group-name", "Values": [cls.SECURITY_GROUP_NAME]}
-        response = clients.ec2.describe_security_groups(Filters=[filter])
+        response = resources.ec2_client.describe_security_groups(
+            Filters=[filter])
         for group_info in response["SecurityGroups"]:
-            log.debug("set_up_security_group: Deleting an existing security "
-                      "group.")
-            clients.ec2.delete_security_group(GroupId=group_info["GroupId"])
+            log.debug("Deleting an existing security group.")
+            resources.ec2_client.delete_security_group(
+                GroupId=group_info["GroupId"])
 
-        log.debug("set_up_security_group: Creating security group.")
-        group = clients.ec2.create_security_group(
+        log.debug("Creating security group.")
+        resources.ec2_client.create_security_group(
             GroupName=cls.SECURITY_GROUP_NAME,
             Description="Generated by the Cirrus setup script. Lets all "
                         "inbound and outbound traffic through."
@@ -165,14 +174,14 @@ class Instance(object):
         # Allow all outbound traffic so that Instances will be able to fetch
         #   software and data. Allow all inbound traffic so that we will be able
         #   to send messages to programs on Instances.
-        log.debug("set_up_security_group: Configuring security group.")
+        log.debug("Configuring security group.")
         # An IpProtocol of -1 means "all protocols" and additionally implies
         #   "all ports".
-        clients.ec2.authorize_security_group_ingress(
+        resources.ec2_client.authorize_security_group_ingress(
             GroupName=cls.SECURITY_GROUP_NAME, IpProtocol="-1",
             CidrIp="0.0.0.0/0")
 
-        log.debug("set_up_security_group: Done.")
+        log.debug("Done.")
 
 
     @classmethod
@@ -185,8 +194,8 @@ class Instance(object):
 
         log = logging.getLogger("cirrus.instance.Instance.set_up_role")
 
-        log.debug("set_up_role: Checking for an existing role.")
-        iam_client = clients.iam.meta.client
+        log.debug("Checking for an existing role.")
+        iam_client = resources.iam_client
         # TODO: Could cause a problem under rare circumstances. We are assuming
         #   that there are less than 1000 roles in the account.
         roles_response = iam_client.list_roles()
@@ -196,26 +205,24 @@ class Instance(object):
                 exists = True
                 break
         if exists:
-            log.debug("set_up_role: Listing the policies of existing role.")
+            log.debug("Listing the policies of existing role.")
             role_policy_response = iam_client.list_attached_role_policies(
                 RoleName=cls.ROLE_NAME)
             for policy_info in role_policy_response["AttachedPolicies"]:
-                log.debug("set_up_role: Detaching policy from existing role.")
+                log.debug("Detaching policy from existing role.")
                 iam_client.detach_role_policy(
                     RoleName=cls.ROLE_NAME,
                     PolicyArn=policy_info["PolicyArn"]
                 )
-            log.debug("set_up_role: Listing the instance profiles of existing "
-                      "role.")
-            role = clients.iam.Role(cls.ROLE_NAME)
+            log.debug("Listing the instance profiles of existing role.")
+            role = resources.iam_resource.Role(cls.ROLE_NAME)
             for instance_profile in role.instance_profiles.all():
-                log.debug("set_up_role: Detaching instance profile from "
-                          "existing role.")
+                log.debug("Detaching instance profile from existing role.")
                 instance_profile.remove_role(RoleName=cls.ROLE_NAME)
-            log.debug("set_up_role: Deleting an existing role.")
+            log.debug("Deleting an existing role.")
             iam_client.delete_role(RoleName=cls.ROLE_NAME)
 
-        log.debug("set_up_role: Creating role.")
+        log.debug("Creating role.")
         role = iam_client.create_role(
             RoleName=cls.ROLE_NAME,
             AssumeRolePolicyDocument="""{
@@ -232,10 +239,10 @@ class Instance(object):
             }"""
         )
 
-        log.debug("set_up_role: Attaching policies to role.")
+        log.debug("Attaching policies to role.")
         iam_client.attach_role_policy(RoleName=cls.ROLE_NAME,
                                       PolicyArn=S3_FULL_ACCESS_ARN)
-        log.debug("set_up_role: Done.")
+        log.debug("Done.")
 
 
     @classmethod
@@ -250,39 +257,34 @@ class Instance(object):
         log = logging.getLogger(
             "cirrus.instance.Instance.set_up_instance_profile")
 
-        log.debug("set_up_instance_profile: Checking for an existing instance "
-                  "profile.")
+        log.debug("Checking for an existing instance profile.")
         existing = None
-        for instance_profile in clients.iam.instance_profiles.all():
+        for instance_profile in resources.iam_resource.instance_profiles.all():
             if instance_profile.name == cls.INSTANCE_PROFILE_NAME:
                 existing = instance_profile
                 break
         if existing is not None:
-            log.debug("set_up_instance_profile: Listing the roles of existing "
-                      "instance profile.")
+            log.debug("Listing the roles of existing instance profile.")
             for role in existing.roles:
-                log.debug("set_up_instance_profile: Removing role from "
-                          "existing instance profile.")
+                log.debug("Removing role from existing instance profile.")
                 existing.remove_role(RoleName=role.name)
-            log.debug("set_up_instance_profile: Deleting existing instance "
-                      "profile.")
+            log.debug("Deleting existing instance profile.")
             existing.delete()
 
-        log.debug("set_up_instance_profile: Creating instance profile.")
-        instance_profile = clients.iam.create_instance_profile(
+        log.debug("Creating instance profile.")
+        instance_profile = resources.iam_resource.create_instance_profile(
             InstanceProfileName=cls.INSTANCE_PROFILE_NAME)
 
-        log.debug("set_up_instance_profile: Adding role to instance profile.")
+        log.debug("Adding role to instance profile.")
         instance_profile.add_role(RoleName=cls.ROLE_NAME)
 
-        log.debug("set_up_instance_profile: Waiting for changes to take "
-                  "effect.")
+        log.debug("Waiting for changes to take effect.")
         # IAM is eventually consistent, so we need to wait for our changes to be
         #   reflected. The delay distribution is heavy-tailed, so this might
         #   still error, rarely. The right way is to retry at an interval.
         time.sleep(automate.IAM_CONSISTENCY_DELAY)
 
-        log.debug("set_up_instance_profile: Done.")
+        log.debug("Done.")
 
 
     def __init__(self, name, disk_size, typ, username, ami_id=None,
@@ -318,13 +320,13 @@ class Instance(object):
             assert ami_owner_name is not None, \
                 "When ami_id is not specified, ami_owner_name must be."
 
-            self._log.debug("__init__: Resolving AMI owner/name to AMI ID.")
+            self._log.debug("Resolving AMI owner/name to AMI ID.")
             owner, name = ami_owner_name
             filter = {
                 "Name": "name",
                 "Values": [name]
             }
-            response = clients.ec2.describe_images(
+            response = resources.ec2_client.describe_images(
                 Filters=[filter],
                 Owners=[owner]
             )
@@ -347,7 +349,7 @@ class Instance(object):
 
         self._should_stop_monitoring = None
 
-        self._log.debug("__init__: Done.")
+        self._log.debug("Done.")
 
 
     def start(self):
@@ -371,7 +373,7 @@ class Instance(object):
             #   to be safe.
             self._start_termination_monitoring()
 
-        self._log.debug("start: Done.")
+        self._log.debug("Done.")
 
 
     def __str__(self):
@@ -418,27 +420,27 @@ class Instance(object):
             return 0, "", ""
 
         if self._ssh_client is None:
-            self._log.debug("run_command: Calling _connect_ssh.")
+            self._log.debug("Calling _connect_ssh.")
             self._connect_ssh()
 
-        self._log.debug("run_command: Running `%s`." % command)
+        self._log.debug("Running `%s`." % command)
         _, stdout, stderr = self._ssh_client.exec_command(command)
 
         # exec_command is asynchronous. The following waits for completion.
-        self._log.debug("run_command: Waiting for completion.")
+        self._log.debug("Waiting for completion.")
 
-        self._log.debug("run_command: Fetching stdout and stderr.")
+        self._log.debug("Fetching stdout and stderr.")
         stdout_data, stderr_data = stdout.read(), stderr.read()
-        self._log.debug("run_command: stdout had length %d." % len(stdout_data))
-        self._log.debug("run_command: stderr had length %d." % len(stderr_data))
+        self._log.debug("stdout had length %d." % len(stdout_data))
+        self._log.debug("stderr had length %d." % len(stderr_data))
 
         status = stdout.channel.recv_exit_status()
-        self._log.debug("run_command: Exit code was %d." % status)
+        self._log.debug("Exit code was %d." % status)
         if check and status != 0:
-            raise RuntimeError("`%s` returned nonzero exit code %d."
-                               % (command, status))
+            raise RuntimeError("`%s` returned nonzero exit code %d. The stderr "
+                               "follows.\n%s" % (command, status, stderr_data))
 
-        self._log.debug("run_command: Done.")
+        self._log.debug("Done.")
         return status, stdout_data, stderr_data
 
 
@@ -469,26 +471,28 @@ class Instance(object):
     def download_s3(self, src, dest):
         """Download a file from S3 to this instance.
 
+        Does not require that the AWS CLI be installed.
+
         Args:
             src (str): A path to a file on S3.
             dest (str): The path at which to save the file on this instance.
                 If relative, then relative to the home folder of this instance's
                 SSH user.
         """
+        from . import automate
+
         assert src.startswith("s3://")
         assert not dest.startswith("s3://")
 
-        self.run_command(" ".join((
-            "aws",
-            "s3",
-            "cp",
-            src,
-            dest
-        )))
+        bucket, key = automate._split_s3_url(src)
+        self.run_command("wget http://%s.s3.amazonaws.com/%s -O %s"
+                         % (bucket, key, dest))
 
 
     def upload_s3(self, src, dest, public):
         """Upload a file from this instance to S3.
+
+        Requires that the AWS CLI be installed.
 
         Args:
             src (str): A path to a file on this instance. If relative, then
@@ -519,20 +523,27 @@ class Instance(object):
         self._sftp_client.putfo(fo, dest)
 
 
-    def save_image(self, name):
+    def save_image(self, name, reboot=True):
         """Create an AMI from the current state of this instance.
+
+        Stops the instance in the process.
 
         Args:
             name (str): The name to give the AMI.
+            reboot (bool): Whether to boot the instance after creating the AMI.
+                If False, the instance will be left stopped. If omitted, True.
         """
-        self._log.debug("save_image: Starting image creation.")
+        self._log.debug("Stopping instance.")
+        self.instance.stop()
+        self._wait_until_state("stopped")
+
+        self._log.debug("Starting image creation.")
         image = self.instance.create_image(Name=name)
 
-        self._log.debug("save_image: Waiting for image creation.")
+        self._log.debug("Waiting for image creation.")
         image.wait_until_exists()
         for i in range(self.IMAGE_POLL_MAX):
-            self._log.debug("make_build_image: Doing poll #%d out of "
-                      "%d." % (i+1, self.IMAGE_POLL_MAX))
+            self._log.debug("Doing poll #%d out of %d." % (i+1, self.IMAGE_POLL_MAX))
             image.reload()
             if image.state == "available":
                 break
@@ -541,7 +552,12 @@ class Instance(object):
             raise RuntimeError("AMI did not become available within time "
                                "constraints.")
 
-        self._log.debug("save_image: Done.")
+        if reboot:
+            self._log.debug("Starting instance.")
+            self.instance.start()
+            self._wait_until_state("running")
+
+        self._log.debug("Done.")
 
 
     def cleanup(self):
@@ -551,20 +567,20 @@ class Instance(object):
             if self._should_stop_monitoring is not None:
                 self._should_stop_monitoring.set()
             if self._sftp_client is not None:
-                self._log.debug("cleanup: Closing SFTP client.")
+                self._log.debug("Closing SFTP client.")
                 self._sftp_client.close()
                 self._sftp_client = None
             if self._ssh_client is not None:
-                self._log.debug("cleanup: Closing SSH client.")
+                self._log.debug("Closing SSH client.")
                 self._ssh_client.close()
                 self._ssh_client = None
             if self.instance is not None:
-                self._log.debug("cleanup: Terminating instance.")
+                self._log.debug("Terminating instance.")
                 self.instance.terminate()
-                self._log.debug("cleanup: Waiting for instance to terminate.")
+                self._log.debug("Waiting for instance to terminate.")
                 self.instance.wait_until_terminated()
                 self.instance = None
-            self._log.debug("cleanup: Done.")
+            self._log.debug("Done.")
         except:
             MESSAGE = "An error occured during cleanup. Some EC2 resources " \
                   "may remain. Delete them manually."
@@ -575,7 +591,7 @@ class Instance(object):
 
 
     def _exists(self):
-        self._log.debug("_exists: Listing instances.")
+        self._log.debug("Listing instances.")
         name_filter = {
             "Name": "tag:Name",
             "Values": [self._name]
@@ -585,23 +601,23 @@ class Instance(object):
             "Values": ["running"]
         }
         filters = [name_filter, state_filter]
-        instances = list(clients.ec2_resource.instances.filter(Filters=filters))
+        instances = list(
+            resources.ec2_resource.instances.filter(Filters=filters))
 
         if len(instances) > 0:
-            self._log.info("_exists: An existing instance with the same name "
-                           "was found.")
+            self._log.info("An existing instance with the same name was found.")
             self.instance = instances[0]
             name = self._name + "_instance_profile"
-            self._instance_profile = clients.iam.InstanceProfile(name)
+            self._instance_profile = \
+                resources.iam_resource.InstanceProfile(name)
             return True
 
-        self._log.info("_exists: No existing instance with the same name "
-                       "was found.")
+        self._log.info("No existing instance with the same name was found.")
         return False
 
 
     def _start_and_wait(self):
-        self._log.debug("_start_and_wait: Starting a new instance.")
+        self._log.debug("Starting a new instance.")
         tag = {
             "Key": "Name",
             "Value": self._name
@@ -637,33 +653,51 @@ class Instance(object):
                     "InstanceInterruptionBehavior": "terminate"
                 }
             }
-        instances = clients.ec2_resource.create_instances(**create_args)
+        instances = resources.ec2_resource.create_instances(**create_args)
         self.instance = instances[0]
 
-        self._log.debug("_start_and_wait: Waiting for instance to enter " \
-                        "running state.")
-        self.instance.wait_until_running()
+        self._log.debug("Waiting for instance to enter running state.")
+        self._wait_until_state("running")
 
-        self._log.debug("_start_and_wait: Fetching instance metadata.")
+        self._log.debug("Fetching instance metadata.")
         # Reloads metadata about the instance. In particular, retreives its
         #   public_ip_address.
         self.instance.load()
 
-        self._log.debug("_start_and_wait: Done.")
+        self._log.debug("Done.")
+
+
+    def _wait_until_state(self, state):
+        """Wait until this instance enters a given state.
+
+        Args:
+            state (str): The name of the state.
+
+        Raises:
+            RuntimeError: The timeout is reached before the instance enters
+                the given state.
+        """
+        start = time.time()
+        while time.time() - start < self._RUNNING_POLL_TIMEOUT:
+            self.instance.reload()
+            if self.instance.state["Name"] == state:
+                break
+            time.sleep(self._RUNNING_POLL_INTERVAL)
+        else:
+            raise RuntimeError("Timed out waiting for instance to enter "
+                               "\"%s\" state." % state)
 
 
     def _start_termination_monitoring(self):
         def is_marked_for_termination():
-            self._log.debug("is_marked_for_termination: Checking whether "
-                            "marked for termination.")
+            self._log.debug("Checking whether marked for termination.")
             command = "curl -s -o /dev/null -w \"%%{http_code}\" %s" \
                       % INSTANCE_ACTION_URL
             status, out, _ = self.run_command(command, False)
             return out != "404"
 
         def monitor_forever():
-            self._log.debug("monitor_forever: Beginning termination "
-                            "monitoring.")
+            self._log.debug("Beginning termination monitoring.")
             while not self._should_stop_monitoring.is_set():
                 if is_marked_for_termination():
                     raise RuntimeError("%s is marked for termination by the "
@@ -677,8 +711,8 @@ class Instance(object):
         thread.start()
 
 
-    def _connect_ssh(self, timeout=5, attempts=20):
-        self._log.debug("_connect_ssh: Configuring.")
+    def _connect_ssh(self, timeout=3, attempts=35):
+        self._log.debug("Configuring.")
 
         with open(os.path.expanduser(self.PRIVATE_KEY_PATH), "r") as f:
             key = paramiko.RSAKey.from_private_key(f)
@@ -688,8 +722,8 @@ class Instance(object):
         authentication_failures = 0
         for i in range(attempts):
             try:
-                self._log.debug("_connect_ssh: Making connection attempt " \
-                                "#%d out of %d." % (i+1, attempts))
+                self._log.debug("Making connection attempt #%d out of %d."
+                                % (i+1, attempts))
                 self._ssh_client.connect(
                     hostname=self.instance.public_ip_address,
                     username=self._username,
@@ -703,12 +737,12 @@ class Instance(object):
                 self._ssh_client.get_transport().window_size = 2147483647
                 self._ssh_client.get_transport().set_keepalive(SSH_KEEPALIVE)
             except socket.timeout:
-                self._log.debug("_connect_ssh: Connection attempt timed out " \
-                                "after %ds." % timeout)
+                self._log.debug("Connection attempt timed out after %ds."
+                                % timeout)
                 pass
             except paramiko.ssh_exception.NoValidConnectionsError:
-                self._log.debug("_connect_ssh: Connection attempt failed. " \
-                                "Sleeping for %ds." % timeout)
+                self._log.debug("Connection attempt failed. Sleeping for %ds."
+                                % timeout)
                 time.sleep(timeout)
                 pass
             except paramiko.ssh_exception.AuthenticationException:
