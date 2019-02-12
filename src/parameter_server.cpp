@@ -61,6 +61,7 @@ void run_tasks(int rank,
       cirrus::MFNetflixTask lt(0, batch_size, samples_per_batch,
                                features_per_sample, nworkers, rank, config,
                                ps_ips, ps_ports);
+
       lt.run(config, rank - WORKERS_BASE, test_iters);
     } else {
       exit(-1);

@@ -75,7 +75,7 @@ bool MFNetflixTask::get_dataset_minibatch(
 
 void MFNetflixTask::run(const Configuration& config,
                         int worker,
-                        int work_iters) {
+                        int test_iters) {
   std::cout << "Starting MFNetflixTask"
     << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
@@ -183,7 +183,7 @@ void MFNetflixTask::run(const Configuration& config,
     }
 
     count++;
-    if (work_iters > 0 && work_iters > count) {
+    if (test_iters > 0 && count > test_iters) {
       exit(0);
     }
   }
