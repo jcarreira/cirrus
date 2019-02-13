@@ -24,7 +24,6 @@ script:
    - gcc --version
    - g++ --version
    - make -j 10
-   - make -j 10
    - python tests/test_travis_sm/test.py
    - python tests/test_travis_lr/test.py
    - ./tests/test_data/jester.sh
