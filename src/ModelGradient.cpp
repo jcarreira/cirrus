@@ -492,17 +492,17 @@ LDAUpdates& LDAUpdates::operator=(LDAUpdates&& other) {
 void LDAUpdates::loadSerialized(const char* mem) {
   version = load_value<uint64_t>(mem);
 
-  int len = load_value<uint32_t>(mem);
+  uint64_t len_64 = load_value<uint64_t>(mem);
   int K = load_value<uint32_t>(mem);
-  int V = len / K;
+  int V = len_64 / K;
 
   sparse_nvt_indices.reserve(V);
   temp_look_up.fill(-1);
 
   change_nvt_ptr.reset(new std::vector<int>());
-  change_nvt_ptr->reserve(len);
-  for (int i = 0; i < len; ++i) {
-    int temp = load_value<int>(mem);
+  change_nvt_ptr->reserve(len_64);
+  for (int64_t i = 0; i < len_64; ++i) {
+    int32_t temp = load_value<int32_t>(mem);
     change_nvt_ptr->push_back(temp);
   }
 
@@ -510,27 +510,27 @@ void LDAUpdates::loadSerialized(const char* mem) {
   change_nt_ptr->clear();
   change_nt_ptr->reserve(K);
   for (int i = 0; i < K; ++i) {
-    int temp = load_value<int>(mem);
+    int32_t temp = load_value<int32_t>(mem);
     change_nt_ptr->push_back(temp);
   }
 
-  len = load_value<uint32_t>(mem);
+  uint32_t len = load_value<uint32_t>(mem);
   slice.clear();
   slice.reserve(len);
   for (int i = 0; i < len; ++i) {
-    int temp = load_value<int>(mem);
+    uint32_t temp = load_value<uint32_t>(mem);
     slice.push_back(temp);
   }
 
-  int len_temp = load_value<int8_t>(mem);
+  len = load_value<uint32_t>(mem);
   ws_ptr.reset(new std::vector<std::vector<int>>());
-  ws_ptr->reserve(len_temp);
-  for (int i = 0; i < len_temp; ++i) {
-    len = load_value<int32_t>(mem);
+  ws_ptr->reserve(len);
+  for (int i = 0; i < len; ++i) {
+    uint32_t len_32 = load_value<uint32_t>(mem);
     std::vector<int> w;
-    w.reserve(len);
-    for (int j = 0; j < len; ++j) {
-      int temp = load_value<int32_t>(mem);
+    w.reserve(len_32);
+    for (int j = 0; j < len_32; ++j) {
+      int32_t temp = load_value<int32_t>(mem);
       w.push_back(temp);
     }
     std::cout << std::endl;
@@ -538,7 +538,6 @@ void LDAUpdates::loadSerialized(const char* mem) {
   }
 
   update_bucket = load_value<uint32_t>(mem);
-  std::cout << "update bucket: " << update_bucket << std::endl;
 
   int idx = 0;
   for (int i : slice) {
@@ -555,47 +554,53 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
   }
 
   *serialize_size =
-      sizeof(uint64_t) +
-      sizeof(int) * (4 + ws_ptr->size() + N + change_nvt_ptr->size() +
-                     change_nt_ptr->size() + slice.size()) +
-      sizeof(int8_t);
+      sizeof(uint64_t) * (2) +
+      sizeof(uint32_t) * (4 + ws_ptr->size() + slice.size()) +
+      sizeof(int32_t) * (N + change_nvt_ptr->size() + change_nt_ptr->size());
+
   std::shared_ptr<char> mem_begin = std::shared_ptr<char>(
       new char[*serialize_size], std::default_delete<char[]>());
   char* mem = mem_begin.get();
 
+  std::cout << "change_nvt_ptr->size(): " << change_nvt_ptr->size() << std::endl;
+  std::cout << "change_nt_ptr->size()" << change_nt_ptr->size() << std::endl;
+  std::cout << "slice.size()" << slice.size() << std::endl;
+  std::cout << "ws_ptr->size()" << ws_ptr->size() << std::endl;
+
+
   store_value<uint64_t>(mem, version);
-  store_value<int>(mem, change_nvt_ptr->size());
+  store_value<uint64_t>(mem, change_nvt_ptr->size());
   store_value<uint32_t>(mem, change_nt_ptr->size());
 
-  int* data = reinterpret_cast<int*>(mem);
+  int32_t* data = reinterpret_cast<int32_t*>(mem);
   std::copy(change_nvt_ptr->begin(), change_nvt_ptr->end(), data);
   mem = reinterpret_cast<char*>(
-      (reinterpret_cast<char*>(mem) + sizeof(int) * change_nvt_ptr->size()));
+      (reinterpret_cast<char*>(mem) + sizeof(int32_t) * change_nvt_ptr->size()));
 
   // store_value<uint32_t>(mem, change_nt_ptr->size());
-  data = reinterpret_cast<int*>(mem);
+  data = reinterpret_cast<int32_t*>(mem);
   std::copy(change_nt_ptr->begin(), change_nt_ptr->end(), data);
   mem = reinterpret_cast<char*>(
-      (reinterpret_cast<char*>(mem) + sizeof(int) * change_nt_ptr->size()));
+      (reinterpret_cast<char*>(mem) + sizeof(int32_t) * change_nt_ptr->size()));
 
   store_value<uint32_t>(mem, slice.size());
-  data = reinterpret_cast<int*>(mem);
-  std::copy(slice.begin(), slice.end(), data);
+  uint32_t* data_uint32 = reinterpret_cast<uint32_t*>(mem);
+  std::copy(slice.begin(), slice.end(), data_uint32);
   mem = reinterpret_cast<char*>(
-      (reinterpret_cast<char*>(mem) + sizeof(int) * slice.size()));
+      (reinterpret_cast<char*>(mem) + sizeof(uint32_t) * slice.size()));
 
-  store_value<uint8_t>(mem, ws_ptr->size());
+  store_value<uint32_t>(mem, ws_ptr->size());
   for (int i = 0; i < ws_ptr->size(); ++i) {
     store_value<uint32_t>(mem, ws_ptr->operator[](i).size());
-    int32_t* data_32 = reinterpret_cast<int32_t*>(mem);
+    std::cout << ws_ptr->operator[](i).size() << std::endl;
+    data = reinterpret_cast<int32_t*>(mem);
     std::copy(ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(),
-              data_32);
+              data);
     mem = reinterpret_cast<char*>(
         (reinterpret_cast<char*>(mem) +
          sizeof(int32_t) * ws_ptr->operator[](i).size()));
   }
   store_value<uint32_t>(mem, update_bucket);
-  std::cout << "update bucket: " << update_bucket << std::endl;
 
   return mem_begin;
 }
