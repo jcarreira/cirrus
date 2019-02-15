@@ -70,7 +70,6 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
-
 void LogisticSparseTaskS3::run(const Configuration& config,
                                int worker,
                                int test_iters) {

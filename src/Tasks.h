@@ -89,34 +89,34 @@ class LogisticSparseTaskS3 : public MLTask {
                 ps_ips,
                 ps_ports) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker, int test_iters);
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config, int worker, int test_iters);
 
-   private:
-    class SparseModelGet {
-      public:
-        SparseModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-            psi->connect();
-        }
+  private:
+   class SparseModelGet {
+    public:
+     SparseModelGet(const std::string& ps_ip, int ps_port)
+         : ps_ip(ps_ip), ps_port(ps_port) {
+       psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+       psi->connect();
+     }
 
-        SparseLRModel get_new_model(const SparseDataset& ds,
-                                    const Configuration& config) {
-          return std::move(psi->get_lr_sparse_model(ds, config));
-        }
-        void get_new_model_inplace(const SparseDataset& ds,
-                                   SparseLRModel& model,
-                                   const Configuration& config) {
-          psi->get_lr_sparse_model_inplace(ds, model, config);
-        }
+     SparseLRModel get_new_model(const SparseDataset& ds,
+                                 const Configuration& config) {
+       return std::move(psi->get_lr_sparse_model(ds, config));
+     }
+     void get_new_model_inplace(const SparseDataset& ds,
+                                SparseLRModel& model,
+                                const Configuration& config) {
+       psi->get_lr_sparse_model_inplace(ds, model, config);
+     }
 
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
+    private:
+     std::unique_ptr<PSSparseServerInterface> psi;
+     std::string ps_ip;
+     int ps_port;
     };
 
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
@@ -462,12 +462,10 @@ class MFNetflixTask : public MLTask {
                 ps_ips,
                 ps_ports) {}
 
-
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker, int test_iters);
-
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config, int worker, int test_iters);
 
   private:
    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,

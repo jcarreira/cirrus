@@ -127,8 +127,7 @@ void MFNetflixTask::run(const Configuration& config,
   }
 
   repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
-  
-  
+
   std::cout << "[WORKER] starting loop" << std::endl;
   int count = 0;
 
