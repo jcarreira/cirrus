@@ -120,31 +120,32 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   uint64_t to_send_size;
 
   // Storing local variables (LDAStatistics)
-  // for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-  //   std::vector<int> w;
-  //
-  //   std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
-  //
-  //   // Only get corpus of size s3_obj_num_samples
-  //   std::vector<std::vector<std::pair<int, int> > > partial_docs;
-  //   dataset.get_some_docs(partial_docs);
-  //
-  //   LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, w, K,
-  //                                         global_vocab, nvt_init_rnd_scope);
-  //   std::cout << i << " : " << w.size() << std::endl;
-  //   ws.push_back(w);
-  //
-  //   char* msg = to_save.serialize(to_send_size);
-  //
-  //   std::cout << "Putting object(LDAStatistics) in S3 with size: "
-  //             << to_send_size << std::endl;
-  //   std::string obj_id =
-  //       std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
-  //       "-LDA";
-  //   s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
-  //                            std::string(msg, to_send_size));
-  //   delete msg;
-  // }
+  for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
+  // for (unsigned int i = 1; i < 3; ++i) {
+    std::vector<int> w;
+
+    std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
+
+    // Only get corpus of size s3_obj_num_samples
+    std::vector<std::vector<std::pair<int, int> > > partial_docs;
+    dataset.get_some_docs(partial_docs);
+
+    LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, w, K,
+                                          global_vocab, nvt_init_rnd_scope);
+    std::cout << i << " : " << w.size() << std::endl;
+    ws.push_back(w);
+
+    char* msg = to_save.serialize(to_send_size);
+
+    std::cout << "Putting object(LDAStatistics) in S3 with size: "
+              << to_send_size << std::endl;
+    std::string obj_id =
+        std::to_string(hash_f(std::to_string(SAMPLE_BASE + i).c_str())) +
+        "-LDA";
+    s3_client->s3_put_object(obj_id, config.get_s3_bucket(),
+                             std::string(msg, to_send_size));
+    delete msg;
+  }
 
   std::shared_ptr<LDAUpdates> initial_global_var;
   initial_global_var.reset(new LDAUpdates());

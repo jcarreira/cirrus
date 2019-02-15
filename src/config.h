@@ -15,13 +15,11 @@
 
 #define LOADING_TASK_RANK -100000
 
-#define PS_LDA_TASK_RANK (4)
-// #define LOADING_LDA_TASK_RANK (3)
 #define WORKER_SPARSE_TASK_RANK (3)
 #define ERROR_SPARSE_TASK_RANK (2)
 #define PS_SPARSE_SERVER_TASK_RANK (1)
 #define LOADING_SPARSE_TASK_RANK (0)
-// #define WORKERS_BASE 5  // used in wait_for_start
+#define WORKERS_BASE 3  // used in wait_for_start
 
 #define SAMPLE_BASE (0)
 

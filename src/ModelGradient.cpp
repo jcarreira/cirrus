@@ -567,6 +567,8 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
   std::cout << "slice.size()" << slice.size() << std::endl;
   std::cout << "ws_ptr->size()" << ws_ptr->size() << std::endl;
 
+  std::cout << "N: " << N << std::endl;
+
 
   store_value<uint64_t>(mem, version);
   store_value<uint64_t>(mem, change_nvt_ptr->size());
