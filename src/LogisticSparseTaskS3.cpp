@@ -70,8 +70,12 @@ bool LogisticSparseTaskS3::get_dataset_minibatch(
   return true;
 }
 
-void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
-  std::cout << "Starting LogisticSparseTaskS3 " << ps_ips.size() << std::endl;
+
+void LogisticSparseTaskS3::run(const Configuration& config,
+                               int worker,
+                               int test_iters) {
+  std::cout << "Starting LogisticSparseTaskS3"
+    << std::endl;
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
@@ -173,6 +177,9 @@ void LogisticSparseTaskS3::run(const Configuration& config, int worker) {
         printed_rate = true;
         std::cout << "Update rate/sec last 2 mins: " << (1.0 * count / elapsed_sec) << std::endl;
       }
+    }
+    if (test_iters > 0 && count > test_iters) {
+      exit(0);
     }
   }
 }
