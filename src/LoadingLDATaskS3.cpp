@@ -121,7 +121,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-  // for (unsigned int i = 1; i < 3; ++i) {
+    // for (unsigned int i = 1; i < 3; ++i) {
     std::vector<int> w;
 
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
@@ -158,8 +158,8 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   std::shared_ptr<char> s3_obj = initial_global_var->serialize(&len);
 
   // LDAUpdates initial_global_var(nvt, nt, global_vocab_vec);
-  std::cout << "Putting object(initial global var) in S3 with size: "
-            << len << std::endl;
+  std::cout << "Putting object(initial global var) in S3 with size: " << len
+            << std::endl;
   std::string obj_id =
       std::to_string(hash_f(std::to_string(SAMPLE_BASE).c_str())) + "-LDA";
 

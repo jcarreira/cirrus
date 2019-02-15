@@ -562,7 +562,8 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
       new char[*serialize_size], std::default_delete<char[]>());
   char* mem = mem_begin.get();
 
-  std::cout << "change_nvt_ptr->size(): " << change_nvt_ptr->size() << std::endl;
+  std::cout << "change_nvt_ptr->size(): " << change_nvt_ptr->size()
+            << std::endl;
   std::cout << "change_nt_ptr->size()" << change_nt_ptr->size() << std::endl;
   std::cout << "slice.size()" << slice.size() << std::endl;
   std::cout << "ws_ptr->size()" << ws_ptr->size() << std::endl;
@@ -576,8 +577,8 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
 
   int32_t* data = reinterpret_cast<int32_t*>(mem);
   std::copy(change_nvt_ptr->begin(), change_nvt_ptr->end(), data);
-  mem = reinterpret_cast<char*>(
-      (reinterpret_cast<char*>(mem) + sizeof(int32_t) * change_nvt_ptr->size()));
+  mem = reinterpret_cast<char*>((reinterpret_cast<char*>(mem) +
+                                 sizeof(int32_t) * change_nvt_ptr->size()));
 
   // store_value<uint32_t>(mem, change_nt_ptr->size());
   data = reinterpret_cast<int32_t*>(mem);
@@ -596,8 +597,7 @@ std::shared_ptr<char> LDAUpdates::serialize(uint32_t* serialize_size) {
     store_value<uint32_t>(mem, ws_ptr->operator[](i).size());
     std::cout << ws_ptr->operator[](i).size() << std::endl;
     data = reinterpret_cast<int32_t*>(mem);
-    std::copy(ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(),
-              data);
+    std::copy(ws_ptr->operator[](i).begin(), ws_ptr->operator[](i).end(), data);
     mem = reinterpret_cast<char*>(
         (reinterpret_cast<char*>(mem) +
          sizeof(int32_t) * ws_ptr->operator[](i).size()));
