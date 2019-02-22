@@ -130,7 +130,6 @@ void MFNetflixTask::run(const Configuration& config,
 
   std::cout << "[WORKER] starting loop" << std::endl;
   int count = 0;
-
   while (1) {
     SparseMFModel model(config.get_users(), config.get_items(), NUM_FACTORS);
     // get data, labels and model
@@ -182,6 +181,7 @@ void MFNetflixTask::run(const Configuration& config,
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
+
     count++;
     if (test_iters > 0 && count > test_iters) {
       exit(0);

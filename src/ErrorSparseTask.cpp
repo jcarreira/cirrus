@@ -37,8 +37,9 @@ ErrorSparseTask::ErrorSparseTask(uint64_t model_size,
              ps_ips,
              ps_ports) {
   std::atomic_init(&curr_error, 0.0);
+
+  // Set the error response port to one after the last PS port
   port_num = ps_ports.at(ps_ports.size() - 1) + 1;
-  std::atomic_init(&curr_error, 0.0);
 }
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
@@ -175,9 +176,13 @@ void ErrorSparseTask::run(const Configuration& config,
     usleep(ERROR_INTERVAL_USEC);
 
     if (iterations >= iters && testing) {
+      std::cout << "Test failed. Got: "
+                << total_accuracy / minibatches_vec.size()
+                << " Expected: " << test_threshold << std::endl;
       exit(EXIT_FAILURE);
     }
-    if ((total_accuracy / minibatches_vec.size()) >= test_threshold &&
+
+    if ((total_accuracy / minibatches_vec.size()) <= test_threshold &&
         testing) {
       exit(EXIT_SUCCESS);
     }

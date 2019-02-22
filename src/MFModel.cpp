@@ -370,16 +370,17 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
       FEATURE_TYPE rating = dataset.data_.at(userId).at(j).second;
 
       FEATURE_TYPE prediction = predict(off_userId, movieId);
-      FEATURE_TYPE e = rating - prediction;
+      FEATURE_TYPE pred_error = rating - prediction;
 
-      FEATURE_TYPE e_pow_2 = pow(e, 2);
-      error += e_pow_2;
+      FEATURE_TYPE error_pow_2 = pow(pred_error, 2);
+      error += error_pow_2;  // Total error
 #ifdef DEBUG
       std::cout << "prediction: " << prediction << " rating: " << rating
-                << " e: " << e << " e_pow_2: " << pow(e, 2)
-                << " error: " << error << " count: " << count << std::endl;
+                << " pred_error: " << pred_error
+                << " e_pow_2: " << pow(pred_error, 2) << " error: " << error
+                << " count: " << count << std::endl;
 #endif
-      if (std::isnan(e) || std::isnan(error)) {
+      if (std::isnan(pred_error) || std::isnan(error)) {
         std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
           " prediction: " + std::to_string(prediction);
         throw std::runtime_error(error);

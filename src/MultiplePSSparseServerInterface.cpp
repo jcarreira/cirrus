@@ -25,14 +25,7 @@ void MultiplePSSparseServerInterface::connect() {
   for (auto ptr : psints) {
     std::cout << "Attempting connection to " << ptr->ip << ":" << ptr->port
               << std::endl;
-    while (true) {
-      try {
-        ptr->connect();
-        break;
-      } catch (std::exception& exc) {
-        std::cout << exc.what();
-      }
-    }
+    repeat(std::bind(&PSSparseServerInterface::connect, ptr));
     std::cout << "Connected!!!" << std::endl;
   }
 }
@@ -138,10 +131,9 @@ void MultiplePSSparseServerInterface::get_lr_sparse_model_inplace(
 
   // Split the dataset based on which server data belongs to.
   // XXX consider optimizing this
-  std::hash<uint32_t> hash;
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      uint32_t server_index = hash(w.first) % num_servers;
+      uint32_t server_index = hash_int(w.first) % num_servers;
       // uint32_t data_index = (w.first - server_index) / num_servers;
       uint32_t data_index = w.first;
       store_value<uint32_t>(msg_lst[server_index], data_index);
@@ -208,12 +200,11 @@ void MultiplePSSparseServerInterface::get_mf_sparse_model_inplace(
     store_value<uint32_t>(msg_lst[i], MAGIC_NUMBER);
   }
 
-  std::hash<uint32_t> hash_func;
   std::vector<std::vector<uint32_t>> movie_memory(num_servers);
 
   for (const auto& sample : ds.data_) {
     for (const auto& w : sample) {
-      uint32_t server_num = hash_func(w.first) % num_servers;
+      uint32_t server_num = hash_int(w.first) % num_servers;
       uint32_t movieId = w.first;
       if (seen[movieId])
         continue;

@@ -42,7 +42,7 @@ int main() {
             << "\n";
   FEATURE_TYPE avg_loss = 0;
   std::vector<std::string> ips{"127.0.0.1", "127.0.0.1"};
-  std::vector<uint64_t> ports{1337, 1339};
+  std::vector<uint64_t> ports{1037, 1039};
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {

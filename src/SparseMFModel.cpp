@@ -131,7 +131,6 @@ void SparseMFModel::loadSerializedShard(const void* data,
                                         const Configuration& config,
                                         int server_id,
                                         int num_ps) {
-  std::hash<int> hash;
   uint64_t nusers_ = load_value<uint64_t>(data);
   uint64_t nitems_ = load_value<uint64_t>(data);
   load_value<uint64_t>(data);
@@ -160,7 +159,8 @@ void SparseMFModel::loadSerializedShard(const void* data,
   for (uint64_t i = 0; i < nitems_; ++i) {
     std::pair<FEATURE_TYPE, std::vector<FEATURE_TYPE>> item_model;
     uint32_t item_id = i;
-    if (item_id >= config.get_items() or hash(item_id) % num_ps != server_id) {
+    if (item_id >= config.get_items() or
+        hash_int(item_id) % num_ps != server_id) {
       FEATURE_TYPE item_bias = load_value<FEATURE_TYPE>(data);
       continue;
     }
@@ -188,7 +188,7 @@ void SparseMFModel::loadSerializedShard(const void* data,
     for (uint32_t j = 0; j < nfactors_; ++j) {
       uint32_t item_id = i;
       if (item_id >= config.get_items() or
-          hash(item_id) % num_ps != server_id) {
+          hash_int(item_id) % num_ps != server_id) {
         FEATURE_TYPE item_weight = load_value<FEATURE_TYPE>(data);
         continue;
       }
@@ -420,8 +420,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
         std::make_pair(item_id, std::move(item_weights)));
   }
 
-  std::cout << "Training rmse: "
-            << std::sqrt(training_rmse / training_rmse_count) << std::endl;
 #ifdef DEBUG
   std::cout << "Training rmse: "
             << std::sqrt(training_rmse / training_rmse_count) << std::endl;

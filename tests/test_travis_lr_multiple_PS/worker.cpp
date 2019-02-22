@@ -28,7 +28,7 @@ int main() {
   train_dataset.print_info();
 
   std::vector<std::string> ps_ips{"127.0.0.1", "127.0.0.1"};
-  std::vector<uint64_t> ps_ports{1337, 1339};
+  std::vector<uint64_t> ps_ports{1037, 1039};
 
   SparseLRModel model(1 << config.get_model_bits());
   MultiplePSSparseServerInterface psi(config, ps_ips, ps_ports);
@@ -40,9 +40,9 @@ int main() {
       std::cout << exc.what();
     }
   }
-
+  std::cout << "[WORKER] Begin sending gradients" << std::endl;
   int version = 0;
-  while (1) {
+  for (int i = 0; i < 100000; i++) {
     SparseDataset minibatch = train_dataset.random_sample(20);
     psi.get_lr_sparse_model_inplace(minibatch, model, config);
     auto gradient = model.minibatch_grad_sparse(minibatch, config);
@@ -53,4 +53,5 @@ int main() {
     }
     psi.send_lr_gradient(*lrg);
   }
+  std::cout << "[WORKER] Terminated" << std::endl;
 }

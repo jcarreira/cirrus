@@ -3,12 +3,13 @@
 
 #include <sys/time.h>
 #include <unistd.h>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <random>
 #include <cfloat>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <string>
 
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
             __builtin_clzll((X)) - 1)
@@ -158,6 +159,9 @@ ssize_t send_all(int sock, void* data, size_t len);
 ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
+uint32_t hash_int(const int s);
+
+void repeat(const std::function<void()>& f);
 
 // For reading the CSV for ps ips and ps ports
 template <typename T>
