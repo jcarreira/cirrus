@@ -22,9 +22,6 @@ LDAModel::LDAModel(const char* info) {
   K_ = load_value<int16_t>(info);
 
   // load the current topic assignments
-  t.clear();
-  d.clear();
-  w.clear();
   int32_t N = load_value<int32_t>(info);
   t.reserve(N);
   d.reserve(N);

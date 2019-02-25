@@ -66,9 +66,8 @@ void LDADataset::check() const {
   std::cout << "Dataset has been checked.\n";
 }
 
-void LDADataset::get_some_docs(
+void LDADataset::get_some_docs_(
     std::vector<std::vector<std::pair<int, int> > >& docs) {
-  docs.clear();
   if (docs_.size() > sample_size)
     docs.resize(sample_size);
   else
@@ -80,6 +79,12 @@ void LDADataset::get_some_docs(
   docs_.erase(docs_.begin(), docs_.size() > sample_size
                                  ? docs_.begin() + sample_size
                                  : docs_.end());
+}
+
+std::vector<std::vector<std::pair<int, int>>> LDADataset::get_some_docs() {
+  std::vector<std::vector<std::pair<int, int>>> docs;
+  get_some_docs_(docs);
+  return std::move(docs);
 }
 
 char* LDADataset::serialize() {

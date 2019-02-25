@@ -102,8 +102,6 @@ class Configuration {
       LDA
     };
 
-    static constexpr int WORKERS_BASE[5] = {-1, 3, -1, -1, 4};
-
     /**
       * Get the type of model used by the system
       */

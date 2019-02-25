@@ -595,7 +595,7 @@ class LoadingLDATaskS3 : public MLTask {
       std::vector<std::vector<int>>& topic_scope);
 
  private:
-  std::array<int, VOCAB_DIM_UPPER> lookup_map;
+  std::vector<int> lookup_map;
   int idx = 0;  //< Dummy indicator
 };
 }

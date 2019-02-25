@@ -31,15 +31,14 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
   std::vector<std::vector<int> > ndt;
   std::vector<int> local_vocab;
 
-  std::array<int, VOCAB_DIM_UPPER> lindex_map;
-  lindex_map.fill(-1);
+  std::vector<bool> lindex_map(VOCAB_DIM_UPPER, 0);
 
   for (const auto& doc : docs) {
     std::vector<int> ndt_row(K);
 
     for (const auto& feat : doc) {
       int gindex = feat.first, count = feat.second;
-      if (lindex_map[gindex] == -1) {
+      if (!lindex_map[gindex]) {
         local_vocab.push_back(gindex);
         lindex_map[gindex] = 1;
       }
@@ -71,7 +70,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   std::cout << "[LOADER] "
             << "Read lda input..." << std::endl;
 
-  lookup_map.fill(-1);
+  lookup_map.resize(VOCAB_DIM_UPPER, -1);
 
   uint64_t s3_obj_num_samples = config.get_s3_file_size();
   std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
@@ -121,16 +120,11 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-    // for (unsigned int i = 1; i < 3; ++i) {
-    std::vector<int> w;
 
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
-    // Only get corpus of size s3_obj_num_samples
-    std::vector<std::vector<std::pair<int, int> > > partial_docs;
-    dataset.get_some_docs(partial_docs);
-
-    LDAStatistics to_save = count_dataset(partial_docs, nvt, nt, w, K,
+    std::vector<int> w;
+    LDAStatistics to_save = count_dataset(dataset.get_some_docs(), nvt, nt, w, K,
                                           global_vocab, nvt_init_rnd_scope);
     std::cout << i << " : " << w.size() << std::endl;
     ws.push_back(w);

@@ -38,7 +38,8 @@ class LDADataset {
   /**
    * Return partial documents (in vectors) of size equal sample_size
    */
-  void get_some_docs(std::vector<std::vector<std::pair<int, int>>>& docs);
+  void get_some_docs_(std::vector<std::vector<std::pair<int, int>>>& docs);
+  std::vector<std::vector<std::pair<int, int>>> get_some_docs();
   /**
    * @param s
    * Set the sample_size equal parameter s
