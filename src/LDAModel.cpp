@@ -213,7 +213,7 @@ char* LDAModel::serialize_to_S3(uint64_t& to_send_size) {
   store_value<int32_t>(msg, ndt.size());
   for (int i = 0; i < ndt.size(); ++i) {
     if (2 * nz_ndt_indices[i].size() < K_) {
-      store_value<int8_t>(msg, 1);
+      store_value<int8_t>(msg, SPARSE);
       store_value<int16_t>(msg, nz_ndt_indices[i].size());
       for (auto& a : nz_ndt_indices[i]) {
         store_value<int16_t>(msg, a);
@@ -222,7 +222,7 @@ char* LDAModel::serialize_to_S3(uint64_t& to_send_size) {
       N += nz_ndt_indices[i].size();
       S += 1;
     } else {
-      store_value<int8_t>(msg, 2);  // dense type
+      store_value<int8_t>(msg, DENSE);  // dense type
       int16_t* data = reinterpret_cast<int16_t*>(msg);
       std::copy(ndt[i].begin(), ndt[i].end(), data);
       msg = reinterpret_cast<char*>(

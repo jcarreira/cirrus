@@ -61,6 +61,7 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
                            std::string(mem_to_send, to_send_size));
 
   upload_lock = -1;
+  delete mem_to_send;
 }
 
 void LDATaskS3::load_serialized_indices(char* mem_begin) {
@@ -81,10 +82,51 @@ void LDATaskS3::load_serialized_indices(char* mem_begin) {
   }
 }
 
+void LDATaskS3::print_status() const {
+
+  std::cout << "--------------------------\n";
+  std::cout << "Time to download from S3: " << time_download << std::endl;
+  std::cout << "Time to send update to server: " << time_update
+            << std::endl;
+  std::cout << "Time to get model from server (whole): " << time_get_model
+            << std::endl;
+  std::cout << "Time to create model: " << time_create_model << std::endl;
+  std::cout << "Time to sample: " << time_sample << std::endl;
+  std::cout << "--------------------------\n";
+  std::cout << "Avg Time to download from S3: " << time_download / count
+            << std::endl;
+  std::cout << "Avg Time to send update to server: " << time_update / count
+            << std::endl;
+  std::cout << "Avg Time to get model from server (whole): "
+            << time_get_model / count << std::endl;
+  std::cout << "Avg Time to create model: " << time_create_model / count
+            << std::endl;
+  std::cout << "Avg Time to sample: " << time_sample / count << std::endl;
+
+  std::cout << "--------------------------\n";
+  std::cout << "documents/sec: "
+            << (double) total_sampled_docs /
+                   ((get_time_ms() - start_time) / 1000)
+            << std::endl;
+  std::cout << "tokens/sec: "
+            << (double) total_sampled_tokens /
+                   ((get_time_ms() - start_time) / 1000)
+            << std::endl;
+
+  std::cout << "--------------------------\n";
+  if (full_iteration == 0) {
+    std::cout << "sec/iteration: N/A yet \n";
+  } else {
+    std::cout << "sec/iteration: "
+              << (double) full_iteration /
+                     ((get_time_ms() - start_time) / 1000)
+              << std::endl;
+  }
+
+}
+
 void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
   double lambda_time_out = 900.0;  // 15 min currently
-  double time_download = 0.0, time_update = 0.0, time_get_model = 0.0,
-         time_sample = 0.0, time_create_model = 0.0;
 
   std::cout << "Starting LDATaskS3" << std::endl;
   uint64_t num_s3_batches =
@@ -109,13 +151,11 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
   int cur_train_idx = start;
 
   bool printed_rate = false;
-  int count = 0;
-  auto start_time = get_time_ms();
+  start_time = get_time_ms();
 
   int update_bucket = 0;
   int benchmark_time = 5, full_iteration = 0;
   uint32_t to_receive_size, uncompressed_size;
-  int total_sampled_tokens = 0, total_sampled_docs = 0;
   uint64_t version = 1;
   upload_lock_indicators.resize(end - start, -1);
 
@@ -157,8 +197,14 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
       if (end != start + 1) {
         uint64_t size_temp;
         char* mem_to_send = model->serialize_to_S3(size_temp);
-        upload_wih_bucket_id_fn(mem_to_send, size_temp,
-                                upload_lock_indicators[0], cur_train_idx);
+
+        help_upload_threads.push_back(std::make_unique<std::thread>(
+            std::bind(&LDATaskS3::upload_wih_bucket_id_fn, this,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3, std::placeholders::_4),
+            mem_to_send, size_temp,
+            std::ref(upload_lock_indicators[cur_train_idx - start]),
+            cur_train_idx));
       }
 
       // compute the loglikelihood for current LDAStatistics and
@@ -189,53 +235,9 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
           upload_wih_bucket_id_fn(mem_to_send, size_temp,
                                   upload_lock_indicators[0], cur_train_idx);
 
-          delete mem_to_send;
-
           psint->send_time_dist(time_sample,
                                 time_download + time_update + time_get_model);
-
-          std::cout << "--------------------------\n";
-          std::cout << "Time to download from S3: " << time_download
-                    << std::endl;
-          std::cout << "Time to send update to server: " << time_update
-                    << std::endl;
-          std::cout << "Time to get model from server (whole): "
-                    << time_get_model << std::endl;
-          std::cout << "Time to create model: " << time_create_model
-                    << std::endl;
-          std::cout << "Time to sample: " << time_sample << std::endl;
-          std::cout << "--------------------------\n";
-          std::cout << "Avg Time to download from S3: " << time_download / count
-                    << std::endl;
-          std::cout << "Avg Time to send update to server: "
-                    << time_update / count << std::endl;
-          std::cout << "Avg Time to get model from server (whole): "
-                    << time_get_model / count << std::endl;
-          std::cout << "Avg Time to create model: " << time_create_model / count
-                    << std::endl;
-          std::cout << "Avg Time to sample: " << time_sample / count
-                    << std::endl;
-
-          std::cout << "--------------------------\n";
-          std::cout << "documents/sec: "
-                    << (double) total_sampled_docs /
-                           ((get_time_ms() - start_time) / 1000)
-                    << std::endl;
-          std::cout << "tokens/sec: "
-                    << (double) total_sampled_tokens /
-                           ((get_time_ms() - start_time) / 1000)
-                    << std::endl;
-
-          std::cout << "--------------------------\n";
-          if (full_iteration == 0) {
-            std::cout << "sec/iteration: N/A yet \n";
-          } else {
-            std::cout << "sec/iteration: "
-                      << (double) full_iteration /
-                             ((get_time_ms() - start_time) / 1000)
-                      << std::endl;
-          }
-
+          print_status();
           std::cout << "successfully exit\n";
           break;
         }
@@ -248,7 +250,10 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
         continue;
       }
 
+      std::cout << "here?\n";
+
       // load the next LDAStatistics from S3
+      // Waits if the uploading to the next LDAStatistics has not finished
       while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if (upload_lock_indicators[cur_train_idx - start] == -1) {
@@ -273,7 +278,7 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
       delete s3_obj;
 
       // load the pre-cached token indices from server
-      slice_indices_mem = psint->get_slices_indices(cur_train_idx - start);
+      slice_indices_mem = psint->get_slices_indices(cur_train_idx);
       load_serialized_indices(slice_indices_mem);
       delete slice_indices_mem;
 
@@ -335,49 +340,12 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
     }
     int since_start_sec = (get_time_ms() - start_time) / 1000;
     if (since_start_sec > benchmark_time) {
-      std::cout << "--------------------------\n";
-      std::cout << "Time to download from S3: " << time_download << std::endl;
-      std::cout << "Time to send update to server: " << time_update
-                << std::endl;
-      std::cout << "Time to get model from server (whole): " << time_get_model
-                << std::endl;
-      std::cout << "Time to create model: " << time_create_model << std::endl;
-      std::cout << "Time to sample: " << time_sample << std::endl;
-      std::cout << "--------------------------\n";
-      std::cout << "Avg Time to download from S3: " << time_download / count
-                << std::endl;
-      std::cout << "Avg Time to send update to server: " << time_update / count
-                << std::endl;
-      std::cout << "Avg Time to get model from server (whole): "
-                << time_get_model / count << std::endl;
-      std::cout << "Avg Time to create model: " << time_create_model / count
-                << std::endl;
-      std::cout << "Avg Time to sample: " << time_sample / count << std::endl;
-
-      std::cout << "--------------------------\n";
-      std::cout << "documents/sec: "
-                << (double) total_sampled_docs /
-                       ((get_time_ms() - start_time) / 1000)
-                << std::endl;
-      std::cout << "tokens/sec: "
-                << (double) total_sampled_tokens /
-                       ((get_time_ms() - start_time) / 1000)
-                << std::endl;
-
-      std::cout << "--------------------------\n";
-      if (full_iteration == 0) {
-        std::cout << "sec/iteration: N/A yet \n";
-      } else {
-        std::cout << "sec/iteration: "
-                  << (double) full_iteration /
-                         ((get_time_ms() - start_time) / 1000)
-                  << std::endl;
-      }
+      print_status();
       benchmark_time += 5;
     }
 
-    // loop breaks only if the number of iters has been met 
-    if (test_iters > 0 && count > test_iters) {
+    // loop breaks only if the number of iters has been met
+    if (test_iters > 0 && full_iteration > test_iters) {
       exit(0);
     }
   }

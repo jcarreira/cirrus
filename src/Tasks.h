@@ -535,6 +535,9 @@ class LDATaskS3 : public MLTask {
   void run(const Configuration& config, int worker, int test_iters);
 
  private:
+
+  void print_status() const;
+
   /**
    * Helper function to push the doc-topic statistics to S3
    */
@@ -559,6 +562,12 @@ class LDATaskS3 : public MLTask {
   std::vector<int> upload_lock_indicators;
   std::vector<std::vector<int>> slice_indices;
   PSSparseServerInterface* psint;
+
+  int total_sampled_tokens = 0, total_sampled_docs = 0, count = 0,
+      full_iteration = 0;
+  double time_download = 0., time_update = 0., time_get_model = 0.,
+         time_create_model = 0., time_sample = 0.;
+  long start_time;
 };
 
 /**
