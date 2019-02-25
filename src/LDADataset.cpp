@@ -9,7 +9,7 @@ namespace cirrus {
 LDADataset::LDADataset() {}
 
 LDADataset::LDADataset(
-    const std::vector<std::vector<std::pair<int, int> > >& docs,
+    const std::vector<std::vector<std::pair<int, int>>>& docs,
     const std::vector<std::string>& vocabs,
     double sample_ratio) {
   docs_ = docs;
@@ -18,7 +18,7 @@ LDADataset::LDADataset(
 }
 
 LDADataset::LDADataset(const char* msg_begin, double sample_ratio) {
-  std::vector<std::pair<int, int> > doc;
+  std::vector<std::pair<int, int>> doc;
 
   int D = load_value<int>(msg_begin);
   docs_.clear();
@@ -67,7 +67,7 @@ void LDADataset::check() const {
 }
 
 void LDADataset::get_some_docs_(
-    std::vector<std::vector<std::pair<int, int> > >& docs) {
+    std::vector<std::vector<std::pair<int, int>>>& docs) {
   if (docs_.size() > sample_size)
     docs.resize(sample_size);
   else

@@ -25,10 +25,7 @@ enum PS_OP {
   DEREGISTER_TASK
 };
 
-enum SPARSE_TYPE {
-  SPARSE,
-  DENSE
-};
+enum SPARSE_TYPE { SPARSE, DENSE };
 
 #define MAGIC_NUMBER (0x1337)
 

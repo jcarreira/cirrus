@@ -83,11 +83,9 @@ void LDATaskS3::load_serialized_indices(char* mem_begin) {
 }
 
 void LDATaskS3::print_status() const {
-
   std::cout << "--------------------------\n";
   std::cout << "Time to download from S3: " << time_download << std::endl;
-  std::cout << "Time to send update to server: " << time_update
-            << std::endl;
+  std::cout << "Time to send update to server: " << time_update << std::endl;
   std::cout << "Time to get model from server (whole): " << time_get_model
             << std::endl;
   std::cout << "Time to create model: " << time_create_model << std::endl;
@@ -118,11 +116,9 @@ void LDATaskS3::print_status() const {
     std::cout << "sec/iteration: N/A yet \n";
   } else {
     std::cout << "sec/iteration: "
-              << (double) full_iteration /
-                     ((get_time_ms() - start_time) / 1000)
+              << (double) full_iteration / ((get_time_ms() - start_time) / 1000)
               << std::endl;
   }
-
 }
 
 void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {

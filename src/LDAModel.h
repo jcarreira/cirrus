@@ -57,7 +57,7 @@ class LDAModel {
 
   char* serialize_to_S3(uint64_t& to_send_size);
 
-  void get_ndt(std::vector<std::vector<int> >& ndt_) { ndt_ = ndt; }
+  void get_ndt(std::vector<std::vector<int>>& ndt_) { ndt_ = ndt; }
   void get_nt(std::vector<int>& nt_) { nt_ = nt; }
   void get_t(std::vector<int>& t_) { t_ = t; }
   int get_V() { return V_; }
@@ -71,8 +71,8 @@ class LDAModel {
                       std::vector<int>& d,
                       std::vector<int>& w,
                       std::vector<int>& nt,
-                      std::vector<std::vector<int> >& nvt,
-                      std::vector<std::vector<int> >& ndt,
+                      std::vector<std::vector<int>>& nvt,
+                      std::vector<std::vector<int>>& ndt,
                       std::vector<int>& slice,
                       int& total_sampled_tokens,
                       std::vector<int>& slice_indices,
@@ -95,12 +95,12 @@ class LDAModel {
   /**
    * statistics needed for sampling
    */
-  std::vector<std::vector<int> > ndt, nvt;
+  std::vector<std::vector<int>> ndt, nvt;
   std::vector<int> nt;
   /**
    * indices of nonzero entries for each statistics
    */
-  std::vector<std::vector<int> > nz_ndt_indices, nz_nvt_indices;
+  std::vector<std::vector<int>> nz_ndt_indices, nz_nvt_indices;
   std::vector<int> nz_nt_indices;
   /**
    * helpers tracking the order of nonzero indices to

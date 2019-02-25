@@ -101,7 +101,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
         nz += 1;
       }
     }
-    
+
     if (2 * nz < K_) {
       store_value<int8_t>(msg, SPARSE);  // sparse type
       store_value<int16_t>(msg, nz);

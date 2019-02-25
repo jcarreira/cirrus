@@ -120,12 +120,11 @@ void LoadingLDATaskS3::run(const Configuration& config) {
 
   // Storing local variables (LDAStatistics)
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
-
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
     std::vector<int> w;
-    LDAStatistics to_save = count_dataset(dataset.get_some_docs(), nvt, nt, w, K,
-                                          global_vocab, nvt_init_rnd_scope);
+    LDAStatistics to_save = count_dataset(dataset.get_some_docs(), nvt, nt, w,
+                                          K, global_vocab, nvt_init_rnd_scope);
     std::cout << i << " : " << w.size() << std::endl;
     ws.push_back(w);
 

@@ -239,7 +239,8 @@ class LDAUpdates {
   /**
    * serialize the pre-cached token indices given worker id
    */
-  std::shared_ptr<char> get_slices_indices(int local_model_id, uint32_t& to_send_size);
+  std::shared_ptr<char> get_slices_indices(int local_model_id,
+                                           uint32_t& to_send_size);
   /**
    * assign the token indices for each word slices for each models
    */

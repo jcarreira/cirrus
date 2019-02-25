@@ -535,7 +535,6 @@ class LDATaskS3 : public MLTask {
   void run(const Configuration& config, int worker, int test_iters);
 
  private:
-
   void print_status() const;
 
   /**

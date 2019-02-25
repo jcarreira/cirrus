@@ -674,9 +674,10 @@ int LDAUpdates::update(const char* mem) {
   return update_bucket;
 }
 
-std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
-                                    uint32_t& to_send_size,
-                                    uint32_t& uncompressed_size) {
+std::shared_ptr<char> LDAUpdates::get_partial_model(
+    int slice_id,
+    uint32_t& to_send_size,
+    uint32_t& uncompressed_size) {
   auto start_time_func = get_time_ms();
 
   int N = 0, S = 0, word_idx;
@@ -872,7 +873,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
 }
 
 std::shared_ptr<char> LDAUpdates::get_slices_indices(int local_model_id,
-                                     uint32_t& to_send_size) {
+                                                     uint32_t& to_send_size) {
   int N = 0;
   for (int i = 0; i < w_slices[local_model_id].size(); ++i) {
     N += w_slices[local_model_id][i].size();
