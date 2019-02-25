@@ -8,7 +8,6 @@
 #include "Constants.h"
 #include "lz4.h"
 
-// #include "temp.h"
 namespace cirrus {
 
 /**
@@ -685,8 +684,6 @@ std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
 
   int len = fixed_slices[slice_id].size();
 
-  int sparse_type = 1, dense_type = 2;
-
   // the worst case where everything is stored with dense structure
   int temp_counts = (2 + 2 * len + len * K + K);
   int temp_size = sizeof(uint32_t) * temp_counts;
@@ -696,7 +693,7 @@ std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
 
   char* mem = new char[temp_size];
   char* mem_begin = mem;
-  store_value<int32_t>(mem, global_v);
+  store_value<int32_t>(mem, slice.size());
   store_value<int32_t>(mem, len);
 
   auto start_time_temp = get_time_ms();
@@ -728,7 +725,7 @@ std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
       // 1 -> sparse structure
 
       start_time_ttemp = get_time_ms();
-      store_value<int16_t>(mem, sparse_type);
+      store_value<int16_t>(mem, SPARSE);
 
       // only true if word_id was checked to be stored
       // sparsely in previous iterationos
@@ -773,7 +770,7 @@ std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
     } else {
       // 2 -> dense structure
       start_time_ttemp = get_time_ms();
-      store_value<int16_t>(mem, dense_type);
+      store_value<int16_t>(mem, DENSE);
       for (int j = 0; j < K; ++j) {
         store_value<int16_t>(
             mem, change_nvt_ptr->operator[](slice_map[word_idx] * K + j));
@@ -860,9 +857,17 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
     w_slices.push_back(w_slice_i);
   }
 
+  // Previously ws_ptr stores the vocab_ids for all the tokens for
+  // each LDAStatistics
+  // Ex:   ws_ptr.size() := number of LDAStatistics stored in S3
+  //       ws_ptr[i] := the tokens' vocab_ids for the i^{th} LDAStatistics
+  //
+  // In the above loop, for each LDAStatistics, the tokens are redistributed
+  // according to the slice assignment. Thus after the redistribution is done,
+  // the original indicies are not needed anymore.
+  //
   ws_ptr.reset();
 
-  global_v = slice.size();
   return fixed_slices.size();
 }
 

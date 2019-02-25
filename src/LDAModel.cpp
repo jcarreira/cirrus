@@ -14,6 +14,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include "Constants.h"
 #include "lz4.h"
 
 namespace cirrus {
@@ -57,7 +58,7 @@ LDAModel::LDAModel(const char* info) {
     nz_nt_di.clear();
 
     // if sparse, directly store the nonzero indices
-    if (store_type == 1) {
+    if (store_type == SPARSE) {
       int16_t len = load_value<int16_t>(info);
       nt_di.resize(K_, 0);
       nz_nt_di.reserve(K_);
@@ -71,7 +72,7 @@ LDAModel::LDAModel(const char* info) {
         nz_ndt_indices_check[i][top] = nz_ndt_indices_counter[i];
         nz_ndt_indices_counter[i] += 1;
       }
-    } else if (store_type == 2) {
+    } else if (store_type == DENSE) {
       nt_di.reserve(K_);
       nz_nt_di.reserve(K_);
       for (int j = 0; j < K_; ++j) {
@@ -131,7 +132,7 @@ void LDAModel::update_model(const char* buffer_to_decompress,
 
     int16_t store_type =
         load_value<int16_t>(buffer);  // 1 -> sparse, 2 -> dense
-    if (store_type == 1) {
+    if (store_type == SPARSE) {
       // sparse
       nt_vi.resize(K_, 0);
 
@@ -147,7 +148,7 @@ void LDAModel::update_model(const char* buffer_to_decompress,
         nz_nvt_indices_counter[i] += 1;
       }
 
-    } else if (store_type == 2) {
+    } else if (store_type == DENSE) {
       // dense
       nt_vi.reserve(K_);
 

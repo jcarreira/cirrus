@@ -376,6 +376,7 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
       benchmark_time += 5;
     }
 
+    // loop breaks only if the number of iters has been met 
     if (test_iters > 0 && count > test_iters) {
       exit(0);
     }

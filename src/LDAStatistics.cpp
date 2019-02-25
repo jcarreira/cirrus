@@ -3,6 +3,8 @@
 #include <string.h>
 #include <iostream>
 
+#include "Constants.h"
+
 // #define MAX_MSG_SIZE (1024 * 1024 * 100)
 
 namespace cirrus {
@@ -52,7 +54,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
     int8_t store_type = load_value<int8_t>(msg);
     ndt_row.clear();
 
-    if (store_type == 1) {
+    if (store_type == SPARSE) {
       ndt_row.resize(K_, 0);
       int16_t len = load_value<int16_t>(msg);
       for (int j = 0; j < len; ++j) {
@@ -60,7 +62,7 @@ LDAStatistics::LDAStatistics(const char* msg) {
         int16_t count = load_value<int16_t>(msg);
         ndt_row[top] = count;
       }
-    } else if (store_type == 2) {
+    } else if (store_type == DENSE) {
       ndt_row.reserve(K_);
       for (int j = 0; j < K_; ++j) {
         int16_t temp = load_value<int16_t>(msg);
@@ -85,7 +87,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
     store_value<int32_t>(msg, w_[i]);
   }
 
-  int nz, N = 0, S = 0, sparse_type = 1, dense_type = 2;
+  int nz, N = 0, S = 0;
 
   store_value<int32_t>(msg, ndt_.size());
   for (const auto& nt_di : ndt_) {
@@ -99,9 +101,9 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
         nz += 1;
       }
     }
-
+    
     if (2 * nz < K_) {
-      store_value<int8_t>(msg, sparse_type);  // sparse type
+      store_value<int8_t>(msg, SPARSE);  // sparse type
       store_value<int16_t>(msg, nz);
       for (auto& a : sparse_nt_di) {
         store_value<int16_t>(msg, a.first);
@@ -110,7 +112,7 @@ char* LDAStatistics::serialize(uint64_t& to_send_size) {
       N += nz;
       S += 1;
     } else {
-      store_value<int8_t>(msg, dense_type);  // dense type
+      store_value<int8_t>(msg, DENSE);  // dense type
       int16_t* data = reinterpret_cast<int16_t*>(msg);
       std::copy(nt_di.begin(), nt_di.begin() + K_, data);
       msg = reinterpret_cast<char*>(

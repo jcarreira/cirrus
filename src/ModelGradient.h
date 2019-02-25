@@ -297,7 +297,6 @@ class LDAUpdates {
   std::array<int, 1000000> temp_look_up;
   uint64_t version = 0;
   int update_bucket = 0, temp_counter = 0;
-  int global_v = 0;
   std::mutex model_lock, update_lock;
 };
 
