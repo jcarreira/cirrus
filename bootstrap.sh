@@ -7,16 +7,6 @@ git submodule update
 # install eigen, keyutils, kerberos, sparsehash, gflags, glog, lz4
 cd third_party
 
-if [ ! -d "lz4-dev" ]; then
-  wget https://github.com/lz4/lz4/archive/dev.zip
-  unzip dev.zip
-fi
-cd lz4-dev
-make
-make install
-# sudo make install
-
-cd ..
 if [ ! -d "eigen_source" ]; then
   sh get_eigen.sh
 fi
