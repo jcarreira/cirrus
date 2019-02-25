@@ -109,6 +109,22 @@ void Configuration::check() const {
   }
 }
 
+/** Parse a range (string format) into a C++ pair.
+  * @param range A range from the input file (string format: "x-y")
+  */
+
+std::pair<int, int> Configuration::parse_set(std::string range) const {
+  size_t index = range.find("-");
+  if (index == std::string::npos) {
+    throw std::runtime_error("Wrong index");
+  }
+  std::string left = range.substr(0, index);
+  std::string right = range.substr(index + 1);
+  return std::make_pair(
+      string_to<int>(left),
+      string_to<int>(right));
+}
+
 /**
   * Parse a specific line in the config file
   * @param line A line from the input file
@@ -199,31 +215,13 @@ void Configuration::parse_line(const std::string& line) {
       std::string token;
       std::vector<std::pair<int, int>> v;
       while (std::getline(iss, token, ',')) {
-        std::string range;
-        range = token;
-        size_t index = range.find("-");
-        if (index == std::string::npos) {
-          throw std::runtime_error("Wrong index");
-        }
-        std::string left = range.substr(0, index);
-        std::string right = range.substr(index + 1);
-        std::pair<int, int> train_range =
-            std::make_pair(string_to<int>(left), string_to<int>(right));
-        v.push_back(train_range);
+        v.push_back(parse_set(token));
       }
       train_set_range = v;
     } else if (s == "test_set:") {
       std::string range;
       iss >> range;
-      size_t index = range.find("-");
-      if (index == std::string::npos) {
-        throw std::runtime_error("Wrong index");
-      }
-      std::string left = range.substr(0, index);
-      std::string right = range.substr(index + 1);
-      test_set_range = std::make_pair(
-          string_to<int>(left),
-          string_to<int>(right));
+      test_set_range = parse_set(range);
     } else if (s == "use_grad_threshold:") {
       std::string b;
       iss >> b;

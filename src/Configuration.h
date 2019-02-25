@@ -47,6 +47,14 @@ class Configuration {
       */
     uint64_t get_num_classes() const;
 
+    /** Parses range (string format) into C++ pair.
+      * @return A C++ pair in the format (x, y),
+      * where x is the beginning of the range and
+      * y is the end, both inclusive.
+      */
+
+    std::pair<int, int> parse_set(std::string range) const;
+
     /**
       * Get path to the input file
       */
