@@ -675,7 +675,7 @@ int LDAUpdates::update(const char* mem) {
   return update_bucket;
 }
 
-char* LDAUpdates::get_partial_model(int slice_id,
+std::shared_ptr<char> LDAUpdates::get_partial_model(int slice_id,
                                     uint32_t& to_send_size,
                                     uint32_t& uncompressed_size) {
   auto start_time_func = get_time_ms();
@@ -797,10 +797,12 @@ char* LDAUpdates::get_partial_model(int slice_id,
   uncompressed_size = sizeof(int32_t) * (2 + K + len) +
                       sizeof(int16_t) * (len + S + 2 * N + (len - S) * K);
   size_t max_compressed_size = LZ4_compressBound(uncompressed_size);
-  char* compressed_mem = new char[uncompressed_size];
+
+  std::shared_ptr<char> compressed_mem = std::shared_ptr<char>(
+      new char[uncompressed_size], std::default_delete<char[]>());
   time_temp += (get_time_ms() - start_time_temp) / 1000.0;
 
-  to_send_size = LZ4_compress_default(mem_begin, compressed_mem,
+  to_send_size = LZ4_compress_default(mem_begin, compressed_mem.get(),
                                       uncompressed_size, max_compressed_size);
   time_compress += (get_time_ms() - start_time_temp) / 1000.0;
 
@@ -864,7 +866,7 @@ int LDAUpdates::pre_assign_slices(int slice_size) {
   return fixed_slices.size();
 }
 
-char* LDAUpdates::get_slices_indices(int local_model_id,
+std::shared_ptr<char> LDAUpdates::get_slices_indices(int local_model_id,
                                      uint32_t& to_send_size) {
   int N = 0;
   for (int i = 0; i < w_slices[local_model_id].size(); ++i) {
@@ -872,8 +874,10 @@ char* LDAUpdates::get_slices_indices(int local_model_id,
   }
 
   to_send_size = sizeof(int32_t) * (1 + w_slices[local_model_id].size() + N);
-  char* mem_begin = new char[to_send_size];
-  char* mem = mem_begin;
+
+  std::shared_ptr<char> mem_begin = std::shared_ptr<char>(
+      new char[to_send_size], std::default_delete<char[]>());
+  char* mem = mem_begin.get();
 
   store_value<int32_t>(mem, w_slices[local_model_id].size());
   for (int i = 0; i < w_slices[local_model_id].size(); ++i) {

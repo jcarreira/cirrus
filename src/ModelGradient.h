@@ -233,13 +233,13 @@ class LDAUpdates {
   /**
    * serialize the word slice
    */
-  char* get_partial_model(int slice_id,
-                          uint32_t& to_send_size,
-                          uint32_t& uncompressed_size);
+  std::shared_ptr<char> get_partial_model(int slice_id,
+                                          uint32_t& to_send_size,
+                                          uint32_t& uncompressed_size);
   /**
    * serialize the pre-cached token indices given worker id
    */
-  char* get_slices_indices(int local_model_id, uint32_t& to_send_size);
+  std::shared_ptr<char> get_slices_indices(int local_model_id, uint32_t& to_send_size);
   /**
    * assign the token indices for each word slices for each models
    */
@@ -273,20 +273,25 @@ class LDAUpdates {
   std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>>
       sparse_change_nvt_ptr;
 
-  // vector of vectors of global word ids
-  // ws_ptr->size() := number of S3 objects in the bucket
-  // ws_ptr->operator[](i) := local vocab space for the i^{th} object
+  /**
+   * vector of vectors of global word ids
+   * ws_ptr->size() := number of S3 objects in the bucket
+   * ws_ptr->operator[](i) := local vocab space for the i^{th} object
+   */
   std::shared_ptr<std::vector<std::vector<int>>> ws_ptr;
 
-  // w_slices.size() := number of s3 objects in the bucket
-  // w_slices[i].size() := number of vocab slices
-  // w_slices[i][j] := pre-cached word indices for words in the i^{th} S3 object
-  //                   and the j^{th} vocab slice
+  /**
+   * w_slices.size() := number of s3 objects in the bucket
+   * w_slices[i].size() := number of vocab slices
+   * w_slices[i][j] := pre-cached word indices for words in the i^{th} S3 object
+   *                   and the j^{th} vocab slice
+   */
   std::vector<std::vector<std::vector<int>>> w_slices;
 
   std::vector<std::vector<int>> change_nvt_indices;
   std::vector<std::set<int>> sparse_nvt_indices;
   std::vector<std::vector<int>> fixed_slices;
+
   // helper array to track the order of words stored in
   // the sparse_change_nvt_ptr
   std::array<int, 1000000> temp_look_up;

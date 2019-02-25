@@ -373,7 +373,9 @@ void PSSparseServerInterface::update_ll_ndt(int local_model_id, double ll) {
 
   // 2. Send the size of double
   int size_send = sizeof(double) + sizeof(int);
-  send_all(sock, &size_send, sizeof(int));
+  if (send_all(sock, &size_send, sizeof(int)) == -1) {
+    throw std::runtime_error("Error sending mem size");
+  }
 
   // 3. Send bucket id
   if (send_all(sock, &local_model_id, sizeof(int)) == -1) {
@@ -396,7 +398,9 @@ void PSSparseServerInterface::send_time_dist(double sampling_time,
 
   // 2. Send the size
   int size_send = sizeof(double) * 2;
-  send_all(sock, &size_send, sizeof(int));
+  if (send_all(sock, &size_send, sizeof(int)) == -1) {
+    throw std::runtime_error("Error sending mem size");
+  }
 
   if (send_all(sock, &comm_time, sizeof(double)) == -1) {
     throw std::runtime_error("Error sending communication time");
@@ -424,7 +428,9 @@ char* PSSparseServerInterface::get_lda_model(uint32_t& to_receive_size,
 
   // 2. Send the size of int
   int size_send = sizeof(int);
-  send_all(sock, &size_send, sizeof(int));
+  if (send_all(sock, &size_send, sizeof(int)) == -1) {
+    throw std::runtime_error("Error sending mem size");
+  }
 
   // 3. Send slice id
   if (send_all(sock, &slice_id, size_send) == -1) {
@@ -436,17 +442,25 @@ char* PSSparseServerInterface::get_lda_model(uint32_t& to_receive_size,
   start_time_temp = get_time_ms();
 
   // 4. receive the size of compressed partial_nvt from server
-  read_all(sock, &to_receive_size, sizeof(uint32_t));
+  if (read_all(sock, &to_receive_size, sizeof(uint32_t)) == 0) {
+    throw std::runtime_error("Error getting receiving size");
+  }
 
   // 5. receive the size of original partial_nvt from server
-  read_all(sock, &uncompressed_size, sizeof(uint32_t));
+  if (read_all(sock, &uncompressed_size, sizeof(uint32_t)) == 0) {
+    throw std::runtime_error("Error getting original size");
+  }
 
   // 6. receive the new slice_id
-  read_all(sock, &slice_id, sizeof(uint32_t));
+  if (read_all(sock, &slice_id, sizeof(uint32_t)) == 0) {
+    throw std::runtime_error("Error getting slice id");
+  }
 
   // 7. receive partial_nvt from server
   char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size);  // XXX
+  if (read_all(sock, buffer, to_receive_size) == 0) {
+    throw std::runtime_error("Error getting partial model");
+  }
 
 #ifdef DEBUG
   std::cout << "Loading model from memory" << std::endl;
@@ -466,7 +480,9 @@ char* PSSparseServerInterface::get_slices_indices(int local_model_id) {
 
   // 2. Send the size of int
   int size_send = sizeof(int);
-  send_all(sock, &size_send, sizeof(int));
+  if (send_all(sock, &size_send, sizeof(int)) == -1) {
+    throw std::runtime_error("Error sending mem size");
+  }
 
   // 3. Send local model id
   if (send_all(sock, &local_model_id, size_send) == -1) {
@@ -474,9 +490,13 @@ char* PSSparseServerInterface::get_slices_indices(int local_model_id) {
   }
 
   int to_receive_size;
-  read_all(sock, &to_receive_size, sizeof(int));
+  if (read_all(sock, &to_receive_size, sizeof(int)) == 0) {
+    throw std::runtime_error("Error getting size of pre-cached slice indices");
+  }
   char* buffer = new char[to_receive_size];
-  read_all(sock, buffer, to_receive_size);
+  if (read_all(sock, buffer, to_receive_size) == 0) {
+    throw std::runtime_error("Error getting slice indices");
+  }
 
   return buffer;
 }

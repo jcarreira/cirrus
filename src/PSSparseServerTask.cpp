@@ -240,16 +240,17 @@ bool PSSparseServerTask::process_send_lda_update(
   }
 
   int tokens, docs;
-  read_all(req.sock, &tokens, sizeof(int));
+  if (read_all(req.sock, &tokens, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
   tokens_sampled += tokens;
 
-  read_all(req.sock, &docs, sizeof(int));
+  if (read_all(req.sock, &docs, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
   docs_sampled += docs;
-
-  // XXX for exp comparison
-  // if (docs != 0) {
-  //   compute_loglikelihood();
-  // }
 
   try {
     if (read_all(req.sock, thread_buffer.data(),
@@ -390,7 +391,10 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
   auto start_time_temp = get_time_ms();
 
   int previous_slice_id;
-  read_all(req.sock, &previous_slice_id, sizeof(int));
+  if (read_all(req.sock, &previous_slice_id, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
 
   slice_lock.lock();
 
@@ -417,8 +421,7 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
   uint32_t to_send_size, uncompressed_size;
   start_time_temp = get_time_ms();
   auto pure_partial_benchmark = get_time_ms();
-  char* data_to_send;
-  data_to_send = lda_global_vars->get_partial_model(
+  std::shared_ptr<char> data_to_send = lda_global_vars->get_partial_model(
       slice_id_to_send, to_send_size, uncompressed_size);
 
   time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
@@ -444,7 +447,7 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
 
   start_time_temp = get_time_ms();
   // send the partial model
-  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+  if (send_all(req.sock, data_to_send.get(), to_send_size) == -1) {
     return false;
   }
 
@@ -454,7 +457,7 @@ bool PSSparseServerTask::process_get_lda_model(int sock,
 
   send_size += ((double) to_send_size) / 1000000.;
 
-  delete data_to_send;
+  data_to_send.reset();
   return true;
 }
 
@@ -469,22 +472,25 @@ bool PSSparseServerTask::process_get_slices_indices(
     return false;
   }
   int local_model_id;
-  read_all(req.sock, &local_model_id, sizeof(int));
+  if (read_all(req.sock, &local_model_id, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
 
   uint32_t to_send_size;
   auto train_range = task_config.get_train_range();
-  char* data_to_send = lda_global_vars->get_slices_indices(
+  std::shared_ptr<char> data_to_send = lda_global_vars->get_slices_indices(
       local_model_id - train_range.first, to_send_size);
 
   if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
     return false;
   }
 
-  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+  if (send_all(req.sock, data_to_send.get(), to_send_size) == -1) {
     return false;
   }
 
-  delete data_to_send;
+  data_to_send.reset();
   return true;
 }
 
@@ -501,11 +507,13 @@ bool PSSparseServerTask::process_send_ll_update(
 
   int bucket_id;
   if (read_all(req.sock, &bucket_id, sizeof(int)) == -1) {
+    handle_failed_read(&req.poll_fd);
     return false;
   }
 
   double ll;
   if (read_all(req.sock, &ll, sizeof(double)) == -1) {
+    handle_failed_read(&req.poll_fd);
     return false;
   }
 
@@ -526,10 +534,12 @@ bool PSSparseServerTask::process_send_time(int sock,
   }
 
   double comm_time, sampling_time;
-  if (read_all(req.sock, &comm_time, sizeof(double)) == -1) {
+  if (read_all(req.sock, &comm_time, sizeof(double)) == 0) {
+    handle_failed_read(&req.poll_fd);
     return false;
   }
-  if (read_all(req.sock, &sampling_time, sizeof(double)) == -1) {
+  if (read_all(req.sock, &sampling_time, sizeof(double)) == 0) {
+    handle_failed_read(&req.poll_fd);
     return false;
   }
 

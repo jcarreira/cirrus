@@ -106,8 +106,7 @@ class LDAModel {
    * helpers tracking the order of nonzero indices to
    * speed up the later delete operations
    */
-  std::vector<std::array<int, 1000> > nz_ndt_indices_check,
-      nz_nvt_indices_check;
+  std::vector<std::vector<int>> nz_ndt_indices_check, nz_nvt_indices_check;
   std::array<int, 1000> nz_nt_indices_check;
   std::vector<int> nz_ndt_indices_counter, nz_nvt_indices_counter;
   /**

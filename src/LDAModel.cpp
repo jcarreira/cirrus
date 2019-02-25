@@ -40,12 +40,7 @@ LDAModel::LDAModel(const char* info) {
   int32_t D = load_value<int32_t>(info);
 
   nz_ndt_indices_check.clear();
-  nz_ndt_indices_check.reserve(D);
-  for (int i = 0; i < D; ++i) {
-    std::array<int, 1000> temp;
-    temp.fill(-1);
-    nz_ndt_indices_check.push_back(temp);
-  }
+  nz_ndt_indices_check.resize(D, std::vector<int>(K_, -1));
 
   nz_ndt_indices_counter.clear();
   nz_ndt_indices_counter.resize(D, 0);
@@ -120,16 +115,10 @@ void LDAModel::update_model(const char* buffer_to_decompress,
 
   if (nz_nvt_indices_check.size() != local_V) {
     nz_nvt_indices_check.clear();
-    nz_nvt_indices_check.reserve(local_V);
-    for (int i = 0; i < local_V; ++i) {
-      std::array<int, 1000> temp;
-      temp.fill(-1);
-      nz_nvt_indices_check.push_back(temp);
-    }
+    nz_nvt_indices_check.resize(local_V, std::vector<int>(K_, -1));
   } else {
-    for (int i = 0; i < local_V; ++i) {
-      nz_nvt_indices_check[i].fill(-1);
-    }
+    nz_nvt_indices_check.clear();
+    nz_nvt_indices_check.resize(local_V, std::vector<int>(K_, -1));
   }
 
   nz_nvt_indices_counter.clear();
