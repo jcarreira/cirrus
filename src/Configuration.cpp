@@ -110,8 +110,8 @@ void Configuration::check() const {
 }
 
 /** Parse a range (string format) into a C++ pair.
-  * @param range A range from the input file (string format: "x-y")
-  */
+ * @param range A range from the input file (string format: "x-y")
+ */
 
 std::pair<int, int> Configuration::parse_set(std::string range) const {
   size_t index = range.find("-");
@@ -120,9 +120,7 @@ std::pair<int, int> Configuration::parse_set(std::string range) const {
   }
   std::string left = range.substr(0, index);
   std::string right = range.substr(index + 1);
-  return std::make_pair(
-      string_to<int>(left),
-      string_to<int>(right));
+  return std::make_pair(string_to<int>(left), string_to<int>(right));
 }
 
 /**
