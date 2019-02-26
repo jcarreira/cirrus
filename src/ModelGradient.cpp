@@ -1,12 +1,12 @@
 #include <ModelGradient.h>
 #include <Utils.h>
+#include <lz4.h>
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <iostream>
 #include <set>
 #include "Constants.h"
-#include <lz4.h>
 
 namespace cirrus {
 
