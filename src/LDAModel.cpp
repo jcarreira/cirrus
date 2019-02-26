@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "Constants.h"
-#include "lz4.h"
+#include <lz4.h>
 
 namespace cirrus {
 LDAModel::LDAModel(const char* info) {

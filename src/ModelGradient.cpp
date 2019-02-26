@@ -6,7 +6,7 @@
 #include <iostream>
 #include <set>
 #include "Constants.h"
-#include "lz4.h"
+#include <lz4.h>
 
 namespace cirrus {
 
