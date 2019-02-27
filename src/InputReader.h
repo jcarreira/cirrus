@@ -158,11 +158,11 @@ class InputReader {
 
   /* Computes mean of a sparse list of features
    */
-  double compute_mean(std::vector<std::pair<int, FEATURE_TYPE>>&);
+  double compute_mean(const std::vector<std::pair<int, FEATURE_TYPE>>&) const;
   
   /* Computes stddev of a sparse list of features
    */
-  double compute_stddev(double, std::vector<std::pair<int, FEATURE_TYPE>>&);
+  double compute_stddev(double, const std::vector<std::pair<int, FEATURE_TYPE>>&) const;
   
   /* Computes standardizes sparse dataset
    */
