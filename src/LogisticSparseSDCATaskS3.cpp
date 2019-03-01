@@ -164,6 +164,9 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
                   << (1.0 * count / elapsed_sec) << std::endl;
       }
     }
+    if (count % 100) {
+      std::cout << get_time_ms() - start_time << " ms since start" << std::endl;
+    }
   }
 }
 
