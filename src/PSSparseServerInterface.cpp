@@ -379,7 +379,7 @@ void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel
 #endif
   uint32_t operation = GET_LR_SDCA_SPARSE_MODEL;
   if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
-    throw std::runtime_error("Error getting sparse lr model");
+    throw std::runtime_error("Error getting sparse lr sdca model");
   }
 
   uint32_t msg_size = sizeof(uint32_t) * 3 + sizeof(uint32_t) * num_weights;
@@ -389,11 +389,11 @@ void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel
 #endif
 
   if (send_all(sock, &msg_size, sizeof(uint32_t)) == 1) {
-    throw std::runtime_error("Error getting sparse lr model");
+    throw std::runtime_error("Error getting sparse lr sdca model");
   }
 
   if (send_all(sock, msg_begin, msg_size) == -1) {
-    throw std::runtime_error("Error getting sparse lr model");
+    throw std::runtime_error("Error getting sparse lr sdca model");
   }
 
   uint32_t to_receive_size =

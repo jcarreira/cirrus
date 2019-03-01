@@ -210,6 +210,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     if (starting_index != dataset_index) {
       throw std::runtime_error("Starting index of dataset does not equal model dataset index");
     }
+    std::cout << "is sparse" << std::endl;
     coord_offset = 0;
   }
 #ifdef DEBUG
