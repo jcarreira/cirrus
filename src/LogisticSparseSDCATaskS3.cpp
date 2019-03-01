@@ -92,7 +92,7 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  while (1) {
+  while (count == 0) {
   // get data, labels and model
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
@@ -163,10 +163,6 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
         std::cout << "Update rate/sec last 2 mins: "
                   << (1.0 * count / elapsed_sec) << std::endl;
       }
-    }
-    // TODO: remove this
-    if (count % 100000) {
-      std::cout << get_time_ms() - start_time << " ms since start" << std::endl;
     }
   }
 }
