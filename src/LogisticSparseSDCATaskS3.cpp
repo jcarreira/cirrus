@@ -165,7 +165,7 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
       }
     }
     // TODO: remove this
-    if (count % 1000) {
+    if (count % 100000) {
       std::cout << get_time_ms() - start_time << " ms since start" << std::endl;
     }
   }
