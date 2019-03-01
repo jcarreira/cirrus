@@ -226,6 +226,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
   double scaling_factor = 1.0 / (learning_rate * dataset.num_samples());
 
+  std::cout << "a before sending: " << std::endl;
   for (int i = 0; i < dataset.num_samples(); i += 1) {
     const std::vector<std::pair<int, FEATURE_TYPE>>& x = dataset.get_row(i);
     double label = dataset.labels_[i];
@@ -246,12 +247,14 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     FEATURE_TYPE grad = numerator / denominator;
 
     a_grad.push_back(std::make_pair(i + starting_index, grad));
+    std::cout<< i + starting_index << "," << grad << " ";
 
 
     for (int j = 0; j < x.size(); j += 1) {
       w_grad_map[x[j].first] += grad * x[j].second * scaling_factor;
     }
   }
+  std::cout << std::endl;
 
   std::vector<std::pair<int, FEATURE_TYPE>> w_grad;
   w_grad.resize(w_grad_map.size());
