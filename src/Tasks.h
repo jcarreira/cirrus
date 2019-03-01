@@ -166,7 +166,9 @@ class LogisticSparseSDCATaskS3 : public MLTask {
     void get_new_model_inplace(SparseLRSDCAModel& model,
                                std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
                                const Configuration& config) {
-      psi->get_lr_sdca_sparse_model_inplace(model, dataset, config);
+      //psi->get_lr_sdca_sparse_model_inplace(model, dataset, config); TODO
+
+      psi->get_lr_sdca_model_inplace(model, config);
     }
 
    private:
