@@ -738,7 +738,7 @@ bool PSSparseServerTask::process_deregister_task(
 
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
-  thread_buffer.resize(120 * 1024 * 1024);  // 120 MB
+  thread_buffer.resize(240 * 1024 * 1024);  // 120 MB
   struct timespec ts;
   int thread_number = thread_count++;
   while (!kill_signal) {
