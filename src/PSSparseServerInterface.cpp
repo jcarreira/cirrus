@@ -410,9 +410,6 @@ void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel
   std::cout << "Loading model from memory" << std::endl;
 #endif
   // build a truly sparse model and return
-  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer, (uint32_t*) msg,
-                                num_weights, config);
-
   lr_model.loadSerializedSparse(
       (FEATURE_TYPE*) buffer,
       (uint32_t*) msg,
