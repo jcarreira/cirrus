@@ -51,6 +51,13 @@ class SparseLRSDCAModel : public CirrusModel {
 
   void loadSerialized(const void* mem, int server_id, int num_ps);
 
+  void loadSerializedSparse(const FEATURE_TYPE* weights,
+                       const uint32_t* weight_indices,
+                       uint64_t num_weights,
+                       const FEATURE_TYPE* coord_weights,
+                       const uint32_t dataset_index,
+                       const Configuration& config);
+
   /**
    * serializes this model into memory
    * @return pair of memory pointer and size of serialized model
@@ -161,6 +168,8 @@ class SparseLRSDCAModel : public CirrusModel {
 
   FEATURE_TYPE get_nth_weight(uint64_t n) const override { return weights_[n]; }
 
+  FEATURE_TYPE get_nth_coord_weight(uint64_t n) const { return coord_weights_[n]; }
+
   void update_weights(std::vector<FEATURE_TYPE> weights) { weights_ = weights; }
 
   void update_coord_weights(std::vector<FEATURE_TYPE> coord_weights) {
@@ -188,6 +197,8 @@ class SparseLRSDCAModel : public CirrusModel {
   // mutable std::unordered_map<uint32_t, FEATURE_TYPE> weights_sparse_;
   // mutable std::vector<FEATURE_TYPE> weights_sparse_;
   // mutable std::vector<FEATURE_TYPE> coord_weights_sparse_;
+
+  uint32_t dataset_index = 0;
 
   double grad_threshold_ = 0;
 

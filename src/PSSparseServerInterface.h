@@ -39,6 +39,9 @@ class PSSparseServerInterface {
   SparseLRSDCAModel get_lr_sdca_model(const Configuration& config);
   void get_lr_sdca_model_inplace(SparseLRSDCAModel&,
                                  const Configuration& config);
+  void get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel& lr_model,
+                                        std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
+                                        const Configuration& config);
   SparseMFModel get_sparse_mf_model(const SparseDataset& ds,
                                     uint32_t,
                                     uint32_t);

@@ -60,10 +60,10 @@ void SparseLRSDCAModel::serializeTo(void* mem) const {
   store_value<int>(mem, weights_.size());
   store_value<int>(mem, coord_weights_.size());
   for (int i = 0; i < weights_.size(); i++) {
-    store_value<FEATURE_TYPE >(mem, weights_[i]);
+    store_value<FEATURE_TYPE>(mem, weights_[i]);
   }
   for (int i = 0; i < coord_weights_.size(); i++) {
-    store_value<FEATURE_TYPE >(mem, coord_weights_[i]);
+    store_value<FEATURE_TYPE>(mem, coord_weights_[i]);
   }
 }
 
@@ -71,6 +71,30 @@ uint64_t SparseLRSDCAModel::getSerializedSize() const {
   auto ret =
       (primal_size() + dual_size()) * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
   return ret;
+}
+
+void SparseLRSDCAModel::loadSerializedSparse(const FEATURE_TYPE* weights,
+                                             const uint32_t* weight_indices,
+                                             uint64_t num_weights,
+                                             const FEATURE_TYPE* coord_weights,
+                                             const uint32_t dataset_index,
+                                             const Configuration& config) {
+  is_sparse_ = true;
+  this->dataset_index = dataset_index;
+  assert(num_weights > 0 && num_weights < 10000000);
+  weights_.reserve((1 << config.get_model_bits()));
+  for (uint64_t i = 0; i < num_weights; ++i) {
+    uint32_t index = load_value<uint32_t>(weight_indices);
+    FEATURE_TYPE value = load_value<FEATURE_TYPE>(weights);
+    weights_[index] = value;
+  }
+
+  auto minibatch_size = config.get_minibatch_size();
+  coord_weights_.reserve(minibatch_size);
+  for (uint64_t i = 0; i < minibatch_size; ++i) {
+    FEATURE_TYPE value = load_value<FEATURE_TYPE>(coord_weights);
+    coord_weights_[i] = value;
+  }
 }
 
 /** FORMAT
@@ -179,8 +203,14 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     const double learning_rate,
     const SparseDataset& dataset,
     const Configuration& config) const {
+
+  // offset for the dataset into the coord_weights. starting index if full model, 0 if sparse.
+  uint32_t coord_offset = starting_index;
   if (is_sparse_) {
-    throw std::runtime_error("This model is sparse");
+    if (starting_index != dataset_index) {
+      throw std::runtime_error("Starting index of dataset does not equal model dataset index");
+    }
+    coord_offset = 0;
   }
 #ifdef DEBUG
   std::cout << "<Minibatch grad" << std::endl;
@@ -194,7 +224,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
   std::unordered_map<int, FEATURE_TYPE> w_grad_map;
 
-  double scaling_factor = 1.0 / (learning_rate * config.get_s3_size());
+  double scaling_factor = 1.0 / (learning_rate * dataset.num_samples());
 
   for (int i = 0; i < dataset.num_samples(); i += 1) {
     const std::vector<std::pair<int, FEATURE_TYPE>>& x = dataset.get_row(i);
@@ -208,7 +238,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     FEATURE_TYPE numerator =
         1.0 + std::exp(dot_product(x, weights_) * label);
     numerator =
-        (label / numerator) - coord_weights_[i + starting_index];
+        (label / numerator) - coord_weights_[i + coord_offset];
 
     FEATURE_TYPE denominator =
         std::max(1.0, 0.25 + (norm_squared(x) * scaling_factor));
@@ -249,6 +279,10 @@ std::pair<double, double> SparseLRSDCAModel::calc_loss(SparseDataset& dataset,
                                                        uint32_t) const {
   double total_loss = 0;
   auto w = weights_;
+
+  if (is_sparse_) {
+    throw std::runtime_error("Using sparse model to calculate loss");
+  }
 
 #ifdef DEBUG
   dataset.check();

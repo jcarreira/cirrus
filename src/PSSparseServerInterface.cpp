@@ -307,9 +307,6 @@ void PSSparseServerInterface::get_lr_sdca_model_inplace(
     const Configuration& config) {
 #ifdef DEBUG
   std::cout << "Getting LR SDCA model inplace" << std::endl;
-#endif
-
-#ifdef DEBUG
   std::cout << "Sending operation" << std::endl;
 #endif
   uint32_t operation = GET_LR_SDCA_MODEL;
@@ -342,6 +339,89 @@ SparseLRSDCAModel PSSparseServerInterface::get_lr_sdca_model(
   SparseLRSDCAModel model(0, 0);
   get_lr_sdca_model_inplace(model, config);
   return std::move(model);
+}
+
+void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel& lr_model,
+                                      std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
+                                      const Configuration& config) {
+#ifdef DEBUG
+  std::cout << "Getting LR SDCA model inplace" << std::endl;
+#endif
+  // format: dataset index, minibatch size, num weights, weight indexes
+
+  // we don't know the number of weights to start with
+  char* msg = new char[MAX_MSG_SIZE];
+  char* msg_begin = msg;
+
+  uint32_t dataset_index = dataset.first * config.get_minibatch_size();
+
+  store_value<uint32_t>(
+      msg, dataset_index);  // store the index in 'a' that the dataset is at
+  store_value<uint32_t>(
+      msg, config.get_minibatch_size());  // store the index in 'a' that the dataset is at
+
+  char* num_weights_loc = msg;  // need to keep this pointer to delete later
+
+  uint32_t num_weights = 0;
+  store_value<uint32_t>(
+      msg, num_weights);  // just make space for the number of weights
+  for (const auto& sample : dataset.second->data_) {
+    for (const auto& w : sample) {
+      store_value<uint32_t>(msg, w.first);  // encode the index
+      num_weights++;
+    }
+  }
+  msg = num_weights_loc;
+  store_value<uint32_t>(msg, num_weights);  // store correct value here
+
+#ifdef DEBUG
+  std::cout << "Sending operation" << std::endl;
+#endif
+  uint32_t operation = GET_LR_SDCA_SPARSE_MODEL;
+  if (send_all(sock, &operation, sizeof(uint32_t)) == -1) {
+    throw std::runtime_error("Error getting sparse lr model");
+  }
+
+  uint32_t msg_size = sizeof(uint32_t) * 3 + sizeof(uint32_t) * num_weights;
+#ifdef DEBUG
+  std::cout << "msg_size: " << msg_size << " num_weights: " << num_weights
+            << std::endl;
+#endif
+
+  if (send_all(sock, &msg_size, sizeof(uint32_t)) == 1) {
+    throw std::runtime_error("Error getting sparse lr model");
+  }
+
+  if (send_all(sock, msg_begin, msg_size) == -1) {
+    throw std::runtime_error("Error getting sparse lr model");
+  }
+
+  uint32_t to_receive_size =
+      (num_weights + config.get_minibatch_size()) * sizeof(FEATURE_TYPE);
+
+#ifdef DEBUG
+  std::cout << "Receiving " << to_receive_size << " bytes" << std::endl;
+#endif
+  char* buffer = new char[to_receive_size];
+  read_all(sock, buffer,
+           to_receive_size);  // XXX this takes 2ms once every 5 runs
+
+#ifdef DEBUG
+  std::cout << "Loading model from memory" << std::endl;
+#endif
+  // build a truly sparse model and return
+  lr_model.loadSerializedSparse((FEATURE_TYPE*) buffer, (uint32_t*) msg,
+                                num_weights, config);
+
+  lr_model.loadSerializedSparse(
+      (FEATURE_TYPE*) buffer,
+      (uint32_t*) msg,
+      num_weights,
+      ((FEATURE_TYPE*) buffer) + num_weights,
+      dataset_index,
+      config);
+
+  delete[] buffer;
 }
 
 uint32_t PSSparseServerInterface::register_task(uint32_t id,

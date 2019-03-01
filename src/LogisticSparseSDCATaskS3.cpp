@@ -39,7 +39,7 @@ void LogisticSparseSDCATaskS3::push_gradient(LRSDCASparseGradient* lrg) {
 
 // get samples and labels data
 bool LogisticSparseSDCATaskS3::get_dataset_minibatch(
-    std::pair<int, std::shared_ptr<SparseDataset>>& dataset,
+    std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
     S3SparseIterator& s3_iter) {
 #ifdef DEBUG
   auto start = get_time_us();
@@ -97,7 +97,7 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
 #endif
-    std::pair<int, std::shared_ptr<SparseDataset>> dataset;
+    std::pair<uint32_t, std::shared_ptr<SparseDataset>> dataset;
     if (!get_dataset_minibatch(dataset, s3_iter)) {
       continue;
     }
@@ -112,7 +112,7 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    sparse_model_get->get_new_model_inplace(model, config);
+    sparse_model_get->get_new_model_inplace(model, dataset, config);
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;

@@ -64,7 +64,7 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
  * s3_rows == 0).
  * @return pair of minibatch index and the minibatch dataset.
  */
-std::pair<int, std::shared_ptr<SparseDataset>>
+std::pair<uint32_t, std::shared_ptr<SparseDataset>>
 S3SparseIterator::getNextWithIndex() {
   // we need to delete entry
   if (to_delete != -1) {

@@ -31,7 +31,7 @@ class S3SparseIterator : public S3Iterator {
                    bool has_labels = true);
 
   std::shared_ptr<SparseDataset> getNext() override;
-  std::pair<int, std::shared_ptr<SparseDataset>> getNextWithIndex();
+  std::pair<uint32_t, std::shared_ptr<SparseDataset>> getNextWithIndex();
 
  private:
   void threadFunction(const Configuration&);

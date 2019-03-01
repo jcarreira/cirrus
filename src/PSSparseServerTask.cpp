@@ -60,6 +60,7 @@ void PSSparseServerTask::set_operation_maps() {
   operation_to_name[GET_LR_SDCA_MODEL] = "GET_LR_SDCA_MODEL";
   operation_to_name[GET_MF_FULL_MODEL] = "GET_MF_FULL_MODEL";
   operation_to_name[GET_LR_SPARSE_MODEL] = "GET_LR_SPARSE_MODEL";
+  operation_to_name[GET_LR_SDCA_SPARSE_MODEL] = "GET_LR_SDCA_MODEL";
   operation_to_name[GET_MF_SPARSE_MODEL] = "GET_MF_SPARSE_MODEL";
   operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
   operation_to_name[GET_TASK_STATUS] = "GET_TASK_STATUS";
@@ -81,6 +82,8 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_send_mf_gradient, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_SPARSE_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lr_sparse_model, this, _1, _2, _3, _4);
+  operation_to_f[GET_LR_SDCA_SPARSE_MODEL] = std::bind(
+      &PSSparseServerTask::process_get_lr_sdca_sparse_model, this, _1, _2, _3, _4);
   operation_to_f[GET_MF_SPARSE_MODEL] = std::bind(
       &PSSparseServerTask::process_get_mf_sparse_model, this, _1, _2, _3, _4);
   operation_to_f[GET_MF_FULL_MODEL] = std::bind(
@@ -334,6 +337,61 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
     uint32_t entry_index = load_value<uint32_t>(data);
     double weight = lr_model->get_nth_weight(entry_index);
     opt_method->edit_weight(weight);
+    store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
+  }
+  if (send_all(req.sock, data_to_send, to_send_size) == -1) {
+    return false;
+  }
+  return true;
+}
+
+bool PSSparseServerTask::process_get_lr_sdca_sparse_model(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  // need to parse the buffer to get the indices of the model we want
+  // to send back to the client
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+#ifdef DEBUG
+  std::cout << "GET_MODEL_REQ incoming size: " << incoming_size << std::endl;
+#endif
+  try {
+    if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
+  }
+
+  const char* data = thread_buffer.data();
+  uint64_t dataset_index = load_value<uint32_t>(data);
+  uint64_t minibatch_size = load_value<uint32_t>(data);
+  uint64_t num_entries = load_value<uint32_t>(data);
+
+  uint32_t to_send_size = (num_entries + minibatch_size) * sizeof(FEATURE_TYPE);
+  assert(to_send_size < 1024 * 1024);
+  char data_to_send[1024 * 1024];  // 1MB
+  char* data_to_send_ptr = data_to_send;
+
+#ifdef DEBUG
+  std::cout << "Sending back: " << num_entries
+            << " weights from model. Size: " << to_send_size << std::endl;
+#endif
+  for (uint32_t i = 0; i < num_entries; ++i) {
+    uint32_t entry_index = load_value<uint32_t>(data);
+    double weight = lr_sdca_model->get_nth_weight(entry_index);
+    store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
+  }
+  for (uint32_t i = dataset_index; i < minibatch_size; ++i) {
+    double weight = lr_sdca_model->get_nth_coord_weight(i);
     store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
   }
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
@@ -680,7 +738,7 @@ bool PSSparseServerTask::process_deregister_task(
 
 void PSSparseServerTask::gradient_f() {
   std::vector<char> thread_buffer;
-  thread_buffer.resize(240 * 1024 * 1024);  // 120 MB
+  thread_buffer.resize(120 * 1024 * 1024);  // 120 MB
   struct timespec ts;
   int thread_number = thread_count++;
   while (!kill_signal) {
