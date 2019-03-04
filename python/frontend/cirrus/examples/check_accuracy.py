@@ -2,6 +2,9 @@ import time
 
 from cirrus import instance, automate, lr
 
+# Given a running ParameterServer object, this function checks
+# if the accuracy of the model increases above acc_threshold within
+# the timeout.
 def check_acc(server, acc_threshold = 0.73, timeout = 60):
     l = ""
     for line in server.error_output().split("\n")[-10:]:
