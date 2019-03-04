@@ -1,3 +1,5 @@
+LINES_TO_GET = 20
+
 def create_test_train_sets(num_sets, k = 5):
     train_sets = []
     test_sets = []
@@ -18,7 +20,7 @@ def get_cv_acc(cirrus_objs):
 
 def get_acc(o):
     l = ""
-    for line in o.ps.error_output().split("\n")[-20:]:
+    for line in o.ps.error_output().split("\n")[-LINES_TO_GET:]:
         l = l + " " + line
     words = l.split(" ")
     accuracy = False
