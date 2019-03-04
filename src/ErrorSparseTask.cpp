@@ -128,7 +128,8 @@ void ErrorSparseTask::run(const Configuration& config,
   } else {
     exit(-1);
   }
-  std::vector<std::pair<int, int>> test_range_vector(1, std::make_pair(left, right));
+  std::vector<std::pair<int, int>> test_range_vector(
+      1, std::make_pair(left, right));
   S3SparseIterator s3_iter(
       test_range_vector, config, config.get_s3_size(),
       config.get_minibatch_size(),
