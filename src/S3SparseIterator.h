@@ -20,7 +20,7 @@ namespace cirrus {
 
 class S3SparseIterator : public S3Iterator {
  public:
-  S3SparseIterator(std::vector<std::pair<int, int>> ranges,
+  S3SparseIterator(const std::vector<std::pair<int, int>>& ranges,
                    const Configuration& c,
                    uint64_t s3_rows,
                    uint64_t minibatch_rows,

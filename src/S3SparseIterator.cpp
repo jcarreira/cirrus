@@ -13,7 +13,7 @@ namespace cirrus {
   
 // s3_cad_size nmber of samples times features per sample
 S3SparseIterator::S3SparseIterator(
-    std::vector<std::pair<int, int>> ranges,  // right id is exclusive
+    const std::vector<std::pair<int, int>>& ranges,  // right id is exclusive
     const Configuration& c,
     uint64_t s3_rows,
     uint64_t minibatch_rows,

@@ -113,10 +113,10 @@ void Configuration::check() const {
  * @param range A range from the input file (string format: "x-y")
  */
 
-std::pair<int, int> Configuration::parse_set(std::string range) const {
+std::pair<int, int> Configuration::parse_set(const std::string& range) const {
   size_t index = range.find("-");
   if (index == std::string::npos) {
-    throw std::runtime_error("Wrong index");
+    throw std::runtime_error("- missing from input range");
   }
   std::string left = range.substr(0, index);
   std::string right = range.substr(index + 1);

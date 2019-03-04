@@ -53,7 +53,7 @@ class Configuration {
      * y is the end, both inclusive.
      */
 
-    std::pair<int, int> parse_set(std::string range) const;
+    std::pair<int, int> parse_set(const std::string& range) const;
 
     /**
       * Get path to the input file
