@@ -2,7 +2,7 @@ import time
 
 from cirrus import instance, automate, lr
 
-def test(server, acc_threshold = 0.73, timeout = 60):
+def check_acc(server, acc_threshold = 0.73, timeout = 60):
     l = ""
     for line in server.error_output().split("\n")[-10:]:
         l = l + " " + line
