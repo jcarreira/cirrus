@@ -44,7 +44,7 @@ install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq -y
   - sudo apt-get install -qq -y g++-7
-  - sudo apt-get install -qq -y clang-format-3.8 
+  - sudo apt-get install -qq -y clang-format-3.8
   - sudo apt-get install -y libstdc++6
   - export CXX=/usr/bin/g++-7
   - export CC=/usr/bin/gcc-7
@@ -52,7 +52,7 @@ install:
   - sudo ln -s -f /usr/bin/g++-7 /usr/local/bin/g++
   - mv src/Makefile.am src/Makefile_centos.am
   - mv src/Makefile_ubuntu.am src/Makefile.am
-  - .travis/check-git-clang-format-output.sh  
+  - .travis/check-git-clang-format-output.sh
   - ./bootstrap.sh
   - gcc --version
   - g++ --version
@@ -60,6 +60,7 @@ install:
   - which g++
   - which g++-7
   - g++-7 --version
+  - sudo apt-get install liblz4-dev
 
 addons:
   coverity_scan:

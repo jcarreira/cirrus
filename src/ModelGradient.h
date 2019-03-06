@@ -1,12 +1,19 @@
 #ifndef _MODELGRADIENT_H_
 #define _MODELGRADIENT_H_
 
-#include <cstdint>
-#include <cassert>
-#include <vector>
-#include <iostream>
-#include <unordered_map>
 #include <config.h>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+// #include <codecfactory.h>
 
 namespace cirrus {
 
@@ -187,6 +194,111 @@ class MFSparseGradient : public ModelGradient {
     // item id and then weights
     std::vector<
       std::pair<int, std::vector<FEATURE_TYPE>>> items_weights_grad;
+};
+
+class LDAUpdates {
+ public:
+  friend class LDAModel;
+
+  virtual ~LDAUpdates() = default;
+
+  LDAUpdates() {}
+  LDAUpdates(LDAUpdates&& data);
+  LDAUpdates(const std::vector<int>& nvt,
+             const std::vector<int>& nt,
+             const std::vector<int>& s);
+  LDAUpdates(const std::vector<int>& nvt,
+             const std::vector<int>& nt,
+             const std::vector<int>& s,
+             int to_update);
+  LDAUpdates(const std::vector<int>& nvt, const std::vector<int>& nt);
+  LDAUpdates(int nvt_dim, int nt_dim, int slice_size);
+  LDAUpdates(int to_update);
+
+  LDAUpdates& operator=(LDAUpdates&& other);
+
+  void loadSerialized(const char* mem);
+  /**
+   * serialize the current LDAUpdate to memory;
+   * this function is only called in the LoadingLDATaskS3
+   * and it also stores the word indices for each LDAStatistics
+   * stored in S3
+   */
+  std::shared_ptr<char> serialize(uint32_t*);
+  uint64_t getSerializedSize() const;
+  /**
+   * apply updates according to the serialized gradient
+   */
+  int update(const char* mem);
+  /**
+   * serialize the word slice
+   */
+  std::shared_ptr<char> get_partial_model(int slice_id,
+                                          uint32_t& to_send_size,
+                                          uint32_t& uncompressed_size);
+  /**
+   * serialize the pre-cached token indices given worker id
+   */
+  std::shared_ptr<char> get_slices_indices(int local_model_id,
+                                           uint32_t& to_send_size);
+  /**
+   * assign the token indices for each word slices for each models
+   */
+  int pre_assign_slices(int slice_size);
+
+  void get_slice(std::vector<int>& s) { s = slice; }
+  void get_nvt_pointer(std::shared_ptr<std::vector<int>>& nvt_ptr);
+  void get_nt_pointer(std::shared_ptr<std::vector<int>>& nt_ptr);
+  int get_nvt_size() { return change_nvt_ptr->size(); }
+  int get_nt_size() { return change_nt_ptr->size(); }
+  int get_slice_size() { return slice.size(); }
+
+  std::array<int, 1000000> slice_map, sparse_records;
+  double time_whole = 0.0, time_find_partial = 0.0, time_compress = 0.0,
+         counts = 0.0, time_temp = 0.0, time_ttemp = 0.0, time_nvt_find = 0.0,
+         time_check_sparse = 0.0, time_serial_sparse = 0.0, time_check = 0.0;
+
+  // void check_values() const;
+  // protected:
+  /**
+   *
+   * @variable change_nvt: the statistics of word counts over vocabularies and
+   *topics
+   *            - size: V * K where V is the size of vocabulary space
+   * @variable change_nt: the statistics of word counts over topics
+   *            - size: K
+   * @variable slice: the local vocabulary space
+   */
+  std::shared_ptr<std::vector<int>> change_nvt_ptr, change_nt_ptr;
+  std::vector<int> slice;
+  std::shared_ptr<std::vector<std::vector<std::pair<int, int>>>>
+      sparse_change_nvt_ptr;
+
+  /**
+   * vector of vectors of global word ids
+   * ws_ptr->size() := number of S3 objects in the bucket
+   * ws_ptr->operator[](i) := local vocab space for the i^{th} object
+   */
+  std::shared_ptr<std::vector<std::vector<int>>> ws_ptr;
+
+  /**
+   * w_slices.size() := number of s3 objects in the bucket
+   * w_slices[i].size() := number of vocab slices
+   * w_slices[i][j] := pre-cached word indices for words in the i^{th} S3 object
+   *                   and the j^{th} vocab slice
+   */
+  std::vector<std::vector<std::vector<int>>> w_slices;
+
+  std::vector<std::vector<int>> change_nvt_indices;
+  std::vector<std::set<int>> sparse_nvt_indices;
+  std::vector<std::vector<int>> fixed_slices;
+
+  // helper array to track the order of words stored in
+  // the sparse_change_nvt_ptr
+  std::array<int, 1000000> temp_look_up;
+  uint64_t version = 0;
+  int update_bucket = 0, temp_counter = 0;
+  std::mutex model_lock, update_lock;
 };
 
 } // namespace cirrus

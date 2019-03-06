@@ -3,15 +3,19 @@
 
 #include <Configuration.h>
 
-#include "config.h"
+#include "LDAModel.h"
+#include "LDAStatistics.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SparseLRModel.h"
+#include "ModelGradient.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
 #include <chrono>
+#include <deque>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -109,7 +113,7 @@ class LogisticSparseTaskS3 : public MLTask {
     void push_gradient(LRSparseGradient*);
 
     std::mutex redis_lock;
-  
+
     std::unique_ptr<SparseModelGet> sparse_model_get;
     PSSparseServerInterface* psint;
 };
@@ -313,6 +317,11 @@ class PSSparseServerTask : public MLTask {
                                    const Request&,
                                    std::vector<char>&,
                                    int);
+  bool process_send_lda_update(int, const Request&, std::vector<char>&, int);
+  bool process_get_lda_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_slices_indices(int, const Request&, std::vector<char>&, int);
+  bool process_send_ll_update(int, const Request&, std::vector<char>&, int);
+  bool process_send_time(int, const Request&, std::vector<char>&, int);
   bool process_get_value(int, const Request&, std::vector<char>&, int);
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);
@@ -324,6 +333,20 @@ class PSSparseServerTask : public MLTask {
 
   void check_tasks_lifetime();
   uint32_t declare_task_dead(uint32_t);
+
+  /**
+   * Compute the initial loglikelihood;
+   * only one document is downloaded from S3
+   */
+  void init_loglikelihood();
+
+  double compute_loglikelihood();
+  void update_ll_word_thread(double ll);
+
+  /**
+   * Pre-cache the token indices for each word slices
+   */
+  void pre_assign_slices(int slice_size);
 
   /**
     * Attributes
@@ -371,6 +394,47 @@ class PSSparseServerTask : public MLTask {
 
   std::unique_ptr<SparseLRModel> lr_model;  //< last computed model
   std::unique_ptr<MFModel> mf_model;        //< last computed model
+  std::unique_ptr<LDAUpdates> lda_global_vars;  //< Global LDA model
+
+  std::vector<double> ll_ndt;  //< a vector of floats each of which stores the
+                               //< the latest document log-likelihood for one
+                               //< chunk in S3.
+  // helper variables that cached the constant term in LDA-ll computation
+  double ll_base = 0.0, lgamma_eta = 0.0, lgamma_alpha = 0.0;
+
+  int K = 0;  //< number of potential topics
+  int V = 0;  //< global vocabulary dimension
+
+  std::mutex slice_lock;  //< lock for vocab slice assignment
+
+  // thread to compute log-likelihood for LDA
+  std::vector<std::unique_ptr<std::thread>> compute_ll_threads;
+
+  // a vector of unused vocabulary slices ids
+  std::vector<int> unused_slice_id;
+
+  // map the given socket id to its assigned vocab slice id
+  std::array<int, SOCKET_DIM_UPPER> sock_lookup;
+
+  int tokens_sampled = 0;  //< number of sampled tokens in the last iteration
+  int docs_sampled = 0;    //< number of visited documents
+
+  double num_to_find_partial = 0.;  //< number of requests from workers
+                                    //< to get partial model from server
+
+  double receive_size = 0;  //< total sizes of received data (in Mbs)
+  double send_size = 0;     //< total sizes of sent data (in Mbs)
+
+  // time variables for benchmarking
+  double time_find_partial = 0.0, time_send_sizes = 0.0,
+         time_send_partial = 0.0, time_whole = 0.0;
+
+  // vectors of floats representing time
+  // spent by workers on sampling / communication
+  std::vector<double> worker_sampling_time, worker_communication_time;
+
+  uint64_t start_time_iter;  //<  starting time of the current iteration
+
   Configuration task_config;                //< config for parameter server
   uint32_t num_connections = 0;             //< num of current connections
   uint32_t num_tasks = 0;                   //< num of currently reg. tasks
@@ -446,6 +510,102 @@ class MFNetflixTask : public MLTask {
    std::unique_ptr<PSSparseServerInterface> psint;
 };
 
+class LDATaskS3 : public MLTask {
+ public:
+  LDATaskS3(uint64_t model_size,
+            uint64_t batch_size,
+            uint64_t samples_per_batch,
+            uint64_t features_per_sample,
+            uint64_t nworkers,
+            uint64_t worker_id,
+            const std::string& ps_ip,
+            uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port),
+        psint(nullptr) {}
+  /**
+   * Worker here is a value 0..nworkers - 1
+   */
+  void run(const Configuration& config, int worker, int test_iters);
+
+ private:
+  void print_status() const;
+
+  /**
+   * Helper function to push the doc-topic statistics to S3
+   */
+  void upload_wih_bucket_id_fn(char* mem_to_send,
+                               uint64_t to_send_size,
+                               int& upload_lock,
+                               int bucket_id);
+  /**
+   * Helper function to push the update to S3
+   */
+  void push_gradient(char* gradient_mem,
+                     int total_sampled_tokens,
+                     int total_sampled_docs,
+                     uint32_t to_send_size);
+  /**
+   * Load the pre-cached token indices (for the current slice)
+   * from the server
+   */
+  int load_serialized_indices(char* mem_begin);
+
+  std::vector<std::unique_ptr<std::thread>> help_upload_threads;
+  std::vector<int> upload_lock_indicators;
+  std::vector<std::vector<int>> slice_indices;
+  PSSparseServerInterface* psint;
+
+  int total_sampled_tokens = 0, total_sampled_docs = 0, count = 0,
+      full_iteration = 0;
+  double time_download = 0., time_update = 0., time_get_model = 0.,
+         time_create_model = 0., time_sample = 0.;
+  long start_time;
+};
+
+/**
+ * Read files with InputReader; count all the statistics;
+ * store everything in S3
+ */
+class LoadingLDATaskS3 : public MLTask {
+ public:
+  LoadingLDATaskS3(uint64_t model_size,
+                   uint64_t batch_size,
+                   uint64_t samples_per_batch,
+                   uint64_t features_per_sample,
+                   uint64_t nworkers,
+                   uint64_t worker_id,
+                   const std::string& ps_ip,
+                   uint64_t ps_port)
+      : MLTask(model_size,
+               batch_size,
+               samples_per_batch,
+               features_per_sample,
+               nworkers,
+               worker_id,
+               ps_ip,
+               ps_port) {}
+  void run(const Configuration& config);
+  LDADataset read_dataset(const Configuration& config);
+  LDAStatistics count_dataset(
+      const std::vector<std::vector<std::pair<int, int>>>& docs,
+      std::vector<int>& nvt,
+      std::vector<int>& nt,
+      std::vector<int>& w,
+      int K,
+      std::vector<int>& global_vocab,
+      std::vector<std::vector<int>>& topic_scope);
+
+ private:
+  std::vector<int> lookup_map;
+  int idx = 0;  //< Dummy indicator
+};
 }
 
 #endif  // _TASKS_H_

@@ -4,7 +4,7 @@
 git submodule init
 git submodule update
 
-# install eigen, keyutils, kerberos, sparsehash, gflags, glog
+# install eigen, keyutils, kerberos, sparsehash, gflags, glog, lz4
 cd third_party
 
 if [ ! -d "eigen_source" ]; then

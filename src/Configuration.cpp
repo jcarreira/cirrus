@@ -45,10 +45,21 @@ void Configuration::read(const std::string& path) {
 }
 
 void Configuration::print() const {
+  if (model_type == LDA) {
+    std::cout << "Printing configuration: " << std::endl;
+    std::cout << "vocab_path: " << get_vocab_path() << std::endl;
+    std::cout << "doc_path: " << get_doc_path() << std::endl;
+    std::cout << "K: " << get_k() << std::endl;
+    std::cout << "limit_samples: " << get_limit_samples() << std::endl;
+    std::cout << "S3 file size: " << get_s3_file_size() << std::endl;
+    std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
+    std::cout << "s3_bucket_name: " << s3_bucket_name << std::endl;
+    std::cout << "slice size: " << get_slice_size() << std::endl;
+  } else {
     std::cout << "Printing configuration: " << std::endl;
     std::cout << "load_input_path: " << get_load_input_path() << std::endl;
     std::cout << "Minibatch size: " << get_minibatch_size() << std::endl;
-    std::cout << "S3 size: " << get_s3_size() << std::endl;
+    std::cout << "S3 file size: " << get_s3_size() << std::endl;
     std::cout << "learning rate: " << get_learning_rate() << std::endl;
     std::cout << "limit_samples: " << get_limit_samples() << std::endl;
     std::cout << "epsilon: " << epsilon << std::endl;
@@ -73,6 +84,7 @@ void Configuration::print() const {
         << "users: " << nusers << std::endl
         << " items: " << nitems << std::endl;
     }
+  }
 }
 
 void Configuration::check() const {
@@ -80,7 +92,8 @@ void Configuration::check() const {
     throw std::runtime_error("S3 bucket name missing from config file");
   }
   if (!(dataset_format == "csv" || dataset_format == "libsvm" ||
-        dataset_format == "svmlight" || dataset_format == "binary")) {
+        dataset_format == "svmlight" || dataset_format == "binary" ||
+        dataset_format == "lda")) {
     throw std::runtime_error("Unknown dataset format");
   }
   if (test_set_range.first && model_type == COLLABORATIVE_FILTERING) {
@@ -118,40 +131,56 @@ void Configuration::parse_line(const std::string& line) {
 
     if (s == "minibatch_size:") {
         iss >> minibatch_size;
-        if (s3_size && (s3_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_size not multiple of minibatch_size");
+        if (s3_file_size && (s3_file_size % minibatch_size != 0)) {
+          throw std::runtime_error(
+              "s3_file_size not multiple of minibatch_size");
         }
     } else if (s == "s3_size:") {
-        iss >> s3_size;
-        if (minibatch_size && (s3_size % minibatch_size != 0)) {
-          throw std::runtime_error("s3_size not multiple of minibatch_size");
-        }
+      iss >> s3_size;
+      if (minibatch_size && (s3_size % minibatch_size != 0)) {
+        throw std::runtime_error("s3_size not multiple of minibatch_size");
+      }
+    } else if (s == "s3_file_size:") {
+      iss >> s3_file_size;
+      if (minibatch_size && (s3_file_size % minibatch_size != 0)) {
+        throw std::runtime_error("s3_file_size not multiple of minibatch_size");
+      }
+    } else if (s == "sample_ratio:") {
+      iss >> sample_ratio;
     } else if (s == "num_features:") {
-        iss >> num_features;
+      iss >> num_features;
     } else if (s == "load_input_path:") {
       iss >> load_input_path;
     } else if (s == "samples_path:") {
-        iss >> samples_path;
+      iss >> samples_path;
+    } else if (s == "vocab_path:") {
+      iss >> vocab_path;
+    } else if (s == "doc_path:") {
+      iss >> doc_path;
     } else if (s == "labels_path:") {
-        iss >> labels_path;
+      iss >> labels_path;
+    } else if (s == "slice_size:") {
+      iss >> slice_size;
     } else if (s == "n_workers:") {
-        iss >> n_workers;
+      iss >> n_workers;
+    } else if (s == "K:") {
+      iss >> K_;
     } else if (s == "opt_method:") {
-        iss >> opt_method;
+      iss >> opt_method;
     }  else if (s == "epsilon:") {
         iss >> epsilon;
     } else if (s == "load_input_type:") {
       iss >> load_input_type;
     } else if (s == "learning_rate:") {
-        iss >> learning_rate;
+      iss >> learning_rate;
     } else if (s == "num_classes:") {
-        iss >> num_classes;
+      iss >> num_classes;
     } else if (s == "limit_cols:") {
-        iss >> limit_cols;
+      iss >> limit_cols;
     } else if (s == "limit_samples:") {
-        iss >> limit_samples;
+      iss >> limit_samples;
     } else if (s == "momentum_beta:") {
-        iss >> momentum_beta;  
+      iss >> momentum_beta;
     } else if (s == "s3_bucket:") {
         iss >> s3_bucket_name;
     } else if (s == "dataset_format:") {
@@ -159,21 +188,21 @@ void Configuration::parse_line(const std::string& line) {
     } else if (s == "s3_dataset_key:") {
       iss >> s3_dataset_key;
     } else if (s == "use_bias:") {
-        iss >> use_bias;
+      iss >> use_bias;
     } else if (s == "num_users:") {
-        iss >> nusers;
+      iss >> nusers;
     } else if (s == "num_items:") {
-        iss >> nitems; 
+      iss >> nitems;
     } else if (s == "model_bits:") {
-        iss >> model_bits;
+      iss >> model_bits;
     } else if (s == "netflix_workers:") {
-       iss >> netflix_workers;
+      iss >> netflix_workers;
     } else if (s == "checkpoint_frequency:") {
-       iss >> checkpoint_frequency;
+      iss >> checkpoint_frequency;
     } else if (s == "checkpoint_s3_bucket:") {
-       iss >> checkpoint_s3_bucket;
+      iss >> checkpoint_s3_bucket;
     } else if (s == "checkpoint_s3_keyname:") {
-       iss >> checkpoint_s3_keyname;
+      iss >> checkpoint_s3_keyname;
     } else if (s == "normalize:") {
       int n;
       iss >> n;
@@ -183,6 +212,8 @@ void Configuration::parse_line(const std::string& line) {
       iss >> model;
       if (model == "LogisticRegression") {
           model_type = LOGISTICREGRESSION;
+      } else if (model == "LDA") {
+        model_type = LDA;
       } else if (model == "Softmax") {
           model_type = SOFTMAX;
       } else if (model == "CollaborativeFiltering") {
@@ -258,28 +289,58 @@ std::string Configuration::get_labels_path() const {
     return labels_path;
 }
 
+std::string Configuration::get_vocab_path() const {
+  if (vocab_path == "")
+    throw std::runtime_error("vocab path not loaded");
+  return vocab_path;
+}
+
+std::string Configuration::get_doc_path() const {
+  if (doc_path == "")
+    throw std::runtime_error("doc path not loaded");
+  return doc_path;
+}
+
 double Configuration::get_learning_rate() const {
-    if (learning_rate == -1)
-        throw std::runtime_error("learning rate not loaded");
-    return learning_rate;
+  if (learning_rate == -1)
+    throw std::runtime_error("learning rate not loaded");
+  return learning_rate;
 }
 
 double Configuration::get_epsilon() const {
-    if (epsilon == -1)
-        throw std::runtime_error("epsilon not loaded");
-    return epsilon;
+  if (epsilon == -1)
+    throw std::runtime_error("epsilon not loaded");
+  return epsilon;
+}
+
+double Configuration::get_sample_ratio() const {
+  if (sample_ratio == 0.)
+    throw std::runtime_error("sample ratio not loaded");
+  return sample_ratio;
 }
 
 uint64_t Configuration::get_minibatch_size() const {
-    if (minibatch_size == 0)
-        throw std::runtime_error("Minibatch size not loaded");
-    return minibatch_size;
+  if (minibatch_size == 0)
+    throw std::runtime_error("Minibatch size not loaded");
+  return minibatch_size;
+}
+
+uint64_t Configuration::get_s3_file_size() const {
+  if (s3_file_size == 0)
+    throw std::runtime_error("S3 file size not loaded");
+  return s3_file_size;
 }
 
 uint64_t Configuration::get_s3_size() const {
-    if (s3_size == 0)
-        throw std::runtime_error("Minibatch size not loaded");
-    return s3_size;
+  if (s3_size == 0)
+    throw std::runtime_error("S3 size not loaded");
+  return s3_size;
+}
+
+uint32_t Configuration::get_slice_size() const {
+  if (slice_size == 0)
+    throw std::runtime_error("Slice size not loaded");
+  return slice_size;
 }
 
 std::string Configuration::get_load_input_type() const {
@@ -372,6 +433,10 @@ int Configuration::get_users() const {
 
 int Configuration::get_items() const {
   return nitems;
+}
+
+int Configuration::get_k() const {
+  return K_;
 }
 
 bool Configuration::get_grad_threshold_use() const {

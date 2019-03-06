@@ -19,7 +19,7 @@
 #define ERROR_SPARSE_TASK_RANK (2)
 #define PS_SPARSE_SERVER_TASK_RANK (1)
 #define LOADING_SPARSE_TASK_RANK (0)
-#define WORKERS_BASE 3 // used in wait_for_start
+#define WORKERS_BASE 3  // used in wait_for_start
 
 #define SAMPLE_BASE (0)
 
@@ -41,3 +41,9 @@ using FEATURE_TYPE = float;
 
 // fixed size number of characters for key name
 #define KEY_SIZE (10)
+
+// the greatest possible vocab dim
+#define VOCAB_DIM_UPPER (1000000)
+
+// the greatest possible socket id
+#define SOCKET_DIM_UPPER (100000)

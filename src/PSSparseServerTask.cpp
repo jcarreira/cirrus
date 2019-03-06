@@ -1,19 +1,23 @@
 #include <Tasks.h>
 
+#include <signal.h>
+#include <stdlib.h>
+#include <array>
+#include "AdaGrad.h"
+#include "Checksum.h"
+#include "Constants.h"
+#include "Momentum.h"
+#include "Nesterov.h"
+#include "OptimizationMethod.h"
+#include "S3.h"
+#include "SGD.h"
 #include "Serializers.h"
 #include "Utils.h"
-#include "Constants.h"
-#include "Checksum.h"
-#include <signal.h>
-#include "OptimizationMethod.h"
-#include "AdaGrad.h"
-#include "Momentum.h"
-#include "SGD.h"
-#include "Nesterov.h"
+#include "gamma.h"
 
 #undef DEBUG
 
-#define MAX_CONNECTIONS (nworkers * 2 + 1) // (2 x # workers + 1)
+#define MAX_CONNECTIONS (nworkers)  // (2 x # workers + 1)
 #define THREAD_MSG_BUFFER_SIZE 1000000
 
 #define TIMEOUT_THRESHOLD_SEC (3)
@@ -66,6 +70,16 @@ void PSSparseServerTask::set_operation_maps() {
   operation_to_name[GET_NUM_UPDATES] = "GET_NUM_UPDATES";
   operation_to_name[GET_LAST_TIME_ERROR] = "GET_LAST_TIME_ERROR";
   operation_to_name[KILL_SIGNAL] = "KILL_SIGNAL";
+  operation_to_name[SEND_LDA_UPDATE] = "SEND_LDA_UPDATE";
+  operation_to_name[GET_LDA_MODEL] = "GET_LDA_MODEL";
+  operation_to_name[GET_LDA_SLICES_IDX] = "GET_LDA_SLICES_IDX";
+  operation_to_name[SEND_LL_NDT] = "SEND_LL_NDT";
+  operation_to_name[SEND_TIME] = "SEND_TIME";
+
+  for (int i = 0; i < NUM_PS_WORK_THREADS; i++) {
+    thread_msg_buffer[i].reset(new char[THREAD_MSG_BUFFER_SIZE]);
+  }
+
   operation_to_name[SET_VALUE] = "SET_VALUE";
   operation_to_name[GET_VALUE] = "GET_VALUE";
 
@@ -98,6 +112,16 @@ void PSSparseServerTask::set_operation_maps() {
       std::bind(&PSSparseServerTask::process_set_value, this, _1, _2, _3, _4);
   operation_to_f[GET_VALUE] =
       std::bind(&PSSparseServerTask::process_get_value, this, _1, _2, _3, _4);
+  operation_to_f[SEND_LDA_UPDATE] = std::bind(
+      &PSSparseServerTask::process_send_lda_update, this, _1, _2, _3, _4);
+  operation_to_f[GET_LDA_MODEL] = std::bind(
+      &PSSparseServerTask::process_get_lda_model, this, _1, _2, _3, _4);
+  operation_to_f[GET_LDA_SLICES_IDX] = std::bind(
+      &PSSparseServerTask::process_get_slices_indices, this, _1, _2, _3, _4);
+  operation_to_f[SEND_LL_NDT] = std::bind(
+      &PSSparseServerTask::process_send_ll_update, this, _1, _2, _3, _4);
+  operation_to_f[SEND_TIME] =
+      std::bind(&PSSparseServerTask::process_send_time, this, _1, _2, _3, _4);
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -193,6 +217,55 @@ bool PSSparseServerTask::process_send_lr_gradient(
   opt_method->sgd_update(
       lr_model, &gradient);
   model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
+bool PSSparseServerTask::process_send_lda_update(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+#ifdef DEBUG
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+
+  int tokens, docs;
+  if (read_all(req.sock, &tokens, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+  tokens_sampled += tokens;
+
+  if (read_all(req.sock, &docs, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+  docs_sampled += docs;
+
+  try {
+    if (read_all(req.sock, thread_buffer.data(),
+                 incoming_size - 2 * sizeof(int)) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Uhandled error");
+  }
+
+  receive_size += ((double) incoming_size) / 1000000.;
+
+  const char* data = thread_buffer.data();
+
+  int update_bucket = lda_global_vars->update(data);
   gradientUpdatesCount++;
   return true;
 }
@@ -304,6 +377,201 @@ bool PSSparseServerTask::process_get_lr_sparse_model(
   return true;
 }
 
+bool PSSparseServerTask::process_get_lda_model(int sock,
+                                               const Request& req,
+                                               std::vector<char>& thread_buffer,
+                                               int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  auto start_time_benchmark = get_time_ms();
+  auto start_time_temp = get_time_ms();
+
+  int previous_slice_id;
+  if (read_all(req.sock, &previous_slice_id, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  slice_lock.lock();
+
+  start_time_temp = get_time_ms();
+
+  int rand_max = unused_slice_id.size();
+
+  // determine the next word slice to send
+  int id_to_send, slice_id_to_send;
+  if (unused_slice_id.size() == 0) {
+    slice_id_to_send = previous_slice_id;
+  } else {
+    id_to_send = std::rand() % (rand_max);
+    slice_id_to_send = unused_slice_id[id_to_send];
+    unused_slice_id.erase(unused_slice_id.begin() + id_to_send);
+    if (previous_slice_id != -1) {
+      unused_slice_id.push_back(previous_slice_id);
+    }
+  }
+  sock_lookup[req.poll_fd.fd] = slice_id_to_send;
+  slice_lock.unlock();
+
+  // serialize the word slice
+  uint32_t to_send_size, uncompressed_size;
+  start_time_temp = get_time_ms();
+  auto pure_partial_benchmark = get_time_ms();
+  std::shared_ptr<char> data_to_send = lda_global_vars->get_partial_model(
+      slice_id_to_send, to_send_size, uncompressed_size);
+
+  time_find_partial += (get_time_ms() - start_time_temp) / 1000.0;
+  num_to_find_partial += 1.;
+  start_time_temp = get_time_ms();
+
+  // send the size of compressed partial model
+  if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+
+  // send the size of original partial model
+  if (send_all(req.sock, &uncompressed_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+
+  // send the slice id
+  if (send_all(req.sock, &slice_id_to_send, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+
+  time_send_sizes += (get_time_ms() - start_time_temp) / 1000.0;
+
+  start_time_temp = get_time_ms();
+  // send the partial model
+  if (send_all(req.sock, data_to_send.get(), to_send_size) == -1) {
+    return false;
+  }
+
+  time_send_partial += (get_time_ms() - start_time_temp) / 1000.0;
+
+  time_whole += (get_time_ms() - start_time_benchmark) / 1000.0;
+
+  send_size += ((double) to_send_size) / 1000000.;
+
+  data_to_send.reset();
+  return true;
+}
+
+bool PSSparseServerTask::process_get_slices_indices(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+  int local_model_id;
+  if (read_all(req.sock, &local_model_id, sizeof(int)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  uint32_t to_send_size;
+  auto train_range = task_config.get_train_range();
+  std::shared_ptr<char> data_to_send = lda_global_vars->get_slices_indices(
+      local_model_id - train_range.first, to_send_size);
+
+  if (send_all(req.sock, &to_send_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+
+  if (send_all(req.sock, data_to_send.get(), to_send_size) == -1) {
+    return false;
+  }
+
+  data_to_send.reset();
+  return true;
+}
+
+bool PSSparseServerTask::process_send_ll_update(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  int bucket_id;
+  if (read_all(req.sock, &bucket_id, sizeof(int)) == -1) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  double ll;
+  if (read_all(req.sock, &ll, sizeof(double)) == -1) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  auto train_range = task_config.get_train_range();
+  ll_ndt[bucket_id - train_range.first] = ll;
+
+  return true;
+}
+
+bool PSSparseServerTask::process_send_time(int sock,
+                                           const Request& req,
+                                           std::vector<char>& thread_buffer,
+                                           int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  double comm_time, sampling_time;
+  if (read_all(req.sock, &comm_time, sizeof(double)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+  if (read_all(req.sock, &sampling_time, sizeof(double)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+
+  worker_sampling_time.push_back(sampling_time);
+  worker_communication_time.push_back(comm_time);
+
+  if (worker_sampling_time.size() >= nworkers ||
+      worker_communication_time.size() >= nworkers) {
+    double avg_sampling = 0., avg_comm = 0.;
+    double cur_time = (get_time_ms() - start_time_iter) / 1000.;
+
+    for (int i = 0; i < worker_sampling_time.size(); ++i) {
+      avg_sampling += worker_sampling_time[i];
+    }
+    avg_sampling /= worker_sampling_time.size();
+
+    for (int i = 0; i < worker_communication_time.size(); ++i) {
+      avg_comm += worker_communication_time[i];
+    }
+    avg_comm /= worker_communication_time.size();
+
+    std::cout << "@" << cur_time << " sec\n";
+    std::cout << "Worker Avg Sampling Time: " << avg_sampling << std::endl;
+    std::cout << "Worker Avg Communication Time: " << avg_comm << std::endl;
+
+    worker_sampling_time.clear();
+    worker_communication_time.clear();
+  }
+
+  return true;
+}
+
 bool PSSparseServerTask::process_get_mf_full_model(
     int sock,
     const Request& req,
@@ -367,8 +635,10 @@ void PSSparseServerTask::handle_failed_read(struct pollfd* pfd) {
     std::cout << "Error closing socket. errno: " << errno << std::endl;
   }
   num_connections--;
-  std::cout << "PS closing connection after process(): " << num_connections
-            << std::endl;
+  if (sock_lookup[pfd->fd] != -1) {
+    unused_slice_id.push_back(sock_lookup[pfd->fd]);
+    sock_lookup[pfd->fd] = -1;
+  }
   pfd->fd = -1;
   pfd->revents = 0;
 }
@@ -639,7 +909,6 @@ void PSSparseServerTask::gradient_f() {
 
     to_process.pop();
     to_process_lock.unlock();
-
     int sock = req.poll_fd.fd;
 
     // first read 4 bytes for operation ID
@@ -654,7 +923,7 @@ void PSSparseServerTask::gradient_f() {
               << operation_to_name[operation] << std::endl;
 #endif
 
-    if (operation_to_f.find(operation) == operation_to_f.end()) {
+    if (operation_to_name.find(operation) == operation_to_name.end()) {
       throw std::runtime_error("Unknown operation");
     }
 
@@ -692,7 +961,7 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 #endif
 
   uint32_t incoming_size = 0;
-#ifdef DEBUG 
+#ifdef DEBUG
   std::cout << "incoming size: " << incoming_size << std::endl;
 #endif
   to_process_lock.lock();
@@ -706,6 +975,40 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
+
+  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
+                             NUM_FACTORS));
+  mf_model->randomize();
+
+  if (task_config.get_model_type() == cirrus::Configuration::LDA) {
+    std::cout << "Getting initial LDAUpdate from S3\n";
+    // Get the global stats from S3
+    // s3_initialize_aws();
+    std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+    std::string obj_id_str =
+        std::to_string(hash_f(std::to_string(0).c_str())) + "-LDA";
+    std::ostringstream* s3_obj =
+        s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+    const std::string tmp = s3_obj->str();
+    const char* s3_data = tmp.c_str();
+
+    // s3_shutdown_aws();
+
+    lda_global_vars.reset(new LDAUpdates());
+    lda_global_vars->loadSerialized(s3_data);
+    init_loglikelihood();
+    std::cout << "Finished getting initial statistics.\n";
+
+    int slice_size = task_config.get_slice_size();
+
+    pre_assign_slices(slice_size);
+
+    std::srand(std::time(nullptr));
+    sock_lookup.fill(-1);
+
+    worker_sampling_time.reserve(nworkers);
+    worker_communication_time.reserve(nworkers);
+  }
 
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));
@@ -834,14 +1137,14 @@ void PSSparseServerTask::loop(int poll_id) {
         if (curr_fd.revents != POLLIN) {
           //LOG<ERROR>("Non read event on socket: ", curr_fd.fd);
           if (curr_fd.revents & POLLHUP) {
-            std::cout << "PS closing connection " << num_connections
-                      << std::endl;
-            num_connections--;
+            // std::cout << "PS closing connection " << num_connections
+            //           << std::endl;
             close(curr_fd.fd);
             curr_fd.fd = -1;
           }
         } else if (poll_id == 0 && curr_fd.fd == server_sock_) {
-          std::cout << "PS new connection!" << std::endl;
+          // std::cout << poll_id << std::endl;
+          // std::cout << "PS new connection!" << std::endl;
           int newsock = accept(server_sock_,
               reinterpret_cast<struct sockaddr*> (&cli_addr),
               &clilen);
@@ -850,16 +1153,16 @@ void PSSparseServerTask::loop(int poll_id) {
           }
           // If at capacity, reject connection
           if (poll_id == 0 && num_connections > (MAX_CONNECTIONS - 1)) {
-            std::cout << "Rejecting connection "
-              << num_connections
-              << std::endl;
+            // std::cout << "Rejecting connection "
+            //   << num_connections
+            //   << std::endl;
             close(newsock);
           } else if (poll_id == 0 && curr_indexes[poll_id] == max_fds) {
             throw std::runtime_error("We reached capacity");
             close(newsock);
           } else if (poll_id == 0) {
             int r = rand() % NUM_POLL_THREADS;
-            std::cout << "Random: " << r << std::endl;
+            // std::cout << "Random: " << r << std::endl;
             fdses[r][curr_indexes[r]].fd = newsock;
             fdses[r][curr_indexes[r]].events = POLLIN;
             curr_indexes[r]++;
@@ -876,8 +1179,8 @@ void PSSparseServerTask::loop(int poll_id) {
                         << std::endl;
             }
             num_connections--;
-            std::cout << "PS closing connection after process(): "
-                      << num_connections << std::endl;
+            // std::cout << "PS closing connection after process(): "
+            //           << num_connections << std::endl;
             curr_fd.fd = -1;
           }
         }
@@ -910,8 +1213,8 @@ void PSSparseServerTask::check_tasks_lifetime() {
         std::chrono::duration_cast<std::chrono::seconds>(now - start_time)
             .count();
 
-    std::cout << "id " << task_id << " elapsed_sec " << elapsed_sec
-              << std::endl;
+    // std::cout << "id " << task_id << " elapsed_sec " << elapsed_sec
+    //           << std::endl;
 
     if (elapsed_sec > task_to_remaining_time[task_id] + TIMEOUT_THRESHOLD_SEC) {
       declare_task_dead(task_id);
@@ -944,27 +1247,29 @@ void PSSparseServerTask::run(const Configuration& config) {
 
   task_config = config;
 
-  auto learning_rate = config.get_learning_rate();
-  auto epsilon = config.get_epsilon();
-  auto momentum_beta = config.get_momentum_beta();
-  if (config.get_opt_method() == "sgd") {
-    opt_method.reset(new SGD(learning_rate));
-  } else if (config.get_opt_method() == "nesterov") {
-    opt_method.reset(new Nesterov(learning_rate, momentum_beta));
-  } else if (config.get_opt_method() == "momentum") {
-    opt_method.reset(new Momentum(learning_rate, momentum_beta));
-  } else if (config.get_opt_method() == "adagrad") {
-    opt_method.reset(new AdaGrad(learning_rate, epsilon));
-  } else {
-    throw std::runtime_error("Unknown opt method");
+  if (task_config.get_model_type() != cirrus::Configuration::LDA) {
+    auto learning_rate = config.get_learning_rate();
+    auto epsilon = config.get_epsilon();
+    auto momentum_beta = config.get_momentum_beta();
+    if (config.get_opt_method() == "sgd") {
+      opt_method.reset(new SGD(learning_rate));
+    } else if (config.get_opt_method() == "nesterov") {
+      opt_method.reset(new Nesterov(learning_rate, momentum_beta));
+    } else if (config.get_opt_method() == "momentum") {
+      opt_method.reset(new Momentum(learning_rate, momentum_beta));
+    } else if (config.get_opt_method() == "adagrad") {
+      opt_method.reset(new AdaGrad(learning_rate, epsilon));
+    } else {
+      throw std::runtime_error("Unknown opt method");
+    }
   }
-
   start_server();
 
   //wait_for_start(PS_SPARSE_SERVER_TASK_RANK, redis_con, nworkers);
 
   uint64_t start = get_time_us();
   uint64_t last_tick = get_time_us();
+
   while (!kill_signal) {
     auto now = get_time_us();
     auto elapsed_us = now - last_tick;
@@ -981,6 +1286,12 @@ void PSSparseServerTask::run(const Configuration& config) {
                 << " #conns: " << num_connections << " #tasks: " << num_tasks
                 << std::endl;
       gradientUpdatesCount = 0;
+
+      if (task_config.get_model_type() == cirrus::Configuration::LDA) {
+        if ((int) since_start_sec % 10 == 0) {
+          compute_loglikelihood();
+        }
+      }
 
       register_lock.lock();
       check_tasks_lifetime();
@@ -1024,6 +1335,188 @@ void PSSparseServerTask::checkpoint_model_file(
   std::ofstream fout(filename.c_str(), std::ofstream::binary);
   fout.write(data.get(), model_size);
   fout.close();
+}
+
+double PSSparseServerTask::compute_loglikelihood() {
+  double ll = ll_base;
+  for (int i = 0; i < ll_ndt.size(); ++i) {
+    ll += ll_ndt[i];
+  }
+  compute_ll_threads.push_back(std::make_unique<std::thread>(
+      std::bind(&PSSparseServerTask::update_ll_word_thread, this,
+                std::placeholders::_1),
+      ll));
+  return ll;
+}
+
+void PSSparseServerTask::init_loglikelihood() {
+  std::shared_ptr<std::vector<int> > nvt_ptr, nt_ptr;
+  lda_global_vars->get_nvt_pointer(nvt_ptr);
+  lda_global_vars->get_nt_pointer(nt_ptr);
+
+  double alpha = 0.1, eta = .1;
+
+  K = nt_ptr->size();
+  V = nvt_ptr->size() / K;
+  lgamma_eta = lda_lgamma(eta);
+  lgamma_alpha = lda_lgamma(alpha);
+
+  ll_base += K * lda_lgamma(eta * V);
+
+  // s3_initialize_aws();
+  std::shared_ptr<S3Client> s3_client = std::make_shared<S3Client>();
+
+  auto train_range = task_config.get_train_range();
+  ll_ndt.clear();
+  ll_ndt.resize(train_range.second - train_range.first);
+
+  int i = train_range.first;
+  double ll_temp = 0.0;
+  std::string obj_id_str =
+      std::to_string(hash_f(std::to_string(i).c_str())) + "-LDA";
+  std::ostringstream* s3_obj =
+      s3_client->s3_get_object_ptr(obj_id_str, task_config.get_s3_bucket());
+
+  const std::string tmp = s3_obj->str();
+  const char* s3_data = tmp.c_str();
+
+  LDAStatistics ndt_partial(s3_data);
+  std::vector<std::vector<int> > ndt;
+  ndt_partial.get_ndt(ndt);
+
+  std::cout << "ndt size: " << ndt.size() << std::endl;
+
+  for (int j = 0; j < ndt.size(); ++j) {
+    double ll_single_doc = lda_lgamma(K * alpha) - K * lda_lgamma(alpha);
+    int ndj = 0, nz_num = 0;
+    for (int k = 0; k < K; ++k) {
+      ndj += ndt[j][k];
+      if (ndt[j][k] > 0) {
+        ll_single_doc += lda_lgamma(alpha + ndt[j][k]);
+        ++nz_num;
+      }
+    }
+    ll_single_doc +=
+        (K - nz_num) * lda_lgamma(alpha) - lda_lgamma(alpha * K + ndj);
+    ll_temp += ll_single_doc;
+  }
+
+  ll_ndt.clear();
+  ll_ndt = std::vector<double>(train_range.second - train_range.first, ll_temp);
+
+  start_time_iter = get_time_ms();
+  compute_loglikelihood();
+}
+
+void PSSparseServerTask::update_ll_word_thread(double ll) {
+  std::shared_ptr<std::vector<int> > nvt_ptr, nt_ptr;
+
+  lda_global_vars->get_nvt_pointer(nvt_ptr);
+  lda_global_vars->get_nt_pointer(nt_ptr);
+
+  double current_time = (get_time_ms() - start_time_iter) / 1000.0;
+  double alpha = 0.05, eta = .01;
+
+  K = nt_ptr->size();
+  V = nvt_ptr->size() / K;
+  lgamma_eta = lda_lgamma(eta);
+  lgamma_alpha = lda_lgamma(alpha);
+
+  double ll_word = 0.0;
+
+  for (int v = 0; v < V; ++v) {
+    double ll_single_word = 0.;
+    int nz_num = 0;
+    for (int i = 0; i < K; ++i) {
+      auto cnt = nvt_ptr->operator[](v* K + i);
+      if (cnt != 0) {
+        nz_num++;
+        ll_single_word += lda_lgamma(cnt + eta);
+      }
+    }
+    ll_single_word += (K - nz_num) * lda_lgamma(eta);
+    ll_word += ll_single_word;
+  }
+
+  double ll_norm = K * (lda_lgamma(eta * V) - V * lda_lgamma(eta));
+  for (int i = 0; i < K; ++i) {
+    ll_norm -= lda_lgamma(nt_ptr->operator[](i) + V * eta);
+  }
+
+  std::cout << "----------------------------------------------------------\n";
+  std::cout << "doc-ll : " << ll << std::endl;
+  std::cout << "word-ll: " << ll_word << std::endl;
+  std::cout << "norm-ll: " << ll_norm << std::endl;
+  std::cout << "**log-likelihood: " << ll + ll_word + ll_norm << " "
+            << (get_time_ms() - start_time_iter) / 1000.0 << std::endl;
+  std::cout << "word ll: " << ll_word << std::endl;
+  std::cout << "doc ll" << ll << std::endl;
+  std::cout << "# of sampled docs: " << docs_sampled << std::endl;
+  std::cout << "**tokens/sec: "
+            << (double) tokens_sampled /
+                   ((get_time_ms() - start_time_iter) / 1000.0)
+            << std::endl;
+  std::cout << "**send(mbs)/sec: "
+            << (double) send_size / ((get_time_ms() - start_time_iter) / 1000.0)
+            << std::endl;
+  std::cout << "**receive(mbs)/sec: "
+            << (double) receive_size /
+                   ((get_time_ms() - start_time_iter) / 1000.0)
+            << std::endl;
+  std::cout << "time: " << current_time << std::endl;
+  std::cout << "----------------------------------------------------------\n";
+  std::cout << "Avg Time (get_lda_model) function: "
+            << time_whole / num_to_find_partial << std::endl;
+  std::cout << "Avg Time to find partial model: "
+            << time_find_partial / num_to_find_partial << std::endl;
+  std::cout << "Avg Time to send the sizes: "
+            << time_send_sizes / num_to_find_partial << std::endl;
+  std::cout << "Avg Time to send the partial model: "
+            << time_send_partial / num_to_find_partial << std::endl;
+  std::cout << "----------------------------------------------------------\n";
+  std::cout << "global model count: " << lda_global_vars->counts << std::endl;
+  std::cout << "Avg Time (find_partial) function: "
+            << lda_global_vars->time_whole / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of actual finding: "
+            << lda_global_vars->time_find_partial / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of compression: "
+            << lda_global_vars->time_compress / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of init: "
+            << lda_global_vars->time_temp / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of copying ttemp: "
+            << lda_global_vars->time_ttemp / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of serializing whole nvt: "
+            << lda_global_vars->time_nvt_find / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of checking sparsity: "
+            << lda_global_vars->time_check_sparse / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of serializing the sparse: "
+            << lda_global_vars->time_serial_sparse / lda_global_vars->counts
+            << std::endl;
+  std::cout << "\tAvg Time of compressing: "
+            << lda_global_vars->time_compress / lda_global_vars->counts
+            << std::endl;
+
+  tokens_sampled = 0;
+  send_size = 0;
+  receive_size = 0;
+  start_time_iter = get_time_ms();
+}
+void PSSparseServerTask::pre_assign_slices(int slice_size) {
+  int num_slices = lda_global_vars->pre_assign_slices(slice_size);
+
+  unused_slice_id.reserve(num_slices);
+  for (int i = 0; i < num_slices; ++i) {
+    unused_slice_id.push_back(i);
+  }
+
+  std::cout << "Finish pre-assigning slcies" << std::endl;
 }
 
 void PSSparseServerTask::destroy_pthread_barrier(pthread_barrier_t* barrier) {

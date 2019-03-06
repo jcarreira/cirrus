@@ -1,8 +1,7 @@
 #include "S3SparseIterator.h"
-#include "Utils.h"
 #include <unistd.h>
-#include <vector>
 #include <iostream>
+#include "Utils.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -10,7 +9,7 @@
 //#define DEBUG
 
 namespace cirrus {
-  
+
 // s3_cad_size nmber of samples times features per sample
 S3SparseIterator::S3SparseIterator(uint64_t left_id,
                                    uint64_t right_id,  // right id is exclusive
@@ -69,11 +68,9 @@ std::shared_ptr<SparseDataset> S3SparseIterator::getNext() {
     std::cout << "getNext::Deleted entry: " << to_delete << std::endl;
 #endif
   }
- 
-  //std::cout << "sem_wait" << std::endl; 
+
   sem_wait(&semaphore);
   ring_lock.lock();
-
   // first discard empty queue
   while (minibatches_list.front()->size() == 0) {
     auto queue_ptr = minibatches_list.pop();
@@ -148,19 +145,19 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss) {
     int is_last = ((i + 1) == n_minibatches) ? str_version : -1;
 
     new_queue->push(std::make_pair(s3_data, is_last));
-  
+
     // advance ptr sample by sample
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
       if (use_label) {
         FEATURE_TYPE label = load_value<FEATURE_TYPE>(s3_data); // read label
         assert(label == 0.0 || label == 1.0);
       }
-      int num_values = load_value<int>(s3_data); 
+      int num_values = load_value<int>(s3_data);
 #ifdef DEBUG
       //std::cout << "num_values: " << num_values << std::endl;
 #endif
       assert(num_values >= 0 && num_values < 1000000);
-    
+
       // advance until the next minibatch
       // every sample has index and value
       advance_ptr(s3_data, num_values * (sizeof(int) + sizeof(FEATURE_TYPE)));
@@ -212,6 +209,7 @@ void S3SparseIterator::printProgress(const std::string& s3_obj) {
   count++;
 
   double elapsed_sec = (get_time_us() - start_time) / 1000.0 / 1000.0;
+  std::cout << total_received << " " << elapsed_sec << std::endl;
   std::cout
     << "Getting object count: " << count
     << " s3 e2e bw (MB/s): " << total_received / elapsed_sec / 1024.0 / 1024
@@ -227,6 +225,8 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
     << std::endl;
 
   uint64_t count = 0;
+  std::cout << "left: " << left_id << " "
+            << "right:" << right_id << std::endl;
   while (1) {
     // if we can go it means there is a slot
     // in the ring
@@ -262,7 +262,7 @@ try_start:
                 << " obj_id_str: " << obj_id_str << std::endl;
       goto try_start;
     }
-    
+
     uint64_t num_passes = (count / (right_id - left_id));
     if (LIMIT_NUMBER_PASSES > 0 && num_passes == LIMIT_NUMBER_PASSES) {
       exit(0);
@@ -276,4 +276,3 @@ try_start:
 }
 
 } // namespace cirrus
-

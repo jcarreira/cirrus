@@ -12,7 +12,7 @@ class LogisticRegressionTask(BaseTask):
         print("Logistic Regression Task Lost")
 
     def define_config(self):
-        
+
         if self.use_grad_threshold:
             grad_t = 1
         else:
@@ -45,7 +45,7 @@ def LogisticRegression(
             n_workers,
             n_ps,
             dataset,
-            learning_rate, 
+            learning_rate,
             progress_callback,
             train_set,
             test_set,
@@ -84,5 +84,3 @@ def LogisticRegression(
             experiment_id=experiment_id,
             lambda_size=lambda_size
            )
-
-

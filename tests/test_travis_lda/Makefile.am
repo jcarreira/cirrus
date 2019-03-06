@@ -3,6 +3,8 @@ AUTOMAKE_OPTIONS = foreign
 CXX=g++
 CXXFLAGS=-Wall -ansi -O3 -std=c++17 -ggdb
 
+bin_PROGRAMS =  load test_ps w1 w2
+
 TOP_DIR=../../../..
 THIRD_PARTY_DIR=../../third_party
 CIRRUS_SRC_DIR=../../src
@@ -15,23 +17,29 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/Utils.cpp \
 		    $(CIRRUS_SRC_DIR)/MlUtils.cpp \
 		    $(CIRRUS_SRC_DIR)/S3.cpp \
+		    $(CIRRUS_SRC_DIR)/OptimizationMethod.cpp \
+		    $(CIRRUS_SRC_DIR)/SGD.cpp \
 		    $(CIRRUS_SRC_DIR)/Checksum.cpp \
 		    $(CIRRUS_SRC_DIR)/MurmurHash3.cpp \
 		    $(CIRRUS_SRC_DIR)/ModelGradient.cpp \
 		    $(CIRRUS_SRC_DIR)/InputReader.cpp \
 		    $(CIRRUS_SRC_DIR)/PSSparseServerInterface.cpp \
+		    $(CIRRUS_SRC_DIR)/PSSparseServerTask.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseMFModel.cpp \
 		    $(CIRRUS_SRC_DIR)/MFModel.cpp \
+		    $(CIRRUS_SRC_DIR)/Nesterov.cpp \
+		    $(CIRRUS_SRC_DIR)/AdaGrad.cpp \
+		    $(CIRRUS_SRC_DIR)/Momentum.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
-				$(CIRRUS_SRC_DIR)/gamma.cpp \
 				$(CIRRUS_SRC_DIR)/LDAStatistics.cpp \
 				$(CIRRUS_SRC_DIR)/LoadingLDATaskS3.cpp \
 				$(CIRRUS_SRC_DIR)/LDATaskS3.cpp \
 				$(CIRRUS_SRC_DIR)/LDADataset.cpp \
-				$(CIRRUS_SRC_DIR)/LDAModel.cpp
+				$(CIRRUS_SRC_DIR)/LDAModel.cpp \
+				$(CIRRUS_SRC_DIR)/gamma.cpp
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \
@@ -39,6 +47,8 @@ LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/curl/curl/lib/.libs/ \
 	    -L$(THIRD_PARTY_DIR)/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	    -L$(THIRD_PARTY_DIR)/aws-sdk-cpp/build/aws-cpp-sdk-s3 \
+	    -L/home/ec2-user/kerberos/krb5-1.15.2/src/lib \
+	    -L/home/ec2-user/keyutils/keyutils-1.5.10 \
 			-L$(THIRD_PARTY_DIR)/lz4-dev/lib
 
 LIBS= -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
@@ -53,11 +63,16 @@ LDADD    = $(LINCLUDES) $(LIBS)
 AM_CPPFLAGS=-I$(CIRRUS_SRC_DIR) \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-core/include/ \
-	 -I$(THIRD_PARTY_DIR)/eigen_source/
+	 -I$(THIRD_PARTY_DIR)/eigen_source/ \
+	 -I$(THIRD_PARTY_DIR)/lz4-dev/lib
 
-bin_PROGRAMS = test_libsvm_iterator
+load_SOURCES = load.cpp $(CIRRUS_SRC_FILES)
 
-test_libsvm_iterator_SOURCES  = test_libsvm_iterator.cpp $(CIRRUS_SRC_FILES)
+test_ps_SOURCES = ps_test.cpp $(CIRRUS_SRC_FILES)
+
+w1_SOURCES = w1.cpp $(CIRRUS_SRC_FILES)
+
+w2_SOURCES = w2.cpp $(CIRRUS_SRC_FILES)
 
 clean:
 	rm -rf a.out test_iterator

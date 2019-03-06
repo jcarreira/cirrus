@@ -59,6 +59,10 @@ void run_tasks(int rank,
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config, rank - WORKERS_BASE, test_iters);
+    } else if (config.get_model_type() == cirrus::Configuration::LDA) {
+      cirrus::LDATaskS3 lt(1, batch_size, samples_per_batch,
+                           features_per_sample, nworkers, rank, ps_ip, ps_port);
+      lt.run(config, rank - WORKERS_BASE, test_iters);
     } else {
       exit(-1);
     }
@@ -83,6 +87,11 @@ void run_tasks(int rank,
           batch_size, samples_per_batch, features_per_sample,
           nworkers, rank, ps_ip, ps_port);
       lt.run(config);
+    } else if (config.get_model_type() == cirrus::Configuration::LDA) {
+      cirrus::LoadingLDATaskS3 st(
+          (1 << config.get_model_bits()) + 1, batch_size, samples_per_batch,
+          features_per_sample, nworkers, rank, ps_ip, ps_port);
+      st.run(config);
     } else {
       exit(-1);
     }
@@ -177,4 +186,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-

@@ -80,7 +80,7 @@ class BaseTask(object):
                     self.n_ps,
                     0,
                     self.n_workers,
-                    self.lambda_size)
+                    lambda_size)
 
         self.start_time = time.time()
 
@@ -97,6 +97,10 @@ class BaseTask(object):
 
         # Stored values
         self.last_num_lambdas = 0
+        self.num_task = 3
+
+        self.lambda_client = boto3.client('lambda', 'us-west-2')
+        self.lambda_name = "testfunc1"
 
     def get_name(self):
         string = "Rate %f" % self.learning_rate
@@ -135,7 +139,6 @@ class BaseTask(object):
 
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
-        num_task = 3
 
         if num_lambdas == None:
             return
@@ -144,11 +147,11 @@ class BaseTask(object):
             shortage = self.n_workers - num_lambdas
 
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
-                        % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
+                        % (self.num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
                 try:
-                    response = lambda_client.invoke(
-                        FunctionName="%s_%d" % (lambda_name, self.worker_size),
+                    response = self.lambda_client.invoke(
+                        FunctionName="%s_%d" % (self.lambda_name, self.worker_size),
                         InvocationType='Event',
                         LogType='Tail',
                         Payload=payload)
@@ -185,7 +188,6 @@ class BaseTask(object):
             return self.real_time_loss_lst
         else:
             return self.time_loss_lst
-
 
     def run(self, delete_logs=True):
         """Run this task.
@@ -234,10 +236,8 @@ class BaseTask(object):
         #   maintaining them before this method returns, which feels nicer.
         time.sleep(PS_KILL_TO_LAMBDA_DEATH)
 
-
     def is_dead(self):
         return self.dead
-
 
     @abstractmethod
     def define_config(self, fetch=False):
