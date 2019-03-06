@@ -92,7 +92,7 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
   bool printed_rate = false;
   int count = 0;
   auto start_time = get_time_ms();
-  while (count < 3) {
+  while (count < 10) {
   // get data, labels and model
 #ifdef DEBUG
     std::cout << get_time_us() << " [WORKER] running phase 1" << std::endl;
