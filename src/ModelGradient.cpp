@@ -879,7 +879,7 @@ std::shared_ptr<char> LDAUpdates::get_slices_indices(int local_model_id,
     N += w_slices[local_model_id][i].size();
   }
 
-  to_send_size = sizeof(int32_t) * (1 + w_slices[local_model_id].size() + N);
+  to_send_size = sizeof(int32_t) * (2 + w_slices[local_model_id].size() + N);
 
   std::shared_ptr<char> mem_begin = std::shared_ptr<char>(
       new char[to_send_size], std::default_delete<char[]>());
@@ -893,6 +893,10 @@ std::shared_ptr<char> LDAUpdates::get_slices_indices(int local_model_id,
       store_value<int32_t>(mem, w_slices[local_model_id][i][j]);
     }
   }
+
+  // the global vocab dim is passed to the worker in the set-up phase
+  // so that num_runs doesn't need to be initialized with 1
+  store_value<int32_t>(mem, slice.size());
   return mem_begin;
 }
 

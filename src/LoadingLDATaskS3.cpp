@@ -20,15 +20,15 @@ LDADataset LoadingLDATaskS3::read_dataset(const Configuration& config) {
 }
 
 LDAStatistics LoadingLDATaskS3::count_dataset(
-    const std::vector<std::vector<std::pair<int, int> > >& docs,
+    const std::vector<std::vector<std::pair<int, int>>>& docs,
     std::vector<int>& nvt,
     std::vector<int>& nt,
-    std::vector<int>& w,
+    std::vector<int>& words,
     int K,
     std::vector<int>& global_vocab,
-    std::vector<std::vector<int> >& topic_scope) {
-  std::vector<int> d, t;
-  std::vector<std::vector<int> > ndt;
+    std::vector<std::vector<int>>& topic_scope) {
+  std::vector<int> doc_ids, topics;
+  std::vector<std::vector<int>> ndt;
   std::vector<int> local_vocab;
 
   std::vector<bool> lindex_map(VOCAB_DIM_UPPER, 0);
@@ -50,9 +50,9 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
       for (int i = 0; i < count; ++i) {
         int top = topic_scope[gindex][(rand() % topic_scope[gindex].size())];
 
-        t.push_back(top);
-        d.push_back(ndt.size());
-        w.push_back(gindex);
+        topics.push_back(top);
+        doc_ids.push_back(ndt.size());
+        words.push_back(gindex);
         ndt_row[top] += 1;
 
         // ensure the i^{th} row in nvt-stat corresponds to the i^{th} word
@@ -63,7 +63,7 @@ LDAStatistics LoadingLDATaskS3::count_dataset(
     }
     ndt.push_back(ndt_row);
   }
-  return LDAStatistics(K, ndt, local_vocab, t, d, w);
+  return LDAStatistics(K, ndt, local_vocab, topics, doc_ids, words);
 }
 
 void LoadingLDATaskS3::run(const Configuration& config) {
@@ -94,13 +94,13 @@ void LoadingLDATaskS3::run(const Configuration& config) {
             << " bucket: " << config.get_s3_bucket() << std::endl;
 
   std::vector<int> nvt, nt;
-  std::vector<std::vector<int> > ws;
+  std::vector<std::vector<int>> all_words;
 
   nvt.resize(dataset.num_vocabs() * K);
   nt.resize(K);
-  ws.reserve(num_s3_objs);
+  all_words.reserve(num_s3_objs);
 
-  std::vector<std::vector<int> > nvt_init_rnd_scope;
+  std::vector<std::vector<int>> nvt_init_rnd_scope;
   std::vector<int> temp_global_vocab;
   temp_global_vocab.reserve(K);
   for (int i = 0; i < K; ++i) {
@@ -122,11 +122,11 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   for (unsigned int i = 1; i < num_s3_objs + 1; ++i) {
     std::cout << "[LOADER] Building s3 batch #" << i << std::endl;
 
-    std::vector<int> w;
-    LDAStatistics to_save = count_dataset(dataset.get_some_docs(), nvt, nt, w,
+    std::vector<int> words;
+    LDAStatistics to_save = count_dataset(dataset.get_some_docs(), nvt, nt, words,
                                           K, global_vocab, nvt_init_rnd_scope);
-    std::cout << i << " : " << w.size() << std::endl;
-    ws.push_back(w);
+    std::cout << i << " : " << words.size() << std::endl;
+    all_words.push_back(words);
 
     char* msg = to_save.serialize(to_send_size);
 
@@ -145,7 +145,7 @@ void LoadingLDATaskS3::run(const Configuration& config) {
   initial_global_var->slice = global_vocab;
   initial_global_var->change_nvt_ptr.reset(new std::vector<int>(nvt));
   initial_global_var->change_nt_ptr.reset(new std::vector<int>(nt));
-  initial_global_var->ws_ptr.reset(new std::vector<std::vector<int> >(ws));
+  initial_global_var->ws_ptr.reset(new std::vector<std::vector<int>>(all_words));
 
   uint32_t len;
   std::shared_ptr<char> s3_obj = initial_global_var->serialize(&len);

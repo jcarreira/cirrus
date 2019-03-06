@@ -555,7 +555,7 @@ class LDATaskS3 : public MLTask {
    * Load the pre-cached token indices (for the current slice)
    * from the server
    */
-  void load_serialized_indices(char* mem_begin);
+  int load_serialized_indices(char* mem_begin);
 
   std::vector<std::unique_ptr<std::thread>> help_upload_threads;
   std::vector<int> upload_lock_indicators;

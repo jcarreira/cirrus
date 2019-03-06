@@ -64,7 +64,7 @@ void LDATaskS3::upload_wih_bucket_id_fn(char* mem_to_send,
   delete mem_to_send;
 }
 
-void LDATaskS3::load_serialized_indices(char* mem_begin) {
+int LDATaskS3::load_serialized_indices(char* mem_begin) {
   const char* mem = mem_begin;
 
   int num_slices = load_value<int32_t>(mem);
@@ -80,6 +80,9 @@ void LDATaskS3::load_serialized_indices(char* mem_begin) {
     }
     slice_indices.push_back(slice_i);
   }
+
+  int global_vocab_dim = load_value<int32_t>(mem);
+  return global_vocab_dim;
 }
 
 void LDATaskS3::print_status() const {
@@ -121,26 +124,25 @@ void LDATaskS3::print_status() const {
   }
 }
 
-void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
+void LDATaskS3::run(const Configuration& config, int worker_id, int test_iters) {
   double lambda_time_out = 900.0;  // 15 min currently
 
   std::cout << "Starting LDATaskS3" << std::endl;
-  uint64_t num_s3_batches =
-      config.get_limit_samples() / config.get_s3_file_size();
   this->config = config;
 
   psint = new PSSparseServerInterface(ps_ip, ps_port);
   psint->connect();
 
-  std::cout << "[WORKER] "
-            << "num s3 batches: " << num_s3_batches << std::endl;
+  std::cout << "[WORKER] " << "num s3 batches: "
+            << config.get_limit_samples() / config.get_s3_file_size()
+            << std::endl;
 
   // pre-assign the documents for workers
   auto train_range = config.get_train_range();
   int range_per_worker =
       (train_range.second - train_range.first + 1) / nworkers;
-  int start = worker * range_per_worker + 1,
-      end = (worker + 1) * range_per_worker + 1;
+  int start = worker_id * range_per_worker + 1,
+      end = (worker_id + 1) * range_per_worker + 1;
   if (end > train_range.second) {
     end = train_range.second;
   }
@@ -173,10 +175,13 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
 
   // load the pre-cached indices from server
   char* slice_indices_mem = psint->get_slices_indices(cur_train_idx);
-  load_serialized_indices(slice_indices_mem);
+  int global_vocab_dim = load_serialized_indices(slice_indices_mem);
   delete slice_indices_mem;
 
-  int cur = 0, num_runs = 1;
+  // num_runs: the number of iters to run for one S3 object (LDAStatistics)
+  int cur = 0, num_runs = global_vocab_dim / config.get_slice_size();
+  std::cout << "Initalized global vocab dim: " << global_vocab_dim << std::endl;
+  std::cout << "Initalized num_runs: " << num_runs << std::endl;
   std::cout << "[WORKER] starting loop" << std::endl;
 
   while (1) {
@@ -185,7 +190,7 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
 #endif
     // only True if current LDAStatistics has been sampled with
     // more than (num_runs) number of word slices
-    if (cur >= num_runs) {
+    if (cur % num_runs == 0 && cur != 0) {
       // update_bucket = cur_train_idx;
       total_sampled_docs += model->get_ndt_size();
 
@@ -242,7 +247,6 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
       // if there's only one LDAStatistics assigned to this worker,
       // simply reset (cur) to avoid uploading & downloading
       if (end == start + 1) {
-        cur = 0;
         continue;
       }
 
@@ -278,9 +282,6 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
       load_serialized_indices(slice_indices_mem);
       delete slice_indices_mem;
 
-      num_runs = 3000 / config.get_slice_size() + 1;
-      cur = 0;
-
       continue;
     }
 
@@ -297,7 +298,6 @@ void LDATaskS3::run(const Configuration& config, int worker, int test_iters) {
     model->update_model(partial_model, to_receive_size, uncompressed_size,
                         psint->slice_id);
     time_create_model += (get_time_ms() - start_time_benchmark) / 1000.0;
-    num_runs = model->get_V() / config.get_slice_size();
 
     // sampling phase
     char* gradient_mem;

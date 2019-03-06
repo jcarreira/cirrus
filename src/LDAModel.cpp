@@ -276,12 +276,12 @@ double LDAModel::compute_ll_ndt() {
 char* LDAModel::sample_model(int& total_sampled_tokens,
                              std::vector<int>& slice_indices,
                              uint32_t& to_send_size) {
-  return sample_thread(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
+  return sample_model_(std::ref(t), std::ref(d), std::ref(w), std::ref(nt),
                        std::ref(nvt), std::ref(ndt), std::ref(slice),
                        total_sampled_tokens, slice_indices, to_send_size);
 }
 
-char* LDAModel::sample_thread(std::vector<int>& t,
+char* LDAModel::sample_model_(std::vector<int>& t,
                               std::vector<int>& d,
                               std::vector<int>& w,
                               std::vector<int>& nt,

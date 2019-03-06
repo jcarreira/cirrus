@@ -67,7 +67,7 @@ class LDAModel {
   LDAModel& operator=(LDAModel& model);
 
  protected:
-  char* sample_thread(std::vector<int>& t,
+  char* sample_model_(std::vector<int>& t,
                       std::vector<int>& d,
                       std::vector<int>& w,
                       std::vector<int>& nt,
