@@ -245,7 +245,7 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
 
     FEATURE_TYPE grad = numerator / denominator;
 
-    a_grad.push_back(std::make_pair(i + starting_index, grad))
+    a_grad.push_back(std::make_pair(i + starting_index, grad));
 
 
     for (int j = 0; j < x.size(); j += 1) {
