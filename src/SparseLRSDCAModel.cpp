@@ -203,7 +203,6 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     const double learning_rate,
     const SparseDataset& dataset,
     const Configuration& config) const {
-
   // offset for the dataset into the coord_weights. starting index if full
   // model, 0 if sparse.
   uint32_t coord_offset = starting_index;
