@@ -82,8 +82,9 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_send_mf_gradient, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_SPARSE_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lr_sparse_model, this, _1, _2, _3, _4);
-  operation_to_f[GET_LR_SDCA_SPARSE_MODEL] = std::bind(
-      &PSSparseServerTask::process_get_lr_sdca_sparse_model, this, _1, _2, _3, _4);
+  operation_to_f[GET_LR_SDCA_SPARSE_MODEL] =
+      std::bind(&PSSparseServerTask::process_get_lr_sdca_sparse_model, this, _1,
+                _2, _3, _4);
   operation_to_f[GET_MF_SPARSE_MODEL] = std::bind(
       &PSSparseServerTask::process_get_mf_sparse_model, this, _1, _2, _3, _4);
   operation_to_f[GET_MF_FULL_MODEL] = std::bind(

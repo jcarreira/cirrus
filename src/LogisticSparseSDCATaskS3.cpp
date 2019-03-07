@@ -125,7 +125,8 @@ void LogisticSparseSDCATaskS3::run(const Configuration& config, int worker) {
 
     try {
       gradient = model.minibatch_grad_indexed(
-          dataset.first * config.get_minibatch_size(), config.get_learning_rate(), *dataset.second, config);
+          dataset.first * config.get_minibatch_size(),
+          config.get_learning_rate(), *dataset.second, config);
     } catch (const std::runtime_error& e) {
       std::cout << "Error. " << e.what() << std::endl;
       exit(-1);

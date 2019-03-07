@@ -163,12 +163,11 @@ class LogisticSparseSDCATaskS3 : public MLTask {
       return std::move(psi->get_lr_sparse_model(ds, config));
     }
 
-    void get_new_model_inplace(SparseLRSDCAModel& model,
-                               std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
-                               const Configuration& config) {
+    void get_new_model_inplace(
+        SparseLRSDCAModel& model,
+        std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
+        const Configuration& config) {
       psi->get_lr_sdca_sparse_model_inplace(model, dataset, config);
-
-      //psi->get_lr_sdca_model_inplace(model, config);
     }
 
    private:
@@ -381,11 +380,23 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(int, const Request&, std::vector<char>&, int);
-  bool process_get_mf_sparse_model(int, const Request&, std::vector<char>&, int);
-  bool process_get_lr_sdca_sparse_model(int, const Request&, std::vector<char>&, int);
+  bool process_get_lr_sparse_model(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_get_mf_sparse_model(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
+  bool process_get_lr_sdca_sparse_model(int,
+                                        const Request&,
+                                        std::vector<char>&,
+                                        int);
   bool process_send_lr_gradient(int, const Request&, std::vector<char>&, int);
-  bool process_send_lr_sdca_gradient(int, const Request&, std::vector<char>&, int);
+  bool process_send_lr_sdca_gradient(int,
+                                     const Request&,
+                                     std::vector<char>&,
+                                     int);
   bool process_send_mf_gradient(int, const Request&, std::vector<char>&, int);
   bool process_get_lr_full_model(int, const Request&, std::vector<char>&, int);
   bool process_get_lr_sdca_model(int, const Request&, std::vector<char>&, int);
@@ -394,7 +405,10 @@ class PSSparseServerTask : public MLTask {
   bool process_set_task_status(int, const Request&, std::vector<char>&, int);
   bool process_get_num_conns(int, const Request&, std::vector<char>&, int);
   bool process_get_num_updates(int, const Request&, std::vector<char>&, int);
-  bool process_get_last_time_error(int, const Request&, std::vector<char>&, int);
+  bool process_get_last_time_error(int,
+                                   const Request&,
+                                   std::vector<char>&,
+                                   int);
   bool process_get_value(int, const Request&, std::vector<char>&, int);
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);

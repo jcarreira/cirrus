@@ -204,11 +204,13 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     const SparseDataset& dataset,
     const Configuration& config) const {
 
-  // offset for the dataset into the coord_weights. starting index if full model, 0 if sparse.
+  // offset for the dataset into the coord_weights. starting index if full
+  // model, 0 if sparse.
   uint32_t coord_offset = starting_index;
   if (is_sparse_) {
     if (starting_index != dataset_index) {
-      throw std::runtime_error("Starting index of dataset does not equal model dataset index");
+      throw std::runtime_error(
+          "Starting index of dataset does not equal model dataset index");
     }
     coord_offset = 0;
   }
@@ -235,10 +237,8 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
       label = -1.0;
     }
 
-    FEATURE_TYPE numerator =
-        1.0 + std::exp(dot_product(x, weights_) * label);
-    numerator =
-        (label / numerator) - coord_weights_[i + coord_offset];
+    FEATURE_TYPE numerator = 1.0 + std::exp(dot_product(x, weights_) * label);
+    numerator = (label / numerator) - coord_weights_[i + coord_offset];
 
     FEATURE_TYPE denominator =
         std::max(1.0, 0.25 + (norm_squared(x) * scaling_factor));
@@ -246,7 +246,6 @@ std::unique_ptr<ModelGradient> SparseLRSDCAModel::minibatch_grad_indexed(
     FEATURE_TYPE grad = numerator / denominator;
 
     a_grad.push_back(std::make_pair(i + starting_index, grad));
-
 
     for (int j = 0; j < x.size(); j += 1) {
       w_grad_map[x[j].first] += grad * x[j].second * scaling_factor;

@@ -341,9 +341,10 @@ SparseLRSDCAModel PSSparseServerInterface::get_lr_sdca_model(
   return std::move(model);
 }
 
-void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel& lr_model,
-                                      std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
-                                      const Configuration& config) {
+void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(
+    SparseLRSDCAModel& lr_model,
+    std::pair<uint32_t, std::shared_ptr<SparseDataset>>& dataset,
+    const Configuration& config) {
 #ifdef DEBUG
   std::cout << "Getting LR SDCA model inplace" << std::endl;
 #endif
@@ -357,8 +358,9 @@ void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel
 
   store_value<uint32_t>(
       msg, dataset_index);  // store the index in 'a' that the dataset is at
-  store_value<uint32_t>(
-      msg, config.get_minibatch_size());  // store the index in 'a' that the dataset is at
+  store_value<uint32_t>(msg, config.get_minibatch_size());  // store the index
+                                                            // in 'a' that the
+                                                            // dataset is at
 
   char* num_weights_loc = msg;  // need to keep this pointer to delete later
 
@@ -411,12 +413,8 @@ void PSSparseServerInterface::get_lr_sdca_sparse_model_inplace(SparseLRSDCAModel
 #endif
   // build a truly sparse model and return
   lr_model.loadSerializedSparse(
-      (FEATURE_TYPE*) buffer,
-      (uint32_t*) msg,
-      num_weights,
-      ((FEATURE_TYPE*) buffer) + num_weights,
-      dataset_index,
-      config);
+      (FEATURE_TYPE*) buffer, (uint32_t*) msg, num_weights,
+      ((FEATURE_TYPE*) buffer) + num_weights, dataset_index, config);
 
   delete[] buffer;
 }
