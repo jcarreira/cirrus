@@ -391,7 +391,7 @@ bool PSSparseServerTask::process_get_lr_sdca_sparse_model(
     double weight = lr_sdca_model->get_nth_weight(entry_index);
     store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
   }
-  for (uint32_t i = dataset_index; i < minibatch_size; ++i) {
+  for (uint32_t i = dataset_index; i < dataset_index + minibatch_size; ++i) {
     double weight = lr_sdca_model->get_nth_coord_weight(i);
     store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
   }
