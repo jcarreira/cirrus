@@ -385,6 +385,7 @@ bool PSSparseServerTask::process_get_lr_sdca_sparse_model(
   std::cout << "Sending back: " << num_entries
             << " weights from model. Size: " << to_send_size << std::endl;
 #endif
+  model_lock.lock();
   for (uint32_t i = 0; i < num_entries; ++i) {
     uint32_t entry_index = load_value<uint32_t>(data);
     double weight = lr_sdca_model->get_nth_weight(entry_index);
@@ -394,6 +395,7 @@ bool PSSparseServerTask::process_get_lr_sdca_sparse_model(
     double weight = lr_sdca_model->get_nth_coord_weight(i);
     store_value<FEATURE_TYPE>(data_to_send_ptr, weight);
   }
+  model_lock.unlock();
   if (send_all(req.sock, data_to_send, to_send_size) == -1) {
     return false;
   }
