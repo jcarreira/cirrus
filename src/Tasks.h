@@ -482,57 +482,51 @@ class PSSparseServerTask : public MLTask {
 };
 
 class MFNetflixTask : public MLTask {
- public:
-  MFNetflixTask(uint64_t model_size,
-                uint64_t batch_size,
-                uint64_t samples_per_batch,
-                uint64_t features_per_sample,
-                uint64_t nworkers,
-                uint64_t worker_id,
-                const std::string& ps_ip,
-                uint64_t ps_port)
-      : MLTask(model_size,
-               batch_size,
-               samples_per_batch,
-               features_per_sample,
-               nworkers,
-               worker_id,
-               ps_ip,
-               ps_port) {}
+  public:
+    MFNetflixTask(
+        uint64_t model_size,
+        uint64_t batch_size, uint64_t samples_per_batch,
+        uint64_t features_per_sample, uint64_t nworkers,
+        uint64_t worker_id, const std::string& ps_ip,
+        uint64_t ps_port) :
+      MLTask(model_size,
+          batch_size, samples_per_batch, features_per_sample,
+          nworkers, worker_id, ps_ip, ps_port)
+  {}
 
-  /**
-   * Worker here is a value 0..nworkers - 1
-   */
-  void run(const Configuration& config, int worker);
-
- private:
-  class MFModelGet {
-   public:
-    MFModelGet(const std::string& ps_ip, int ps_port)
-        : ps_ip(ps_ip), ps_port(ps_port) {
-      psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-      psi->connect();
-    }
-
-    SparseMFModel get_new_model(const SparseDataset& ds,
-                                uint64_t user_base_index,
-                                uint64_t mb_size) {
-      return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
-    }
+    /**
+     * Worker here is a value 0..nworkers - 1
+     */
+    void run(const Configuration& config, int worker, int test_iters);
 
    private:
-    std::unique_ptr<PSSparseServerInterface> psi;
-    std::string ps_ip;
-    int ps_port;
-  };
+    class MFModelGet {
+      public:
+        MFModelGet(const std::string& ps_ip, int ps_port) :
+          ps_ip(ps_ip), ps_port(ps_port) {
+            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+            psi->connect();
+        }
 
- private:
-  bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
-                             S3SparseIterator& s3_iter);
-  void push_gradient(MFSparseGradient&);
+        SparseMFModel get_new_model(const SparseDataset& ds,
+                                    uint64_t user_base_index,
+                                    uint64_t mb_size) {
+          return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
+        }
 
-  std::unique_ptr<MFModelGet> mf_model_get;
-  std::unique_ptr<PSSparseServerInterface> psint;
+      private:
+        std::unique_ptr<PSSparseServerInterface> psi;
+        std::string ps_ip;
+        int ps_port;
+    };
+
+  private:
+   bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
+                              S3SparseIterator& s3_iter);
+   void push_gradient(MFSparseGradient&);
+
+   std::unique_ptr<MFModelGet> mf_model_get;
+   std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 }  // namespace cirrus
