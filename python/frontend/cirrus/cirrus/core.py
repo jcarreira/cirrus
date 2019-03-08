@@ -76,9 +76,9 @@ class BaseTask(object):
         self.kill_signal = threading.Event()
         self.num_lambdas = 0
         self.cost_model = CostModel(
-                    'm5.large',
+                    ps.instance.type,
                     self.n_ps,
-                    0,
+                    0, # FIX
                     self.n_workers,
                     self.lambda_size)
 
@@ -96,17 +96,27 @@ class BaseTask(object):
         }
 
         # Stored values
-        self.last_num_lambdas = 0
+        self.last_num_lambdas = 0 # not clear what this is. Need comment or better name
 
     def get_name(self):
         string = "Rate %f" % self.learning_rate
         return string
 
-
     def get_cost_per_second(self):
+        """Returns cost
+
+        Returns the cost ($) of running this job on the cloud
+
+        """
         return self.time_cps_lst
 
     def get_num_lambdas(self, fetch=True):
+        """Returns number of active lambdas
+
+        Returns the number of active lambdas.
+        We contact the parameter server to get an accurate value
+
+        """
         if self.is_dead():
             return 0
         if fetch:
@@ -118,6 +128,11 @@ class BaseTask(object):
             return self.last_num_lambdas
 
     def get_updates_per_second(self, fetch=True):
+        """Returns number of updates per second
+
+        Returns the number of sgd updates per second
+
+        """
         if self.is_dead():
             return self.time_ups_lst
         if fetch:
@@ -135,14 +150,17 @@ class BaseTask(object):
 
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
-        num_task = 3
 
-        if num_lambdas == None:
+        if num_lambdas == None: # not clear when this can happen. It seems to me self.get_num_lambdas() never returns None
             return
-
+ 
+        # it doesn't make sense to have this code here
+        # why are we launching lambdas in a get_update_per_seconds() method?
+        # isn't that what the wait_then_maintain_workers code does?
         if num_lambdas < self.n_workers:
             shortage = self.n_workers - num_lambdas
 
+            num_task = 3 # we should use constants like CIRRUS_WORKER, CIRRUS_PS, etc..
             payload = '{"num_task": %d, "num_workers": %d, "ps_ip": \"%s\", "ps_port": %d}' \
                         % (num_task, self.n_workers, self.ps_ip_private, self.ps_ip_port)
             for i in range(shortage):
@@ -236,8 +254,7 @@ class BaseTask(object):
 
 
     def is_dead(self):
-        return self.dead
-
+        return self.dead # when does this dead turns True?
 
     @abstractmethod
     def define_config(self, fetch=False):
@@ -271,7 +288,7 @@ class BaseTask(object):
         return self.fetch_metric(self.UPDATES_PER_SECOND)
 
     def get_time_loss(self, rtl=False):
-        self.maintain_error()
+        self.update_loss_metrics()
         if rtl:
             return self.fetch_metric(self.REAL_TIME_LOSS_VS_TIME)
         else:
@@ -282,7 +299,7 @@ class BaseTask(object):
         return self.metrics[key]
 
     # This will grab the Loss v. Time by communicating with the parameter server
-    def maintain_error(self):
+    def update_loss_metrics(self):
         if self.is_dead():
             return
 
@@ -290,12 +307,12 @@ class BaseTask(object):
         if out is None:
             return
 
-
         t, loss, real_time_loss, total_loss = out
         if t == 0:
             return
 
-        if len(self.metrics[self.LOSS_VS_TIME]) == 0 or not ((t, loss) == self.metrics[self.LOSS_VS_TIME][-1]):
+        if len(self.metrics[self.LOSS_VS_TIME]) == 0 or
+           not ((t, loss) == self.metrics[self.LOSS_VS_TIME][-1]):
             self.metrics[self.LOSS_VS_TIME].append((t, loss))
 
             elapsed_time = time.time() - self.start_time

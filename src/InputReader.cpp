@@ -485,7 +485,8 @@ SparseDataset InputReader::read_jester_ratings(const std::string& input_file,
   return SparseDataset(sparse_ds);
 }
 
-double InputReader::compute_mean(std::vector<std::pair<int, FEATURE_TYPE>>& user_ratings) {
+double InputReader::compute_mean(
+    const std::vector<std::pair<int, FEATURE_TYPE>>& user_ratings) const {
   double mean = 0;
 
   for (auto& r : user_ratings) {
@@ -496,7 +497,9 @@ double InputReader::compute_mean(std::vector<std::pair<int, FEATURE_TYPE>>& user
   return mean;
 }
 
-double InputReader::compute_stddev(double mean, std::vector<std::pair<int, FEATURE_TYPE>>& user_ratings) {
+double InputReader::compute_stddev(
+    double mean,
+    const std::vector<std::pair<int, FEATURE_TYPE>>& user_ratings) const {
   double stddev = 0;
 
   for (const auto& r : user_ratings) {

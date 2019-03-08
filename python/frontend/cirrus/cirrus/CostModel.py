@@ -26,9 +26,14 @@ class CostModel:
                 * self.num_workers
         total_lambda_cost = total_lambda_cost_h / (60 * 60)
 
-        # vm_cost
+        # vm_cost (demand price per hour)
         vm_to_cost = {
-            'm5.large' : 0.096 # demand price per hour
+            'm5.large' : 0.096
+            'm4.large' : 0.1
+            'm4.2xlarge' : 0.4
+            'm4.4xlarge' : 0.8
+            'm4.10xlarge' : 2.0
+            'm4.16xlarge' : 3.2
         }
 
         if self.vm_type not in vm_to_cost:
