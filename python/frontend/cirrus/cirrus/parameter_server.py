@@ -14,10 +14,6 @@ class ParameterServer(object):
     #   seconds.
     MAX_START_TIME = 60
 
-    # The number of additional connections needed in order for messenger.py to
-    # communicate with the parameter server.
-    ADDITIONAL_CONNS = 5
-
     def __init__(self, instance, ps_port, error_port, num_workers):
         """Create a parameter server.
 
@@ -80,6 +76,8 @@ class ParameterServer(object):
         Args:
             config (str): The contents of a parameter server configuration file.
         """
+        #The number of additional connections needed to run dashboard
+        ADDITIONAL_CONNS = 5
         self._log.debug("Uploading configuration.")
         config_filename = "config_%d.txt" % self._ps_port
         self._instance.run_command(
