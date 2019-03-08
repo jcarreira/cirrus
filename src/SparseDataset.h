@@ -6,6 +6,9 @@
 #include <memory>
 #include <config.h>
 
+#include "Configuration.h"
+#include "Dataset.h"
+
 namespace cirrus {
 
 /**
@@ -59,9 +62,6 @@ class SparseDataset {
    * @param sample Sample index
    * @returns Pointer to dataset sample
    */
-  //const FEATURE_TYPE* sample(uint64_t sample) const {
-  //  return samples_.row(sample);
-  //}
 
   /**
    * Sanity check values in the dataset

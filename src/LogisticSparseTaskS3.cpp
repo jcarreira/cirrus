@@ -73,7 +73,7 @@ void LogisticSparseTaskS3::run(const Configuration& config,
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
-  psint = new PSSparseServerInterface(ps_ip, ps_port);
+  psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
   psint->connect();
   sparse_model_get = std::make_unique<SparseModelGet>(ps_ip, ps_port);
   

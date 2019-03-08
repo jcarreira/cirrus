@@ -45,10 +45,6 @@ SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labe
     int num_sample_values = load_value<int>(data);
 
 #ifdef DEBUG
-    if (has_labels) {
-      assert(FLOAT_EQ(label, 0.0) || FLOAT_EQ(label, 1.0));
-    }
-    //std::cout << "num_sample_values: " << num_sample_values <<  std::endl;
     assert(num_sample_values >= 0 && num_sample_values < 1000000);
 #endif
 
@@ -86,7 +82,6 @@ SparseDataset::SparseDataset(const char* data, bool from_s3, bool has_labels) {
     FEATURE_TYPE label;
     if (has_labels) {
       label = load_value<FEATURE_TYPE>(data);
-      assert(label == 0.0 || label == 1.0);
     }
     int num_sample_values = load_value<int>(data);
 
@@ -176,18 +171,6 @@ void SparseDataset::print() const {
 void SparseDataset::print_info() const {
   std::cout << "SparseDataset #samples: " << data_.size() << std::endl;
   std::cout << "SparseDataset #labels: " << labels_.size() << std::endl;
-
-  //double avg = 0;
-  //uint64_t count = 0;
-  //for (const auto& w : data_) {
-  //  for (const auto& v : w) {
-  //    avg += v.second;
-  //    count++;
-  //  }
-  //}
-
-  //std::cout << "Average rating: " << (avg / count) << std::endl;
-
 }
 
 /** FORMAT OF S3 object

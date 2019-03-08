@@ -1,5 +1,6 @@
 #include <Tasks.h>
 
+#include <DatasetConversion.h>
 #include <InputReader.h>
 #include <S3.h>
 #include <S3Client.h>
@@ -26,12 +27,20 @@ SparseDataset LoadingSparseTaskS3::read_dataset(
   }
 
   // READ the kaggle criteo dataset
-  return input.read_input_criteo_kaggle_sparse(config.get_load_input_path(),
-                                               delimiter, config);
+  if (config.get_model_type() == Configuration::SOFTMAX) {
+    return to_sparse(input.read_input_csv(
+        config.get_load_input_path(), ",", config.get_num_classes(),
+        config.get_limit_samples(), config.get_limit_cols(), true));
+  } else {
+    return input.read_input_criteo_kaggle_sparse(config.get_load_input_path(),
+                                                 delimiter, config);
+  }
 }
 
-void LoadingSparseTaskS3::check_label(FEATURE_TYPE label) {
-  if (label != 1.0 && label != 0.0) {
+void LoadingSparseTaskS3::check_label(FEATURE_TYPE label,
+                                      const Configuration& config) {
+  if (label != 1.0 && label != 0.0 &&
+      config.get_model_type() != Configuration::SOFTMAX) {
     throw std::runtime_error("Wrong label value");
   }
 }
@@ -65,9 +74,7 @@ void LoadingSparseTaskS3::check_loading(const Configuration& config,
   for (uint64_t i = 0; i < dataset.num_samples(); ++i) {
     //const auto& s = dataset.get_row(i);
     const auto& label = dataset.labels_[i];
-    if (label != 0.0 && label != 1.0) {
-      throw std::runtime_error("Wrong label");
-    }
+    check_label(label, config);
   }
 }
 
@@ -84,6 +91,7 @@ void LoadingSparseTaskS3::run(const Configuration& config) {
 
   SparseDataset dataset = read_dataset(config);
   dataset.check();
+  dataset.print_info();
 
   uint64_t num_s3_objs = dataset.num_samples() / s3_obj_num_samples;
   std::cout << "[LOADER-SPARSE] "

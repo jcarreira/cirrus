@@ -39,6 +39,9 @@ tests/test_travis/test_lr
 tests/test_travis/test_ps
 tests/test_travis/worker
 tests/test_travis/error
+tests/test_travis/mnist_test/test_sm
+tests/test_travis/mnist_test/worker_sm
+tests/test_travis/mnist_test/error_sm
 third_party/kerberos/
 third_party/keyutils-1.5.10.tar.bz2
 third_party/keyutils/

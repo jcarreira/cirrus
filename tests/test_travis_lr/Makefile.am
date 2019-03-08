@@ -12,6 +12,7 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/Dataset.cpp \
 		    $(CIRRUS_SRC_DIR)/Matrix.cpp \
 		    $(CIRRUS_SRC_DIR)/LRModel.cpp \
+		    $(CIRRUS_SRC_DIR)/TasksWait.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseLRModel.cpp \
 		    $(CIRRUS_SRC_DIR)/S3SparseIterator.cpp \
 		    $(CIRRUS_SRC_DIR)/Utils.cpp \
@@ -27,6 +28,9 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/PSSparseServerTask.cpp \
 		    $(CIRRUS_SRC_DIR)/SparseMFModel.cpp \
 		    $(CIRRUS_SRC_DIR)/MFModel.cpp \
+		    $(CIRRUS_SRC_DIR)/SoftmaxModel.cpp \
+		    $(CIRRUS_SRC_DIR)/SoftmaxTask.cpp \
+		    $(CIRRUS_SRC_DIR)/DatasetConversion.cpp \
 		    $(CIRRUS_SRC_DIR)/Nesterov.cpp \
 		    $(CIRRUS_SRC_DIR)/AdaGrad.cpp \
 		    $(CIRRUS_SRC_DIR)/Momentum.cpp \

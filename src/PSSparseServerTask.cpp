@@ -19,7 +19,6 @@
 #define TIMEOUT_THRESHOLD_SEC (3)
 
 namespace cirrus {
-
 PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
                                        uint64_t batch_size,
                                        uint64_t samples_per_batch,
@@ -54,8 +53,10 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
 void PSSparseServerTask::set_operation_maps() {
   operation_to_name[SEND_LR_GRADIENT] = "SEND_LR_GRADIENT";
   operation_to_name[SEND_MF_GRADIENT] = "SEND_MF_GRADIENT";
+  operation_to_name[SEND_SM_GRADIENT] = "SEND_SM_GRADIENT";
   operation_to_name[GET_LR_FULL_MODEL] = "GET_LR_FULL_MODEL";
   operation_to_name[GET_MF_FULL_MODEL] = "GET_MF_FULL_MODEL";
+  operation_to_name[GET_SM_FULL_MODEL] = "GET_SM_FULL_MODEL";
   operation_to_name[GET_LR_SPARSE_MODEL] = "GET_LR_SPARSE_MODEL";
   operation_to_name[GET_MF_SPARSE_MODEL] = "GET_MF_SPARSE_MODEL";
   operation_to_name[SET_TASK_STATUS] = "SET_TASK_STATUS";
@@ -74,6 +75,8 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_send_lr_gradient, this, _1, _2, _3, _4);
   operation_to_f[SEND_MF_GRADIENT] = std::bind(
       &PSSparseServerTask::process_send_mf_gradient, this, _1, _2, _3, _4);
+  operation_to_f[SEND_SM_GRADIENT] = std::bind(
+      &PSSparseServerTask::process_send_sm_gradient, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_SPARSE_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lr_sparse_model, this, _1, _2, _3, _4);
   operation_to_f[GET_MF_SPARSE_MODEL] = std::bind(
@@ -82,6 +85,8 @@ void PSSparseServerTask::set_operation_maps() {
       &PSSparseServerTask::process_get_mf_full_model, this, _1, _2, _3, _4);
   operation_to_f[GET_LR_FULL_MODEL] = std::bind(
       &PSSparseServerTask::process_get_lr_full_model, this, _1, _2, _3, _4);
+  operation_to_f[GET_SM_FULL_MODEL] = std::bind(
+      &PSSparseServerTask::process_get_sm_full_model, this, _1, _2, _3, _4);
   operation_to_f[SET_TASK_STATUS] = std::bind(
       &PSSparseServerTask::process_set_task_status, this, _1, _2, _3, _4);
   operation_to_f[GET_TASK_STATUS] = std::bind(
@@ -153,6 +158,45 @@ bool PSSparseServerTask::process_send_mf_gradient(
     << "sgd update done"
     << " checksum: " << mf_model->checksum()
     << std::endl;
+#endif
+  model_lock.unlock();
+  gradientUpdatesCount++;
+  return true;
+}
+
+bool PSSparseServerTask::process_send_sm_gradient(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  uint32_t incoming_size = 0;
+  if (read_all(sock, &incoming_size, sizeof(uint32_t)) == 0) {
+    handle_failed_read(&req.poll_fd);
+    return false;
+  }
+#ifdef DEBUG
+  std::cout << "APPLY_GRADIENT_REQ incoming size: " << incoming_size
+            << std::endl;
+#endif
+  if (incoming_size > thread_buffer.size()) {
+    throw std::runtime_error("Not enough buffer");
+  }
+  if (read_all(req.sock, thread_buffer.data(), incoming_size) == 0) {
+    return false;
+  }
+
+  SoftmaxGradient gradient(task_config.get_num_classes(),
+                           task_config.get_num_features());
+  gradient.loadSerialized(thread_buffer.data());
+
+  model_lock.lock();
+#ifdef DEBUG
+  std::cout << "Doing sgd update" << std::endl;
+#endif
+  sm_model->sgd_update(task_config.get_learning_rate(), &gradient);
+#ifdef DEBUG
+  std::cout << "sgd update done"
+            << " checksum: " << sm_model->checksum() << std::endl;
 #endif
   model_lock.unlock();
   gradientUpdatesCount++;
@@ -326,6 +370,32 @@ bool PSSparseServerTask::process_get_mf_full_model(
     << " mode checksum: " << mf_model_copy.checksum()
     << " buffer checksum: " << crc32(thread_buffer.data(), model_size)
     << std::endl;
+  if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
+    return false;
+  }
+  if (send_all(req.sock, thread_buffer.data(), model_size) == -1) {
+    return false;
+  }
+  return true;
+}
+
+bool PSSparseServerTask::process_get_sm_full_model(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  model_lock.lock();
+  auto sm_model_copy = *sm_model;
+  model_lock.unlock();
+  uint32_t model_size = sm_model_copy.getSerializedSize();
+
+  if (thread_buffer.size() < model_size) {
+    std::cout << "thread_buffer.size(): " << thread_buffer.size()
+              << " model_size: " << model_size << std::endl;
+    throw std::runtime_error("Thread buffer too small");
+  }
+
+  sm_model_copy.serializeTo(thread_buffer.data());
   if (send_all(req.sock, &model_size, sizeof(uint32_t)) == -1) {
     return false;
   }
@@ -706,6 +776,12 @@ bool PSSparseServerTask::process(struct pollfd& poll_fd, int thread_id) {
 void PSSparseServerTask::start_server() {
   lr_model.reset(new SparseLRModel(model_size));
   lr_model->randomize();
+  mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
+                             NUM_FACTORS));
+  mf_model->randomize();
+  sm_model.reset(new SoftmaxModel(task_config.get_num_classes(),
+                                  task_config.get_num_features()));
+  sm_model->randomize();
 
   mf_model.reset(new MFModel(task_config.get_users(), task_config.get_items(),
                              NUM_FACTORS));

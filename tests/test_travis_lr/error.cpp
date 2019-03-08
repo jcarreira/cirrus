@@ -10,6 +10,7 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
+#define ACC_CUTOFF (0.7)              // when to register test as passing
 
 #define LOSS_THRESHOLD (0.66)
 
@@ -43,6 +44,7 @@ int main() {
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
   FEATURE_TYPE avg_loss = 0;
+  FEATURE_TYPE total_accuracy;
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
@@ -50,7 +52,7 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1337);
+      std::unique_ptr<CirrusModel> model = get_model(config, PS_IP, PS_PORT);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -60,7 +62,7 @@ int main() {
       std::pair<FEATURE_TYPE, FEATURE_TYPE> ret =
           model->calc_loss(test_data, 0);  // XXX fix second param
       FEATURE_TYPE total_loss = ret.first;
-      FEATURE_TYPE total_accuracy = ret.second;
+      total_accuracy = ret.second;
       uint64_t total_num_samples = test_data.num_samples();
       uint64_t total_num_features = test_data.num_features();
 
@@ -74,7 +76,7 @@ int main() {
       throw std::runtime_error(std::string("Error ") + exec.what());
     }
   }
-  if (avg_loss < LOSS_THRESHOLD) {
+  if (total_accuracy > ACC_CUTOFF) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);

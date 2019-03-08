@@ -8,7 +8,8 @@ bin_PROGRAMS = test_ps worker error
 TOP_DIR=../../../..
 THIRD_PARTY_DIR=../../third_party
 CIRRUS_SRC_DIR=../../src
-CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
+CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/TasksWait.cpp \
+		    $(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/Dataset.cpp \
 		    $(CIRRUS_SRC_DIR)/Matrix.cpp \
 		    $(CIRRUS_SRC_DIR)/LRModel.cpp \
@@ -33,7 +34,10 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
-		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp
+		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
+		    $(CIRRUS_SRC_DIR)/SoftmaxModel.cpp \
+		    $(CIRRUS_SRC_DIR)/SoftmaxTask.cpp \
+		    $(CIRRUS_SRC_DIR)/DatasetConversion.cpp
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \

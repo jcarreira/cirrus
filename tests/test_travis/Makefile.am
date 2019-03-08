@@ -33,7 +33,8 @@ CIRRUS_SRC_FILES=$(CIRRUS_SRC_DIR)/Configuration.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Iterator.cpp \
 		    $(CIRRUS_SRC_DIR)/S3IteratorLibsvm.cpp \
 		    $(CIRRUS_SRC_DIR)/S3Client.cpp \
-		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp
+		    $(CIRRUS_SRC_DIR)/SparseDataset.cpp \
+				$(CIRRUS_SRC_DIR)/SoftmaxModel.cpp
 
 LINCLUDES = -L$(THIRD_PARTY_DIR)/kerberos/src/lib \
 	    -L$(THIRD_PARTY_DIR)/keyutils/ \
@@ -48,8 +49,8 @@ LIBS= -laws-cpp-sdk-s3 -laws-cpp-sdk-core \
       -lcurl -lssl -lcrypto -lz -ldl -lkrb5 -lk5crypto \
       -lall -lkeyutils -lresolv -lgflags
 
-LDFLAGS  =-static-libgcc  -static \
-	  -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+LDFLAGS  = -static-libgcc  -static \
+					 -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 
 LDADD    = $(LINCLUDES) $(LIBS)
 
@@ -60,6 +61,5 @@ AM_CPPFLAGS=-I$(CIRRUS_SRC_DIR) \
 
 test_register_worker_SOURCES = test_register_worker.cpp $(CIRRUS_SRC_FILES)
 test_keyvalue_SOURCES = test_keyvalue.cpp $(CIRRUS_SRC_FILES)
-
 clean:
 	rm -rf a.out

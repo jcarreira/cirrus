@@ -1,11 +1,14 @@
 #ifndef _DATASET_H_
 #define _DATASET_H_
 
-#include <vector>
-#include <cstdint>
-#include <memory>
+#include <Configuration.h>
 #include <Matrix.h>
 #include <config.h>
+#include <cstdint>
+#include <memory>
+#include <vector>
+
+//#include "SparseDataset.h"
 
 namespace cirrus {
 
@@ -88,7 +91,7 @@ class Dataset {
   /**
    * Sanity check values in the dataset
    */
-  void check() const;
+  void check(const Configuration& config) const;
 
   /**
    * Compute checksum of values in the dataset
@@ -118,7 +121,7 @@ class Dataset {
    */
   Dataset random_sample(uint64_t n_samples) const;
 
-  public:
+ public:
   Matrix samples_;  //< dataset in matrix format
   std::shared_ptr<const FEATURE_TYPE> labels_;  //< vector of labels
 };

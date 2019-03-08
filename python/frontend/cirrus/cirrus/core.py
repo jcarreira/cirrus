@@ -133,6 +133,10 @@ class BaseTask(object):
         else:
             return self.time_ups_lst
 
+    def relaunch_lambdas(self):
+        if self.is_dead():
+            print "Experiments are terminated"
+            return
         num_lambdas = self.get_num_lambdas()
         self.get_updates_per_second()
         num_task = 3
