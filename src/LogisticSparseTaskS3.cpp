@@ -2,7 +2,7 @@
 
 #include "Serializers.h"
 #include "Utils.h"
-#include "S3SparseIterator.h"
+#include "S3NPIterator.h"
 #include "PSSparseServerInterface.h"
 
 #include <pthread.h>
@@ -40,7 +40,7 @@ void LogisticSparseTaskS3::push_gradient(LRSparseGradient* lrg) {
 // get samples and labels data
 bool LogisticSparseTaskS3::get_dataset_minibatch(
     std::shared_ptr<SparseDataset>& dataset,
-    S3SparseIterator& s3_iter) {
+    S3NPIterator& s3_iter) {
 #ifdef DEBUG
   auto start = get_time_us();
 #endif
@@ -83,7 +83,7 @@ void LogisticSparseTaskS3::run(const Configuration& config,
 
   // Create iterator that goes from 0 to num_s3_batches
   auto train_range = config.get_train_range();
-  S3SparseIterator s3_iter(
+  S3NPIterator s3_iter(
       train_range.first, train_range.second,
       config, config.get_s3_size(), config.get_minibatch_size(),
       true, worker);

@@ -41,6 +41,7 @@ SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labe
     if (has_labels) {
       label = load_value<FEATURE_TYPE>(data);
       labels_.push_back(label);
+      //std::cout << "label:" << label << std::endl;
     }
     int num_sample_values = load_value<int>(data);
 
@@ -57,6 +58,7 @@ SparseDataset::SparseDataset(const char* data, uint64_t n_samples, bool has_labe
     for (int j = 0; j < num_sample_values; ++j) {
       int index = load_value<int>(data);
       FEATURE_TYPE value = load_value<FEATURE_TYPE>(data);
+      //std::cout << "index:" << index << "value:" << value << std::endl;
       sample.push_back(std::make_pair(index, value));
     }
     data_.push_back(sample);

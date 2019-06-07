@@ -9,6 +9,7 @@
 #include "SparseLRModel.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
+#include "S3NPIterator.h"
 #include "OptimizationMethod.h"
 
 #include <chrono>
@@ -105,7 +106,7 @@ class LogisticSparseTaskS3 : public MLTask {
     };
 
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
-                               S3SparseIterator& s3_iter);
+                               S3NPIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
 
     std::mutex redis_lock;

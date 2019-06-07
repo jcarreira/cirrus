@@ -128,6 +128,7 @@ void PSSparseServerInterface::get_lr_sparse_model_inplace(const SparseDataset& d
 #endif
   // build a truly sparse model and return
   // XXX this copy could be avoided
+  std::cout << "Loading num_weights" << num_weights << std::endl;
   lr_model.loadSerializedSparse((FEATURE_TYPE*)buffer, (uint32_t*)msg, num_weights, config);
   
   delete[] msg_begin;
