@@ -22,4 +22,6 @@ enum PS_OP {
 
 #define MAGIC_NUMBER (0x1337)
 
+#define MB (1024 * 1024)
+
 #endif // _CONSTANTS_H_

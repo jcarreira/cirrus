@@ -293,18 +293,13 @@ class PSSparseServerTask : public MLTask {
   void gradient_f();
 
   // message handling
-  bool process_get_lr_sparse_model(int,
-                                   const Request&,
-                                   std::vector<char>&,
-                                   int);
-  bool process_get_mf_sparse_model(int,
-                                   const Request&,
-                                   std::vector<char>&,
-                                   int);
-  bool process_send_lr_gradient(int, const Request&, std::vector<char>&, int);
-  bool process_send_mf_gradient(int, const Request&, std::vector<char>&, int);
-  bool process_get_lr_full_model(int, const Request&, std::vector<char>&, int);
-  bool process_get_mf_full_model(int, const Request&, std::vector<char>&, int);
+  bool process_send_mf_gradient(const unsigned char*);
+  bool process_send_lr_gradient(const unsigned char*);
+  bool process_get_mf_sparse_model(int k_items, const unsigned char*, int sock);
+  bool process_get_lr_sparse_model(int n_entry, const unsigned char*, int sock);
+  bool process_get_mf_full_model(std::vector<char>& thread_buffer, int sock);
+  bool process_get_lr_full_model(std::vector<char>& thread_buffer, int sock);
+
   bool process_get_task_status(int, const Request&, std::vector<char>&, int);
   bool process_set_task_status(int, const Request&, std::vector<char>&, int);
   bool process_get_num_conns(int, const Request&, std::vector<char>&, int);

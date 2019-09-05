@@ -1,0 +1,50 @@
+namespace cirrus.message.WorkerMessage;
+
+union Request { SparseModelRequest, FullModelRequest, GradientMessage, NumberConnectionsRequest, NumberUpdatesRequest, KillMessage, RegisterTaskMessage, TaskRequest, TaskMessage }
+
+enum ModelType : byte {
+  LOGISTIC_REGRESSION = 0,
+  MATRIX_FACTORIZATION
+}
+
+table SparseModelRequest {
+  index_info:[ubyte];
+  model_type:ModelType;
+}
+
+table FullModelRequest {
+  model_type:ModelType;
+}
+
+table GradientMessage {
+  gradient:[ubyte];
+  model_type:ModelType;
+}
+
+table NumberConnectionsRequest {
+}
+
+table NumberUpdatesRequest {
+}
+
+table KillMessage {
+}
+
+table RegisterTaskMessage {
+  task_id:int;
+}
+
+table TaskRequest {
+  task_id:int;
+}
+
+table TaskMessage {
+  task_id:int;
+  status:int;
+}
+
+table WorkerMessage {
+  payload:Request;
+}
+
+root_type WorkerMessage;

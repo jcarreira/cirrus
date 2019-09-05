@@ -188,7 +188,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
       FEATURE_TYPE rating = dataset.data_[user_from_0][j].second;
 
       FEATURE_TYPE pred = predict(user_from_0, itemId);
-
       FEATURE_TYPE error = rating - pred;
       training_rmse += error * error;
       training_rmse_count++;
@@ -249,9 +248,6 @@ std::unique_ptr<ModelGradient> SparseMFModel::minibatch_grad(
         if (std::isnan(get_item_weights(itemId, k)) ||
             std::isinf(get_item_weights(itemId, k))) {
           std::cout << "error: " << error << std::endl;
-          std::cout << "rating: " << rating << std::endl;
-          std::cout << "pred: " << pred << std::endl;
-          std::cout << "delta_item_w: " << delta_item_w << std::endl;
           std::cout << "user weight: " << get_user_weights(user_from_0, k) << std::endl;
           std::cout << "item weight: " << get_item_weights(itemId, k) << std::endl;
           std::cout << "learning_rate: " << learning_rate << std::endl;
@@ -316,15 +312,21 @@ void SparseMFModel::print() const {
 }
 
 void SparseMFModel::check() const {
-  std::cout << "SparseMFModel::check() Not Implemented" << std::endl;
+  std::cout << "SparseMFModel::check() Not implemented" << std::endl;
 }
 
-void SparseMFModel::serializeFromDense(
-    MFModel& mf_model,
-    uint32_t base_user_id, uint32_t minibatch_size, uint32_t k_items,
-    const char* item_data_ptr, char* holder) const {
+void SparseMFModel::serializeFromDense(MFModel& mf_model,
+                                       uint32_t base_user_id,
+                                       uint32_t minibatch_size,
+                                       uint32_t k_items,
+                                       const unsigned char* item_data_ptr,
+                                       unsigned char* holder) const {
+  uint32_t to_send_size = 
+    minibatch_size * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE)) +
+    k_items * (sizeof(uint32_t) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE));
 
-  char* data_to_send_ptr = holder;
+  //std::vector<char> buffer(to_send_size);
+  unsigned char* data_to_send_ptr = holder;
 
   // first we store data about users
   for (uint32_t i = base_user_id; i < base_user_id + minibatch_size; ++i) {

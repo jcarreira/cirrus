@@ -1,5 +1,7 @@
+#include <Constants.h>
 #include <S3IteratorLibsvm.h>
 #include <Utils.h>
+
 #include <unistd.h>
 #include <iostream>
 #include <vector>
@@ -7,7 +9,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#define FETCH_SIZE (10 * 1024 * 1024)  //  amount of data to fetch each time
+#define FETCH_SIZE (10 * MB)  //  amount of data to fetch each time
 
 //#define DEBUG
 
@@ -389,7 +391,7 @@ std::pair<uint64_t, uint64_t> S3IteratorLibsvm::getFileRange(
 
 void S3IteratorLibsvm::reportBandwidth(uint64_t elapsed_us, uint64_t size) {
 #ifdef DEBUG
-  double mb_s = size / elapsed_us * 1000.0 * 1000 / 1024 / 1024;
+  double mb_s = size / elapsed_us * 1000.0 * 1000 / MB;
   std::cout << "received s3 obj"
             << " elapsed: " << elapsed_us << " size: " << size
             << " BW (MB/s): " << mb_s << "\n";

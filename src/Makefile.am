@@ -1,6 +1,7 @@
 TOP_DIR = $(top_srcdir)/
 
 AUTOMAKE_OPTIONS = foreign
+SUBDIRS = common
 
 CXX = g++
 
@@ -17,7 +18,8 @@ LINCLUDES    = -L$(TOP_DIR)/third_party/aws-sdk-cpp/build/aws-cpp-sdk-core/ \
 	       -L$(TOP_DIR)/third_party/kerberos/src/lib \
 	       -L$(TOP_DIR)/third_party/keyutils/ \
 	       -L$(TOP_DIR)/third_party/gflags/lib/ \
-	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/
+	       -L$(TOP_DIR)/third_party/curl/curl/lib/.libs/ \
+	       -L$../common/
 
 LDADD    = $(LINCLUDES) $(LIBS)
 LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
@@ -25,11 +27,11 @@ LDFLAGS  = -static-libgcc  -static  -Wl,--whole-archive \
 
 CPPFLAGS = -static -static-libgcc -static-libstdc++ \
            -I$(TOP_DIR) \
-           -I$(TOP_DIR)/third_party/flatbuffers/include \
            -I$(TOP_DIR)/third_party/eigen_source \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	   -I$(TOP_DIR)/third_party/aws-sdk-cpp/aws-cpp-sdk-core/include/  \
 	   -I$(TOP_DIR)/third_party/gflags/include/ \
+	   -I$(TOP_DIR)/third_party/flatbuffers/include/ \
 	   -ggdb -frecord-gcc-switches -O3
 
 CPP_SOURCES = InputReader.cpp Utils.cpp \

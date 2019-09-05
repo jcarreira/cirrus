@@ -10,6 +10,8 @@
 #include <random>
 #include <cfloat>
 
+#include "flatbuffers/flatbuffers.h"
+
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
             __builtin_clzll((X)) - 1)
 
@@ -148,6 +150,8 @@ ssize_t send_all(int sock, void* data, size_t len);
 ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
+
+void send_flatbuffer(int sock, const flatbuffers::FlatBufferBuilder* fbb);
 
 } // namespace cirrus
 

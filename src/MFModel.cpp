@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <ModelGradient.h>
 
-//#define DEBUG
+// #define DEBUG
 
 namespace cirrus {
 
@@ -313,7 +313,6 @@ void MFModel::sgd_update(
       for (uint64_t k = 0; k < nfactors_; ++k) {
         FEATURE_TYPE delta_user_w =
           learning_rate * (error * get_item_weights(itemId, k) - user_fact_reg_ * get_user_weights(user, k));
-        //std::cout << "delta_user_w: " << delta_user_w << std::endl;
         get_user_weights(user, k) += delta_user_w;
 #ifdef DEBUG
         if (std::isnan(get_user_weights(user, k)) || std::isinf(get_user_weights(user, k))) {
@@ -391,8 +390,9 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
         << std::endl;
 #endif
       if (std::isnan(e) || std::isnan(error)) {
-        std::string error = std::string("nan in calc_loss rating: ") + std::to_string(rating) +
-          " prediction: " + std::to_string(prediction);
+        std::string error = std::string("nan in calc_loss rating: ") +
+                            std::to_string(rating) +
+                            " prediction: " + std::to_string(prediction);
         throw std::runtime_error(error);
       }
       count++;
@@ -403,8 +403,6 @@ std::pair<double, double> MFModel::calc_loss(SparseDataset& dataset, uint32_t st
   std::cout << "error: " << error << " count: " << count << std::endl;
 #endif
 
-  //error = error / count;
-  //error = std::sqrt(error);
   if (std::isnan(error)) {
     throw std::runtime_error("error isnan");
   }

@@ -56,7 +56,8 @@ LDADD    = $(LINCLUDES) $(LIBS)
 AM_CPPFLAGS=-I$(CIRRUS_SRC_DIR) \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-s3/include/ \
 	 -I$(THIRD_PARTY_DIR)/aws-sdk-cpp/aws-cpp-sdk-core/include/ \
-	 -I$(THIRD_PARTY_DIR)/eigen_source/
+	 -I$(THIRD_PARTY_DIR)/eigen_source/ \
+	 -I$(THIRD_PARTY_DIR)/flatbuffers/include
 
 test_register_worker_SOURCES = test_register_worker.cpp $(CIRRUS_SRC_FILES)
 test_keyvalue_SOURCES = test_keyvalue.cpp $(CIRRUS_SRC_FILES)

@@ -1,5 +1,5 @@
 #include <Tasks.h>
-
+#include <signal.h>
 #include "Configuration.h"
 #include "InputReader.h"
 #include "PSSparseServerInterface.h"
@@ -10,12 +10,12 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
-
 #define LOSS_THRESHOLD (0.66)
 
 using namespace cirrus;
 
 Configuration config = Configuration("configs/test_config.cfg");
+FEATURE_TYPE avg_loss = 0;
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
                                        const std::string& ps_ip,
@@ -30,7 +30,16 @@ std::unique_ptr<CirrusModel> get_model(const Configuration& config,
   return psi->get_full_model(false);
 }
 
+void signal_callback_handler(int signum) {
+  if (avg_loss < 0.66) {
+    exit(EXIT_SUCCESS);
+  } else {
+    exit(EXIT_FAILURE);
+  }
+}
+
 int main() {
+  signal(SIGPIPE, signal_callback_handler);
   // get data first
   // what we are going to use as a test set
   InputReader input;
@@ -42,7 +51,6 @@ int main() {
 
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
-  FEATURE_TYPE avg_loss = 0;
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
