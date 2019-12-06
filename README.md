@@ -34,7 +34,7 @@ Building
 Paper
 =========
 
-This project is part of a research project on Serverless Machine Learning Workflows. This works has been published and can be found here
+This project is part of a research project on Serverless Machine Learning Workflows. This works has been published and can be found here:
 
 [Joao Carreira, Pedro Fonseca, Alexey Tumanov, Andrew Zhang, Randy Katz.
 In the ACM Symposium on Cloud Computing 2019 (SoCC'19)](https://people.eecs.berkeley.edu/~joao/p13-Carreira.pdf "Cirrus paper")
@@ -42,7 +42,7 @@ In the ACM Symposium on Cloud Computing 2019 (SoCC'19)](https://people.eecs.berk
 Funding
 =========
 
-This work has been generously supported by AWS, FCT (Portuguese Science Foundation) and the RISELab Sponsors
+This work has been generously supported by AWS Cloud Research, FCT (Portuguese Science Foundation), NSF CISE Expeditions Award CCF-1730628, and gifts from Alibaba, Amazon Web Services, Ant Financial, CapitalOne, Ericsson, Facebook, Futurewei, Google, Intel, Microsoft, Nvidia, Scotiabank, Splunk and VMware.
 
 Contributors
 =========
