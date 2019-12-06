@@ -48,12 +48,21 @@ Contributors
 =========
 
 Joao Carreira
+
 Andrew Zhang
+
 Jeff Yu
+
 Ryan Wang
+
 Neel Somani
+
 Andy Wang
+
 Shea Conlon
+
 Pedro Fonseca
+
 Alexey Tumanov
+
 Randy Katz
