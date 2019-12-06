@@ -47,22 +47,4 @@ This work has been generously supported by AWS Cloud Research, FCT (Portuguese S
 Contributors
 =========
 
-Joao Carreira
-
-Andrew Zhang
-
-Jeff Yu
-
-Ryan Wang
-
-Neel Somani
-
-Andy Wang
-
-Shea Conlon
-
-Pedro Fonseca
-
-Alexey Tumanov
-
-Randy Katz
+Joao Carreira, Andrew Zhang, Jeff Yu, Ryan Wang, Neel Somani, Shea Conlon, Andy Wang, Pedro Fonseca, Alexey Tumanov, Randy Katz
