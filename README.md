@@ -38,3 +38,22 @@ This project is part of a research project on Serverless Machine Learning Workfl
 
 [Joao Carreira, Pedro Fonseca, Alexey Tumanov, Andrew Zhang, Randy Katz.
 In the ACM Symposium on Cloud Computing 2019 (SoCC'19)](https://people.eecs.berkeley.edu/~joao/p13-Carreira.pdf "Cirrus paper")
+
+Funding
+=========
+
+This work has been generously supported by AWS, FCT (Portuguese Science Foundation) and the RISELab Sponsors
+
+Contributors
+=========
+
+Joao Carreira
+Andrew Zhang
+Jeff Yu
+Ryan Wang
+Neel Somani
+Andy Wang
+Shea Conlon
+Pedro Fonseca
+Alexey Tumanov
+Randy Katz
