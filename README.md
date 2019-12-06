@@ -30,3 +30,11 @@ Building
 
     $ ./bootstrap.sh
     $ make -j 10
+
+Paper
+=========
+
+This project is part of a research project on Serverless Machine Learning Workflows. This works has been published and can be found here
+
+[Joao Carreira, Pedro Fonseca, Alexey Tumanov, Andrew Zhang, Randy Katz.
+In the ACM Symposium on Cloud Computing 2019 (SoCC'19)](https://people.eecs.berkeley.edu/~joao/p13-Carreira.pdf "Cirrus paper")
