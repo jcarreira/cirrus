@@ -26,19 +26,22 @@ PSSparseServerTask::PSSparseServerTask(uint64_t model_size,
                                        uint64_t features_per_sample,
                                        uint64_t nworkers,
                                        uint64_t worker_id,
-                                       const std::string& ps_ip,
-                                       uint64_t ps_port)
+                                       const Configuration& config,
+                                       const std::vector<std::string>& ps_ips,
+                                       const std::vector<uint64_t>& ps_ports)
     : MLTask(model_size,
              batch_size,
              samples_per_batch,
              features_per_sample,
              nworkers,
              worker_id,
-             ps_ip,
-             ps_port),
+             config,
+             ps_ips,
+             ps_ports),
       main_thread(0),
       kill_signal(false),
       threads_barrier(new pthread_barrier_t, destroy_pthread_barrier) {
+  assert(ps_ports.size() == 1);
   std::cout << "PSSparseServerTask is built" << std::endl;
 
   std::atomic_init(&gradientUpdatesCount, 0UL);
@@ -68,6 +71,7 @@ void PSSparseServerTask::set_operation_maps() {
   operation_to_name[KILL_SIGNAL] = "KILL_SIGNAL";
   operation_to_name[SET_VALUE] = "SET_VALUE";
   operation_to_name[GET_VALUE] = "GET_VALUE";
+  operation_to_name[GET_LR_FULL_SPARSE_MODEL] = "GET_LR_FULL_SPARSE_MODEL";
 
   using namespace std::placeholders;
   operation_to_f[SEND_LR_GRADIENT] = std::bind(
@@ -98,6 +102,9 @@ void PSSparseServerTask::set_operation_maps() {
       std::bind(&PSSparseServerTask::process_set_value, this, _1, _2, _3, _4);
   operation_to_f[GET_VALUE] =
       std::bind(&PSSparseServerTask::process_get_value, this, _1, _2, _3, _4);
+  operation_to_f[GET_LR_FULL_SPARSE_MODEL] =
+      std::bind(&PSSparseServerTask::process_get_lr_full_sparse_model, this, _1,
+                _2, _3, _4);
 }
 
 std::shared_ptr<char> PSSparseServerTask::serialize_lr_model(
@@ -358,6 +365,38 @@ bool PSSparseServerTask::process_get_lr_full_model(
 
   lr_model_copy.serializeTo(thread_buffer.data());
   if (send_all(req.sock, thread_buffer.data(), model_size) == -1)
+    return false;
+  return true;
+}
+
+bool PSSparseServerTask::process_get_lr_full_sparse_model(
+    int sock,
+    const Request& req,
+    std::vector<char>& thread_buffer,
+    int) {
+  model_lock.lock();
+  auto lr_model_copy = *lr_model;
+  model_lock.unlock();
+
+  int server_id = -1;
+  int num_ps = -1;
+  std::cout << "About to read server_id, num_ps" << std::endl;
+  try {
+    if (read_all(req.sock, &server_id, sizeof(int)) == 0) {
+      return false;
+    }
+    if (read_all(req.sock, &num_ps, sizeof(int)) == 0) {
+      return false;
+    }
+  } catch (...) {
+    throw std::runtime_error("Unhandled error");
+  }
+
+  std::cout << "Got read server_id, num_ps" << std::endl;
+  uint32_t send_size =
+      lr_model_copy.serializeTo(thread_buffer.data(), server_id, num_ps);
+  std::cout << "Send size" << send_size << std::endl;
+  if (send_all(req.sock, thread_buffer.data(), send_size) == -1)
     return false;
   return true;
 }
@@ -651,7 +690,8 @@ void PSSparseServerTask::gradient_f() {
 
 #ifdef DEBUG
     std::cout << "Operation: " << operation << " - "
-              << operation_to_name[operation] << std::endl;
+              << operation_to_name[operation] << " " << GET_LR_FULL_SPARSE_MODEL
+              << std::endl;
 #endif
 
     if (operation_to_f.find(operation) == operation_to_f.end()) {
@@ -743,6 +783,8 @@ void PSSparseServerTask::kill_server() {
 void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
   // id=0 -> poll thread responsible for handling new connections
   if (poll_id == 0) {
+    int ps_port = ps_ports[0];
+    pthread_barrier_wait(threads_barrier.get());
     std::cout << "Starting server, poll id " << poll_id << std::endl;
 
     server_sock_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -790,10 +832,9 @@ void PSSparseServerTask::main_poll_thread_fn(int poll_id) {
     fdses[poll_id].at(0).fd = pipefds[poll_id][0];
     fdses[poll_id].at(0).events = POLLIN;
     curr_indexes[poll_id] = 1;
-
+    pthread_barrier_wait(threads_barrier.get());
   }
 
-  pthread_barrier_wait(threads_barrier.get());
 
   loop(poll_id);
 }

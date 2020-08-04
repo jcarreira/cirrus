@@ -15,7 +15,7 @@ void SGD::sgd_update(
   }
 
   for (const auto& w : grad->weights) {
-    int index = w.first;
+    uint32_t index = w.first;
     FEATURE_TYPE value = w.second;
     lr_model->weights_[index] += learning_rate * value;
   }
