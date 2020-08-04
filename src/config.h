@@ -9,7 +9,7 @@
 // #define PRELOAD_DATA
 
 #ifdef USE_REDIS
-#define PS_IP "172.31.0.197"
+#define PS_IP "127.0.0.1"
 #define PS_PORT 1337
 #endif
 
@@ -34,10 +34,17 @@ using FEATURE_TYPE = float;
 #define NUM_FACTORS 10
 
 // define the number of poll threads
-#define NUM_POLL_THREADS 3
+#define NUM_POLL_THREADS 4
 
 // define number of parameter server working threads
 #define NUM_PS_WORK_THREADS 4
 
+// Special params for Netflix Task
+#define GLOBAL_BIAS 3.604
+#define MAX_NUM_PS 100
+
 // fixed size number of characters for key name
 #define KEY_SIZE (10)
+
+// Seed value for murmurhash
+#define SEED 42

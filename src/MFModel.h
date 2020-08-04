@@ -143,15 +143,15 @@ class MFModel : public CirrusModel {
     uint64_t size() const;
 
  private:
-    void initialize_reg_params();
-    void initialize_data(uint64_t, uint64_t, uint64_t);
-    
-    // predict rating that userId gives to itemId
-    FEATURE_TYPE predict(uint32_t userId, uint32_t itemId) const;
+  void initialize_reg_params();
+  void initialize_data(uint64_t, uint64_t, uint64_t);
 
-    uint64_t nusers_;
-    uint64_t nitems_;
-    uint64_t nfactors_;
+  // predict rating that userId gives to itemId
+  FEATURE_TYPE predict(uint32_t userId, uint32_t itemId) const;
+
+  uint64_t nusers_;
+  uint64_t nitems_;
+  uint64_t nfactors_;
 
  public:
     const FEATURE_TYPE& get_user_weights(uint64_t userId, uint64_t factor) const;

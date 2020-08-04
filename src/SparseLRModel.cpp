@@ -68,10 +68,54 @@ uint64_t SparseLRModel::getSerializedSize() const {
   return ret;
 }
 
+/*
+ * serialize to assuming hashing shard
+ */
+uint64_t SparseLRModel::serializeTo(void* mem,
+                                    int server_number,
+                                    int num_ps) const {
+  uint32_t size = 0;
+  void* mem_begin = mem;
+  store_value<uint32_t>(mem, -1);
+  store_value<uint32_t>(mem, -1);
+  int largest_weight = -1;
+  for (int i = 0; i < weights_.size(); i++) {
+    if ((hash_int(i) % num_ps) == server_number) {
+      store_value<FEATURE_TYPE>(mem, weights_[i]);
+      size++;
+      largest_weight = i;
+    }
+  }
+  store_value<int>(mem_begin, size);
+  store_value<int>(mem_begin, largest_weight);
+  uint32_t to_send_size = size * sizeof(FEATURE_TYPE) + 2 * sizeof(int);
+  return to_send_size;
+}
+
 /** FORMAT
   * number of weights (int)
   * list of weights: weight1 (FEATURE_TYPE) | weight2 (FEATURE_TYPE) | ..
   */
+void SparseLRModel::loadSerialized(const void* data,
+                                   int server_id,
+                                   int num_ps) {
+  uint32_t num_weights = load_value<uint32_t>(data);
+  uint32_t largest_weight = load_value<uint32_t>(data);
+  assert(num_weights > 0 && num_weights < 10000000);
+
+  if (weights_.size() < largest_weight) {
+    weights_.resize(largest_weight);
+  }
+
+  for (int i = 0; i < largest_weight; i++) {
+    if (hash_int(i) % num_ps == server_id) {
+      uint32_t new_index = i;
+      FEATURE_TYPE w = load_value<FEATURE_TYPE>(data);
+      weights_[new_index] = w;
+    }
+  }
+}
+
 void SparseLRModel::loadSerialized(const void* data) {
   int num_weights = load_value<int>(data);
 #ifdef DEBUG
@@ -79,7 +123,8 @@ void SparseLRModel::loadSerialized(const void* data) {
 #endif
   assert(num_weights > 0 && num_weights < 10000000);
 
-  char* data_begin = (char*)data;
+  int size = num_weights * sizeof(FEATURE_TYPE) + sizeof(int);
+  void* data_begin = const_cast<void*>(data);
 
   weights_.resize(num_weights);
   std::copy(reinterpret_cast<FEATURE_TYPE*>(data_begin),
@@ -379,9 +424,12 @@ void SparseLRModel::check() const {
 void SparseLRModel::loadSerializedSparse(const FEATURE_TYPE* weights,
                                          const uint32_t* weight_indices,
                                          uint64_t num_weights,
-                                         const Configuration& config) {
+                                         const Configuration& config,
+                                         int server_id,
+                                         int num_ps) {
   is_sparse_ = true;
   assert(num_weights > 0 && num_weights < 10000000);
+  load_value<uint32_t>(weight_indices);
   weights_sparse_.reserve((1 << config.get_model_bits()));
   for (uint64_t i = 0; i < num_weights; ++i) {
     uint32_t index = load_value<uint32_t>(weight_indices);

@@ -2,7 +2,7 @@
 
 #include "Configuration.h"
 #include "InputReader.h"
-#include "PSSparseServerInterface.h"
+#include "MultiplePSSparseServerInterface.h"
 #include "Serializers.h"
 #include "SparseLRModel.h"
 #include "Utils.h"
@@ -10,21 +10,19 @@
 
 #define DEBUG
 #define ERROR_INTERVAL_USEC (100000)  // time between error checks
-
-#define LOSS_THRESHOLD (0.66)
-
+#define LOSS_THRESHOLD (0.60)
 using namespace cirrus;
 
 Configuration config = Configuration("configs/test_config.cfg");
 
 std::unique_ptr<CirrusModel> get_model(const Configuration& config,
-                                       const std::string& ps_ip,
-                                       uint64_t ps_port) {
-  static PSSparseServerInterface* psi;
+                                       const std::vector<std::string>& ips,
+                                       const std::vector<uint64_t>& ports) {
+  static MultiplePSSparseServerInterface* psi;
   static bool first_time = true;
   if (first_time) {
     first_time = false;
-    psi = new PSSparseServerInterface(ps_ip, ps_port);
+    psi = new MultiplePSSparseServerInterface(config, ips, ports);
     psi->connect();
   }
   return psi->get_full_model(config, false);
@@ -43,6 +41,8 @@ int main() {
   std::cout << "[ERROR_TASK] Computing accuracies"
             << "\n";
   FEATURE_TYPE avg_loss = 0;
+  std::vector<std::string> ips{"127.0.0.1", "127.0.0.1"};
+  std::vector<uint64_t> ports{1037, 1039};
   for (int i = 0; i < 100; i++) {
     usleep(ERROR_INTERVAL_USEC);
     try {
@@ -50,7 +50,7 @@ int main() {
       std::cout << "[ERROR_TASK] getting the full model"
                 << "\n";
 #endif
-      std::unique_ptr<CirrusModel> model = get_model(config, "127.0.0.1", 1337);
+      std::unique_ptr<CirrusModel> model = get_model(config, ips, ports);
 
 #ifdef DEBUG
       std::cout << "[ERROR_TASK] received the model" << std::endl;
@@ -74,11 +74,9 @@ int main() {
       throw std::runtime_error(std::string("Error ") + exec.what());
     }
   }
-  if (avg_loss < LOSS_THRESHOLD) {
+  if (avg_loss < 0.66) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
   }
-
-  return 0;
 }

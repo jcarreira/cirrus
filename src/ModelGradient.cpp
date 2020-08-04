@@ -1,10 +1,10 @@
 #include <ModelGradient.h>
-#include <iostream>
-#include <algorithm>
 #include <Utils.h>
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 #include "Constants.h"
-
+#include "MurmurHash3.h"
 namespace cirrus {
 
 /**
@@ -151,9 +151,92 @@ void LRSparseGradient::serialize(void* mem) const {
   }
 }
 
+/**
+ * Given a pointer to memory, method will serialize gradient into 'parts' number
+ * of parts
+ * Method returns vector of size parts containing tuples of <a, b> such that for
+ * the ith tuple mem + a
+ * is the start of the ith serialized gradient and mem + a + b is the end of
+ * that serialized gradient
+ *
+ */
+
+std::array<std::tuple<int, int>, MAX_NUM_PS> LRSparseGradient::shard_serialize(
+    void* mem,
+    uint32_t parts) const {
+  std::array<int, MAX_NUM_PS> starts;  // First will store how many tuples per
+                                       // shard, ie starts[i] is the number
+  starts.fill(0);  // of gradient weights going to server number i
+  std::array<std::tuple<int, int>, MAX_NUM_PS>
+      starts_out;  // starts_out[i] stores <starting_offset(bytes), size(bytes)>
+                   // of where the ith gradient
+                   // serialize starts and its size relative to mem.
+
+  // Perform count
+  for (const auto& w : weights) {
+    int index = w.first;
+    starts[hash_int(index) % parts]++;
+  }
+
+  std::array<int, MAX_NUM_PS> positions;
+  positions[0] = 0;
+  uint64_t offset_from_mem_start = 0;
+  for (int i = 0; i < parts; i++) {
+    int count = starts[i];
+    if (i != 0) {  // && i != (parts - 1)) {
+      positions[i] = positions[i - 1] + starts[i - 1];
+    }
+
+    uint64_t shard_serialized_size =
+        count * (sizeof(int) + sizeof(FEATURE_TYPE)) +
+        2 * sizeof(int);  // Size in bytes of the ith shard
+    // Shorten this. Makes a tuple out of position + size
+    starts_out[i] =
+        std::make_tuple(offset_from_mem_start, shard_serialized_size);
+
+    // Write in the version and count
+    put_value<int>(mem, version, offset_from_mem_start);
+    put_value<int>(mem, count, offset_from_mem_start + sizeof(int));
+
+    // How many [version(int), num_weights] + [number of (int, FEATURE_TYPEs)]
+    // that lie previous
+    offset_from_mem_start +=
+        (2 * sizeof(int)) + (count * (sizeof(int) + sizeof(FEATURE_TYPE)));
+  }
+
+  // starts[i] will now designate how many weights in should we write in the
+  // next weight of gradient serialization i
+  for (const auto& w : weights) {
+    int index = w.first;
+    FEATURE_TYPE weight = w.second;
+
+    int ps_num = hash_int(index) % parts;
+    int position = positions[ps_num];
+
+    // Determine the offset from mem start to write the index and weight
+    uint64_t offset =
+        ((ps_num + 1) *
+         (sizeof(int) + sizeof(int))) +  // Number of (version, count) variables
+        position * (sizeof(int) + sizeof(FEATURE_TYPE));  //
+    put_value<uint32_t>(mem, index, offset);
+    put_value<FEATURE_TYPE>(mem, weight, offset + sizeof(uint32_t));
+
+    // Update starts, since a new idx and weight was just written in
+    positions[ps_num]++;
+  }
+
+  return std::move(starts_out);
+}
+
 uint64_t LRSparseGradient::getSerializedSize() const {
   return weights.size() * (sizeof(FEATURE_TYPE) + sizeof(int)) + // pairs (index, weight value)
     sizeof(int) * 2; // version + number of weights
+}
+
+uint64_t LRSparseGradient::getShardSerializedSize(int num_shards) const {
+  return weights.size() * (sizeof(FEATURE_TYPE) +
+                           sizeof(int)) +  // pairs (index, weight value)
+         sizeof(int) * 2 * num_shards;     // version + number of weights
 }
 
 void LRSparseGradient::print() const {
@@ -334,6 +417,173 @@ uint64_t MFSparseGradient::getSerializedSize() const {
     + items_weights_grad.size() *  (sizeof(int) + NUM_FACTORS * sizeof(FEATURE_TYPE));
 }
 
+uint64_t MFSparseGradient::getShardSerializedSize(int num_shards) const {
+  return sizeof(uint32_t) * (2 + 2) *
+             num_shards +  // num_users, num_items, 2x magic_values
+         users_bias_grad.size() *
+             (sizeof(int) +
+              sizeof(FEATURE_TYPE)) +  // pairs (index, weight value)
+         items_bias_grad.size() *
+             (sizeof(int) +
+              sizeof(FEATURE_TYPE)) +  // pairs (index, weight value)
+         users_weights_grad.size() *
+             (sizeof(int) +
+              NUM_FACTORS *
+                  sizeof(
+                      FEATURE_TYPE)) +  // pairs (index, num_factors# weights)
+         items_weights_grad.size() *
+             (sizeof(int) +
+              NUM_FACTORS *
+                  sizeof(FEATURE_TYPE));  // pairs (index, num_factors# weights)
+}
+
+std::array<std::tuple<int, int>, MAX_NUM_PS> MFSparseGradient::shard_serialize(
+    void* mem,
+    uint32_t minibatch_size,
+    uint32_t num_ps) const {
+  std::array<int, MAX_NUM_PS>
+      starts;  // stores the size (bytes) per gradient shard.
+  starts.fill(4 * sizeof(int));
+  std::array<int, MAX_NUM_PS>
+      icnts;  // icnts[i] stores the number of items of the ith gradient shard
+  icnts.fill(0);
+  std::array<int, MAX_NUM_PS>
+      ucnts;  // ucnts[i] stores the number of users of the ith gradient shard
+  ucnts.fill(0);
+
+  std::array<std::tuple<int, int>, MAX_NUM_PS> starts_out;
+
+  // Perform count of users
+  uint32_t bias_grad_size =
+      2 * sizeof(int) + (NUM_FACTORS + 1) * sizeof(FEATURE_TYPE);
+  for (const auto& user_bias : users_bias_grad) {
+    int ps_num = (user_bias.first / (minibatch_size / num_ps)) % num_ps;
+    starts[ps_num] += bias_grad_size;
+    ucnts[ps_num]++;
+  }
+
+  // Perform count of items
+  for (const auto& item_bias : items_bias_grad) {
+    int bias_index = item_bias.first;
+    int index_hash = hash_int(bias_index) % num_ps;
+    starts[index_hash] += bias_grad_size;
+    icnts[index_hash]++;
+  }
+
+  // starts[i] = mem + starts[i] is where the next term of the ith gradient
+  // should be written
+  int count = starts[0];  // stores size (bytes) of the current gradient shard
+  int icnt =
+      icnts[0];  // stores the number of items in the current gradient shard
+  int ucnt =
+      ucnts[0];  // stores the number of users in the current gradient shard
+
+  starts[0] = 0;
+  ucnts[0] = 0;
+  icnts[0] = 0;
+
+  int count_next = 0;
+  int icnt_next = 0;
+  int ucnt_next = 0;
+
+  for (int i = 0; i < num_ps; i++) {
+    // if i is not the last idx
+    if (i != (num_ps - 1)) {
+      count_next = starts[i + 1];
+      icnt_next = icnts[i + 1];
+      ucnt_next = ucnts[i + 1];
+
+      starts[i + 1] = starts[i] + count;
+      icnts[i + 1] = icnts[i] + icnt;
+      ucnts[i + 1] = ucnts[i] + ucnt;
+    }
+
+    // Shorten this. Makes a tuple out of position + size
+    starts_out[i] = std::make_tuple(starts[i], count);
+
+    // How many [version(int), num_weights] + [number of (int, FEATURE_TYPEs)]
+    // that lie previous
+    uint64_t offset = starts[i];
+
+    // Insert Magic value and counts at the beginning of the gradient
+    put_value<uint32_t>(mem, MAGIC_NUMBER, offset);
+    put_value<int>(mem, ucnt, offset + sizeof(int));
+    put_value<int>(mem, icnt, offset + 2 * sizeof(int));
+
+    // Update starts[i] to the next available space
+    starts[i] += 3 * sizeof(int);
+
+    count = count_next;
+    ucnt = ucnt_next;
+    icnt = icnt_next;
+  }
+
+  // Serialization of the user bias
+  // We assume a dense ordering of the users
+  for (const auto& user_bias : users_bias_grad) {
+    int index = user_bias.first;
+    FEATURE_TYPE weight = user_bias.second;
+    int ps_num = (user_bias.first / (minibatch_size / num_ps)) % num_ps;
+    int converted_index =
+        ((user_bias.first / minibatch_size)) * (minibatch_size / num_ps) +
+        user_bias.first % (minibatch_size / num_ps);
+    int position = starts[ps_num];
+    put_value<int>(mem, converted_index, position);
+    put_value<FEATURE_TYPE>(mem, weight, position + sizeof(int));
+    starts[ps_num] += sizeof(int) + sizeof(FEATURE_TYPE);
+  }
+
+  // Serialization of the item bias
+  for (const auto& bias_grad : items_bias_grad) {
+    int index = bias_grad.first;
+    FEATURE_TYPE v = bias_grad.second;
+    int ps_num = hash_int(index) % num_ps;
+    int position = starts[ps_num];
+    put_value<int>(mem, index, position);
+    put_value<FEATURE_TYPE>(mem, v, position + sizeof(int));
+    starts[ps_num] += sizeof(int) + sizeof(FEATURE_TYPE);
+  }
+
+  // Serialization of the user weights
+  assert(users_weights_grad.size() == users_bias_grad.size());
+  for (const auto& user : users_weights_grad) {
+    int index = user.first;
+    int converted_index =
+        ((user.first / minibatch_size)) * (minibatch_size / num_ps) +
+        user.first % (minibatch_size / num_ps);
+    int ps_num = (user.first / (minibatch_size / num_ps)) % num_ps;
+    int position = starts[ps_num];
+    put_value<int>(mem, converted_index, position);
+    starts[ps_num] += sizeof(int);
+    assert(user.second.size() == NUM_FACTORS);
+    for (const auto& weight_grad : user.second) {
+      put_value<FEATURE_TYPE>(mem, weight_grad, starts[ps_num]);
+      starts[ps_num] += sizeof(FEATURE_TYPE);
+    }
+  }
+
+  // Serialization of the item weights
+  assert(items_weights_grad.size() == items_bias_grad.size());
+  for (const auto& item : items_weights_grad) {
+    int index = item.first;
+    int ps_num = hash_int(index) % num_ps;
+    int position = starts[ps_num];
+    put_value<int>(mem, index, position);
+    starts[ps_num] += sizeof(int);
+    assert(item.second.size() == NUM_FACTORS);
+    for (const auto& item_grad : item.second) {
+      put_value<FEATURE_TYPE>(mem, item_grad, starts[ps_num]);
+      starts[ps_num] += sizeof(FEATURE_TYPE);
+    }
+  }
+
+  // Put the magic value in the back of every gradient
+  for (int i = 0; i < num_ps; i++)
+    put_value<uint32_t>(mem, 0x1338, starts[i]);
+
+  return std::move(starts_out);
+}
+
 void MFSparseGradient::serialize(void *mem) const {
   store_value<uint32_t>(mem, MAGIC_NUMBER); // magic value
   store_value<uint32_t>(mem, users_bias_grad.size());
@@ -368,7 +618,7 @@ void MFSparseGradient::serialize(void *mem) const {
       store_value<FEATURE_TYPE>(mem, weight_grad);
     }
   }
-  store_value<uint32_t>(mem, 0x1338); // magic value
+  store_value<uint32_t>(mem, 0x1338);  // magic value
 }
 
 void MFSparseGradient::loadSerialized(const void* mem) {

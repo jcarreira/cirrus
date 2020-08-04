@@ -27,6 +27,8 @@ script:
    - python tests/test_travis_lr/test.py
    - ./tests/test_data/jester.sh
    - python tests/test_travis_mf/test.py
+   - python tests/test_travis_lr_multiple_PS/test.py
+   - python tests/test_travis_mf_multiple_PS/test.py
    - ./tests/test_travis/test_register.sh
    - ./tests/test_travis/test_keyvalue.sh
 
@@ -52,7 +54,8 @@ install:
   - sudo ln -s -f /usr/bin/g++-7 /usr/local/bin/g++
   - mv src/Makefile.am src/Makefile_centos.am
   - mv src/Makefile_ubuntu.am src/Makefile.am
-  - .travis/check-git-clang-format-output.sh  
+  - clang-format -version
+  - .travis/check-git-clang-format-output.sh
   - ./bootstrap.sh
   - gcc --version
   - g++ --version

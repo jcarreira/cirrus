@@ -12,12 +12,21 @@
 
 namespace cirrus {
 
-void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
+void MFNetflixTask::get_new_model_inplace(const SparseDataset& ds,
+                                          SparseMFModel& model,
+                                          const Configuration& config,
+                                          uint64_t user_base_index,
+                                          uint64_t mb_size) {
+  psint->get_mf_sparse_model_inplace(ds, model, config, user_base_index,
+                                     mb_size);
+}
+
+void MFNetflixTask::push_gradient(MFSparseGradient* mfg) {
 #ifdef DEBUG
   auto before_push_us = get_time_us();
   std::cout << "Publishing gradients" << std::endl;
 #endif
-  psint->send_mf_gradient(mfg);
+  psint->send_mf_gradient(*mfg);
 #ifdef DEBUG
   std::cout << "Published gradients!" << std::endl;
   auto elapsed_push_us = get_time_us() - before_push_us;
@@ -26,13 +35,12 @@ void MFNetflixTask::push_gradient(MFSparseGradient& mfg) {
     before = get_time_us();
   auto now = get_time_us();
   std::cout << "[WORKER] "
-      << "Worker task published gradient"
-      << " at time (us): " << get_time_us()
-      << " took(us): " << elapsed_push_us
-      << " bw(MB/s): " << std::fixed <<
-         (1.0 * mfg.getSerializedSize() / elapsed_push_us / 1024 / 1024 * 1000 * 1000)
-      << " since last(us): " << (now - before)
-      << "\n";
+            << "Worker task published gradient"
+            << " at time (us): " << get_time_us()
+            << " took(us): " << elapsed_push_us << " bw(MB/s): " << std::fixed
+            << (1.0 * mfg->getSerializedSize() / elapsed_push_us / 1024 / 1024 *
+                1000 * 1000)
+            << " since last(us): " << (now - before) << "\n";
   before = now;
 #endif
 }
@@ -73,11 +81,6 @@ void MFNetflixTask::run(const Configuration& config,
   uint64_t num_s3_batches = config.get_limit_samples() / config.get_s3_size();
   this->config = config;
 
-  psint = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-  psint->connect();
-
-  mf_model_get = std::make_unique<MFModelGet>(ps_ip, ps_port);
-
   std::cout << "[WORKER] " << "num s3 batches: " << num_s3_batches
     << std::endl;
   wait_for_start(WORKER_SPARSE_TASK_RANK + worker, nworkers);
@@ -111,13 +114,24 @@ void MFNetflixTask::run(const Configuration& config,
 
   }
 
+  // Setup helper objects
   S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
                            config.get_minibatch_size(), false, worker, false,
                            false);
 
+  if (ps_ips.size() > 1) {
+    psint = std::make_unique<MultiplePSSparseServerInterface>(config, ps_ips,
+                                                              ps_ports);
+  } else {
+    psint = std::make_unique<PSSparseServerInterface>(ps_ips[0], ps_ports[0]);
+  }
+
+  repeat(std::bind(&PSSparseServerInterface::connect, psint.get()));
+
   std::cout << "[WORKER] starting loop" << std::endl;
   int count = 0;
   while (1) {
+    SparseMFModel model(config.get_users(), config.get_items(), NUM_FACTORS);
     // get data, labels and model
 #ifdef DEBUG
     std::cout << "[WORKER] running phase 1" << std::endl;
@@ -137,9 +151,8 @@ void MFNetflixTask::run(const Configuration& config,
     std::unique_ptr<ModelGradient> gradient;
 
     // we get the model subset with just the right amount of weights
-    SparseMFModel model =
-      mf_model_get->get_new_model(
-              *dataset, sample_index, config.get_minibatch_size());
+    get_new_model_inplace(*dataset, model, config, sample_index,
+                          config.get_minibatch_size());
 
 #ifdef DEBUG
     std::cout << "get model elapsed(us): " << get_time_us() - now << std::endl;
@@ -157,7 +170,7 @@ void MFNetflixTask::run(const Configuration& config,
 #endif
       MFSparseGradient* grad_ptr =
         dynamic_cast<MFSparseGradient*>(gradient.get());
-      push_gradient(*grad_ptr);
+      push_gradient(grad_ptr);
       sample_index += config.get_minibatch_size();
 
 
@@ -168,6 +181,7 @@ void MFNetflixTask::run(const Configuration& config,
       std::cout << "There was an error computing the gradient" << std::endl;
       exit(-1);
     }
+
     count++;
     if (test_iters > 0 && count > test_iters) {
       exit(0);

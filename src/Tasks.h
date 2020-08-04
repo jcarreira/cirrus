@@ -3,13 +3,14 @@
 
 #include <Configuration.h>
 
-#include "config.h"
 #include "LRModel.h"
 #include "MFModel.h"
-#include "SparseLRModel.h"
+#include "MultiplePSSparseServerInterface.h"
+#include "OptimizationMethod.h"
 #include "PSSparseServerInterface.h"
 #include "S3SparseIterator.h"
-#include "OptimizationMethod.h"
+#include "SparseLRModel.h"
+#include "config.h"
 
 #include <chrono>
 #include <map>
@@ -28,25 +29,32 @@
 namespace cirrus {
 class MLTask {
   public:
-    MLTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id,
-        const std::string& ps_ip,
-        uint64_t ps_port) :
-      model_size(model_size),
-      batch_size(batch_size), samples_per_batch(samples_per_batch),
-      features_per_sample(features_per_sample),
-      nworkers(nworkers), worker_id(worker_id),
-      ps_ip(ps_ip), ps_port(ps_port)
-  {}
+   MLTask(uint64_t model_size,
+          uint64_t batch_size,
+          uint64_t samples_per_batch,
+          uint64_t features_per_sample,
+          uint64_t nworkers,
+          uint64_t worker_id,
+          const Configuration& config,
+          const std::vector<std::string>& ps_ips,
+          const std::vector<uint64_t>& ps_ports)
+       : model_size(model_size),
+         batch_size(batch_size),
+         samples_per_batch(samples_per_batch),
+         features_per_sample(features_per_sample),
+         nworkers(nworkers),
+         worker_id(worker_id) {
+     this->config = config;
+     this->ps_ports = ps_ports;
+     this->ps_ips = ps_ips;
+     std::cout << "MLTASK " << this->ps_ips.size() << std::endl;
+   }
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker);
-    void wait_for_start(int index, int nworkers);
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config, int worker);
+   void wait_for_start(int index, int nworkers);
 
   protected:
     uint64_t model_size;
@@ -55,75 +63,86 @@ class MLTask {
     uint64_t features_per_sample;
     uint64_t nworkers;
     uint64_t worker_id;
-    std::string ps_ip;
-    uint64_t ps_port;
+    std::vector<std::string> ps_ips;
+    std::vector<uint64_t> ps_ports;
     Configuration config;
 };
 
 class LogisticSparseTaskS3 : public MLTask {
   public:
-    LogisticSparseTaskS3(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id,
-        const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port), psint(nullptr)
-  {}
+   LogisticSparseTaskS3(uint64_t model_size,
+                        uint64_t batch_size,
+                        uint64_t samples_per_batch,
+                        uint64_t features_per_sample,
+                        uint64_t nworkers,
+                        uint64_t worker_id,
+                        const Configuration& config,
+                        std::vector<std::string> ps_ips,
+                        std::vector<uint64_t> ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker, int test_iters);
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config, int worker, int test_iters);
 
-   private:
-    class SparseModelGet {
-      public:
-        SparseModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-            psi->connect();
-        }
+  private:
+   class SparseModelGet {
+    public:
+     SparseModelGet(const std::string& ps_ip, int ps_port)
+         : ps_ip(ps_ip), ps_port(ps_port) {
+       psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
+       psi->connect();
+     }
 
-        SparseLRModel get_new_model(const SparseDataset& ds,
-                                    const Configuration& config) {
-          return std::move(psi->get_lr_sparse_model(ds, config));
-        }
-        void get_new_model_inplace(const SparseDataset& ds,
-                                   SparseLRModel& model,
-                                   const Configuration& config) {
-          psi->get_lr_sparse_model_inplace(ds, model, config);
-        }
+     SparseLRModel get_new_model(const SparseDataset& ds,
+                                 const Configuration& config) {
+       return std::move(psi->get_lr_sparse_model(ds, config));
+     }
+     void get_new_model_inplace(const SparseDataset& ds,
+                                SparseLRModel& model,
+                                const Configuration& config) {
+       psi->get_lr_sparse_model_inplace(ds, model, config);
+     }
 
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
+    private:
+     std::unique_ptr<PSSparseServerInterface> psi;
+     std::string ps_ip;
+     int ps_port;
     };
 
     bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                                S3SparseIterator& s3_iter);
     void push_gradient(LRSparseGradient*);
+    void get_new_model_inplace(const SparseDataset& ds,
+                               SparseLRModel& model,
+                               const Configuration& config);
 
     std::mutex redis_lock;
-  
-    std::unique_ptr<SparseModelGet> sparse_model_get;
-    PSSparseServerInterface* psint;
+    std::unique_ptr<PSSparseServerInterface> psint;
 };
 
 class PSSparseTask : public MLTask {
   public:
-    PSSparseTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port);
+   PSSparseTask(uint64_t model_size,
+                uint64_t batch_size,
+                uint64_t samples_per_batch,
+                uint64_t features_per_sample,
+                uint64_t nworkers,
+                uint64_t worker_id,
+                const Configuration& config,
+                const std::string& ps_ip,
+                uint64_t ps_port);
 
-    void run(const Configuration& config);
+   void run(const Configuration& config);
 
   private:
     void put_model(const SparseLRModel& model);
@@ -154,8 +173,9 @@ class ErrorSparseTask : public MLTask {
                    uint64_t features_per_sample,
                    uint64_t nworkers,
                    uint64_t worker_id,
-                   const std::string& ps_ip,
-                   uint64_t ps_port);
+                   const Configuration& config,
+                   const std::vector<std::string>& ps_ips,
+                   const std::vector<uint64_t>& ps_ports);
 
    void run(const Configuration& config,
             bool testing,
@@ -165,50 +185,67 @@ class ErrorSparseTask : public MLTask {
 
   private:
    // Stores last recorded time/loss values
-   double last_time = 0.0;
-   double last_error = 0.0;
-   std::atomic<double> curr_error;
+   int port_num;                    // Error Response port number
+   double last_time = 0.0;          // time of last request for error
+   double last_error = 0.0;         // error value for the last error request
+   std::atomic<double> curr_error;  // current error of the experiment
    std::atomic<double> total_loss;
 };
 
 class PerformanceLambdaTask : public MLTask {
   public:
-    PerformanceLambdaTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
+   PerformanceLambdaTask(uint64_t model_size,
+                         uint64_t batch_size,
+                         uint64_t samples_per_batch,
+                         uint64_t features_per_sample,
+                         uint64_t nworkers,
+                         uint64_t worker_id,
+                         const Configuration& config,
+                         const std::vector<std::string>& ps_ips,
+                         const std::vector<uint64_t>& ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config);
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config);
 
   private:
 };
 
 class LoadingSparseTaskS3 : public MLTask {
   public:
-    LoadingSparseTaskS3(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
-    void run(const Configuration& config);
-    SparseDataset read_dataset(const Configuration& config);
-    void check_loading(const Configuration&,
-                       std::unique_ptr<S3Client>& s3_client);
-    void check_label(FEATURE_TYPE label);
+   LoadingSparseTaskS3(uint64_t model_size,
+                       uint64_t batch_size,
+                       uint64_t samples_per_batch,
+                       uint64_t features_per_sample,
+                       uint64_t nworkers,
+                       uint64_t worker_id,
+                       const Configuration& config,
+                       const std::vector<std::string>& ps_ips,
+                       const std::vector<uint64_t>& ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
+   void run(const Configuration& config);
+   SparseDataset read_dataset(const Configuration& config);
+   void check_loading(const Configuration&,
+                      std::unique_ptr<S3Client>& s3_client);
+   void check_label(FEATURE_TYPE label);
 
   private:
 };
@@ -221,16 +258,18 @@ class LoadingNetflixTask : public MLTask {
                      uint64_t features_per_sample,
                      uint64_t nworkers,
                      uint64_t worker_id,
-                     const std::string& ps_ip,
-                     uint64_t ps_port)
+                     const Configuration& config,
+                     const std::vector<std::string>& ps_ips,
+                     const std::vector<uint64_t>& ps_ports)
       : MLTask(model_size,
                batch_size,
                samples_per_batch,
                features_per_sample,
                nworkers,
                worker_id,
-               ps_ip,
-               ps_port) {}
+               config,
+               ps_ips,
+               ps_ports) {}
   void run(const Configuration& config);
   SparseDataset read_dataset(const Configuration& config, int&, int&);
   void check_loading(const Configuration&,
@@ -247,8 +286,9 @@ class PSSparseServerTask : public MLTask {
                      uint64_t features_per_sample,
                      uint64_t nworkers,
                      uint64_t worker_id,
-                     const std::string& ps_ip,
-                     uint64_t ps_port);
+                     const Configuration& config,
+                     const std::vector<std::string>& ps_ip,
+                     const std::vector<uint64_t>& ps_port);
 
   void run(const Configuration& config);
 
@@ -317,7 +357,10 @@ class PSSparseServerTask : public MLTask {
   bool process_set_value(int, const Request&, std::vector<char>&, int);
   bool process_register_task(int, const Request&, std::vector<char>&, int);
   bool process_deregister_task(int, const Request&, std::vector<char>&, int);
-
+  bool process_get_lr_full_sparse_model(int,
+                                        const Request&,
+                                        std::vector<char>&,
+                                        int);
   void kill_server();
 
   static void destroy_pthread_barrier(pthread_barrier_t*);
@@ -400,49 +443,40 @@ class PSSparseServerTask : public MLTask {
 
 class MFNetflixTask : public MLTask {
   public:
-    MFNetflixTask(
-        uint64_t model_size,
-        uint64_t batch_size, uint64_t samples_per_batch,
-        uint64_t features_per_sample, uint64_t nworkers,
-        uint64_t worker_id, const std::string& ps_ip,
-        uint64_t ps_port) :
-      MLTask(model_size,
-          batch_size, samples_per_batch, features_per_sample,
-          nworkers, worker_id, ps_ip, ps_port)
-  {}
+   MFNetflixTask(uint64_t model_size,
+                 uint64_t batch_size,
+                 uint64_t samples_per_batch,
+                 uint64_t features_per_sample,
+                 uint64_t nworkers,
+                 uint64_t worker_id,
+                 const Configuration& config,
+                 const std::vector<std::string>& ps_ips,
+                 const std::vector<uint64_t>& ps_ports)
+       : MLTask(model_size,
+                batch_size,
+                samples_per_batch,
+                features_per_sample,
+                nworkers,
+                worker_id,
+                config,
+                ps_ips,
+                ps_ports) {}
 
-    /**
-     * Worker here is a value 0..nworkers - 1
-     */
-    void run(const Configuration& config, int worker, int test_iters);
-
-   private:
-    class MFModelGet {
-      public:
-        MFModelGet(const std::string& ps_ip, int ps_port) :
-          ps_ip(ps_ip), ps_port(ps_port) {
-            psi = std::make_unique<PSSparseServerInterface>(ps_ip, ps_port);
-            psi->connect();
-        }
-
-        SparseMFModel get_new_model(const SparseDataset& ds,
-                                    uint64_t user_base_index,
-                                    uint64_t mb_size) {
-          return psi->get_sparse_mf_model(ds, user_base_index, mb_size);
-        }
-
-      private:
-        std::unique_ptr<PSSparseServerInterface> psi;
-        std::string ps_ip;
-        int ps_port;
-    };
+   /**
+    * Worker here is a value 0..nworkers - 1
+    */
+   void run(const Configuration& config, int worker, int test_iters);
 
   private:
    bool get_dataset_minibatch(std::shared_ptr<SparseDataset>& dataset,
                               S3SparseIterator& s3_iter);
-   void push_gradient(MFSparseGradient&);
+   void push_gradient(MFSparseGradient*);
+   void get_new_model_inplace(const SparseDataset& ds,
+                              SparseMFModel& model,
+                              const Configuration& config,
+                              uint64_t user_base_index,
+                              uint64_t mb_size);
 
-   std::unique_ptr<MFModelGet> mf_model_get;
    std::unique_ptr<PSSparseServerInterface> psint;
 };
 

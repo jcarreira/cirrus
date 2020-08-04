@@ -3,12 +3,13 @@
 
 #include <sys/time.h>
 #include <unistd.h>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <random>
 #include <cfloat>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <string>
 
 #define LOG2(X) ((unsigned) (8*sizeof (uint64_t) - \
             __builtin_clzll((X)) - 1)
@@ -135,7 +136,17 @@ void store_value(C*& data, T value) {
   advance_ptr(data, sizeof(T));
 }
 
-template<typename T, typename C>
+template <typename T, typename C>
+void put_value(C* data, T value, uint64_t offset_bytes) {
+  const char* ptr = reinterpret_cast<const char*>(data);
+  ptr += offset_bytes;
+  data = (T*) ptr;
+
+  T* v_ptr = reinterpret_cast<T*>(data);
+  *v_ptr = value;
+}
+
+template <typename T, typename C>
 T load_value(const C*& data) {
   const T* v_ptr = reinterpret_cast<const T*>(data);
   T ret = *v_ptr;
@@ -148,6 +159,26 @@ ssize_t send_all(int sock, void* data, size_t len);
 ssize_t read_all(int sock, void* data, size_t len);
 
 uint64_t hash_f(const char* s);
+uint32_t hash_int(const int s);
+
+void repeat(const std::function<void()>& f);
+
+// For reading the CSV for ps ips and ps ports
+template <typename T>
+std::vector<T> csv_to_vector(const std::string& csv) {
+  std::vector<T> items;
+  std::string tmp;
+  std::stringstream ss(csv);
+  while (ss) {
+    if (!getline(ss, tmp, ','))
+      break;
+    T tmp_item;
+    std::istringstream iss(tmp);
+    iss >> tmp_item;
+    items.push_back(tmp_item);
+  }
+  return items;
+}
 
 } // namespace cirrus
 

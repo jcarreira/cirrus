@@ -53,6 +53,14 @@ class LRModel : public CirrusModel {
     void serializeTo(void* mem) const;
 
     /**
+     * serializes this model into mem but only serializes weights
+     * belonging to parameter server number (server_number).
+     * For use on the parameter server.
+     * @return the amount of data stored at mem
+     */
+    uint64_t serializeTo(void* mem, int server_number, int num_ps) const;
+
+    /**
      * Create new model from serialized weights
      * @param data Memory where the serialized model lives
      * @param size Size of the serialized model
