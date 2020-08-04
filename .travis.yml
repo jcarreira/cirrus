@@ -29,6 +29,10 @@ script:
    - python tests/test_travis_mf/test.py
    - ./tests/test_travis/test_register.sh
    - ./tests/test_travis/test_keyvalue.sh
+   - cd python/frontend/cirrus/
+   - pip install -r requirements.txt
+   - cd ..
+   - pip install -e cirrus
 
 env:
   global:
