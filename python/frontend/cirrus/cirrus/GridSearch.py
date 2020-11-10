@@ -34,6 +34,7 @@ class GridSearch(object):
                  instances=[],
                  num_jobs=1,
                  timeout=-1,
+                 cross_validation=False
                  ):
         # Private Variables
         self.cirrus_objs = [] # Stores each singular experiment
@@ -57,7 +58,8 @@ class GridSearch(object):
                 param_base=param_base,
                 hyper_vars=hyper_vars,
                 hyper_params=hyper_params,
-                instances=instances)
+                instances=instances,
+                cross_validation=cross_validation)
 
         self.adjust_num_threads()
 
@@ -67,8 +69,12 @@ class GridSearch(object):
 
 
     # User must either specify param_dict_lst, or hyper_vars, hyper_params, and param_base
-    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[]):
-        possibilities = list(itertools.product(*hyper_params))
+    def set_task_parameters(self, task, param_base=None, hyper_vars=[], hyper_params=[], instances=[], cross_validation=False):
+        if not cross_validation:
+            possibilities = list(itertools.product(*hyper_params))
+        else:
+            possibilities = [(hyper_params[0][i], hyper_params[1][i]) for i in range(len(hyper_params[0]))]
+        print(possibilities)
         base_port = 1337
         index = 0
         num_machines = len(instances)

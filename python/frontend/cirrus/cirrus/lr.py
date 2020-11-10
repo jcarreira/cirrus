@@ -18,9 +18,10 @@ class LogisticRegressionTask(BaseTask):
         else:
             grad_t = 0
 
+        print(self.test_set)
+
         config = "load_input_path: /mnt/efs/criteo_kaggle/train.csv \n" + \
                  "load_input_type: csv\n" + \
-                 "dataset_format: binary\n" + \
                  "num_classes: 2 \n" + \
                  "num_features: 13 \n" + \
                  "limit_cols: 14 \n" + \
@@ -33,13 +34,21 @@ class LogisticRegressionTask(BaseTask):
                  "learning_rate: %f \n" % self.learning_rate + \
                  "epsilon: %lf \n" % self.epsilon + \
                  "model_bits: %d \n" % self.model_bits + \
+                 "dataset_format: binary \n" + \
                  "s3_bucket: %s \n" % self.dataset + \
                  "use_grad_threshold: %d \n" % grad_t + \
                  "grad_threshold: %lf \n" % self.grad_threshold + \
-                 "train_set: %d-%d \n" % self.train_set + \
+                 "train_set: " + create_train_string(self.train_set) + " \n" + \
                  "test_set: %d-%d" % self.test_set
         return config
 
+#converts a list of training ranges into a string for the config file
+def create_train_string(train_set):
+  result = str(train_set[0][0]) + "-" + str(train_set[0][1])
+  if len(train_set) > 1:
+    for s in train_set[1:]:
+      result = result + "," + str(s[0]) + "-" + str(s[1])
+  return result
 
 def LogisticRegression(
             n_workers,

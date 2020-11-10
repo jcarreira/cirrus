@@ -7,6 +7,7 @@
 #include "SparseMFModel.h"
 
 #include <pthread.h>
+#include <random>
 
 #define DEBUG
 
@@ -83,7 +84,12 @@ void MFNetflixTask::run(const Configuration& config,
   wait_for_start(WORKER_SPARSE_TASK_RANK + worker, nworkers);
 
   // Create iterator that goes from 0 to num_s3_batches
-  std::pair<int, int> train_range = config.get_train_range();
+  std::random_device rd;
+  std::mt19937 rng(rd());
+  std::uniform_int_distribution<int> uni(0,
+                                         config.get_train_range().size() - 1);
+  int selection = uni(rng);
+  std::pair<int, int> train_range = config.get_train_range()[selection];
 
   /** We sequentially iterate over data
     * This is necessary because we need to know the index of each row
@@ -95,7 +101,7 @@ void MFNetflixTask::run(const Configuration& config,
   int r = train_range.second;
   uint64_t sample_low = 0;
   uint64_t sample_index = 0;
-  uint64_t sample_high = config.get_s3_size() * (config.get_train_range().second + 1);
+  uint64_t sample_high = config.get_s3_size() * (train_range.second + 1);
 
   if (config.get_netflix_workers()) {
     int range_length = (train_range.second - train_range.first) / config.get_netflix_workers();
@@ -110,10 +116,11 @@ void MFNetflixTask::run(const Configuration& config,
     sample_index = sample_low;
 
   }
-
-  S3SparseIterator s3_iter(l, r + 1, config, config.get_s3_size(),
-                           config.get_minibatch_size(), false, worker, false,
-                           false);
+  std::vector<std::pair<int, int>> train_range_vector;
+  std::pair<int, int> train_range_pair = std::make_pair(l, r + 1);
+  train_range_vector.push_back(train_range_pair);
+  S3SparseIterator s3_iter(train_range_vector, config, config.get_s3_size(),
+                           config.get_minibatch_size(), false, worker, false);
 
   std::cout << "[WORKER] starting loop" << std::endl;
   int count = 0;

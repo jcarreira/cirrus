@@ -28,7 +28,7 @@ basic_params = {
     'model_bits': 19,
     'use_grad_threshold': False,
     'grad_threshold': 0.001,
-    'train_set': (0,824),
+    'train_set': [(0,824)],
     'test_set': (835,840)
 }
 

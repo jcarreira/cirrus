@@ -123,14 +123,16 @@ void ErrorSparseTask::run(const Configuration& config,
     left = config.get_test_range().first;
     right = config.get_test_range().second;
   } else if (config.get_model_type() == Configuration::COLLABORATIVE_FILTERING) {
-    left = config.get_train_range().first;
-    right = config.get_train_range().second;
+    left = config.get_train_range()[0].first;
+    right = config.get_train_range()[0].second;
   } else {
     exit(-1);
   }
-
+  std::vector<std::pair<int, int>> test_range_vector(
+      1, std::make_pair(left, right));
   S3SparseIterator s3_iter(
-      left, right, config, config.get_s3_size(), config.get_minibatch_size(),
+      test_range_vector, config, config.get_s3_size(),
+      config.get_minibatch_size(),
       // use_label true for LR
       config.get_model_type() == Configuration::LOGISTICREGRESSION, 0, false,
       config.get_model_type() == Configuration::LOGISTICREGRESSION);
@@ -138,10 +140,8 @@ void ErrorSparseTask::run(const Configuration& config,
   // get data first
   // what we are going to use as a test set
   std::vector<std::shared_ptr<SparseDataset>> minibatches_vec;
-  std::cout << "[ERROR_TASK] getting minibatches from "
-    << config.get_train_range().first << " to "
-    << config.get_train_range().second
-    << std::endl;
+  std::cout << "[ERROR_TASK] getting minibatches from " << left << " to "
+            << right << std::endl;
 
   uint32_t minibatches_per_s3_obj =
     config.get_s3_size() / config.get_minibatch_size();

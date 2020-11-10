@@ -120,9 +120,15 @@ def get_mem_usage():
 
 def get_traces(num, metric=BaseTask.LOSS_VS_TIME):
     trace_lst = []
+    if metric == "LOSS":
+      num_exp = bundle.get_number_experiments()
+    elif metric == "UPS":
+      num_exp = bundle.get_number_experiments_ups()
+    else:
+      num_exp = bundle.get_number_experiments_cps()
     if num == 0:
         # Get all
-        for i in range(get_num_experiments()):
+        for i in range(num_exp):
             xs = get_xs_for(i, metric)
             lll = len(xs)
             trace = Scatter(
@@ -138,7 +144,7 @@ def get_traces(num, metric=BaseTask.LOSS_VS_TIME):
         # Get top N
         q = []
 
-        for i in range(get_num_experiments()):
+        for i in range(num_exp):
 
             xs = get_xs_for(i, metric)
             ys = get_ys_for(i, metric)

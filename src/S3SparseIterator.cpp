@@ -12,18 +12,17 @@
 namespace cirrus {
   
 // s3_cad_size nmber of samples times features per sample
-S3SparseIterator::S3SparseIterator(uint64_t left_id,
-                                   uint64_t right_id,  // right id is exclusive
-                                   const Configuration& c,
-                                   uint64_t s3_rows,
-                                   uint64_t minibatch_rows,
-                                   bool use_label,
-                                   int worker_id,
-                                   bool random_access,
-                                   bool has_labels)
+S3SparseIterator::S3SparseIterator(
+    const std::vector<std::pair<int, int>>& ranges,  // right id is exclusive
+    const Configuration& c,
+    uint64_t s3_rows,
+    uint64_t minibatch_rows,
+    bool use_label,
+    int worker_id,
+    bool random_access,
+    bool has_labels)
     : S3Iterator(c, has_labels),
-      left_id(left_id),
-      right_id(right_id),
+      ranges(ranges),
       s3_rows(s3_rows),
       minibatch_rows(minibatch_rows),
       // pm(REDIS_IP, REDIS_PORT),
@@ -32,10 +31,14 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
       worker_id(worker_id),
       re(worker_id),
       random_access(random_access) {
-  std::cout << "S3SparseIterator::Creating S3SparseIterator"
-            << " left_id: " << left_id << " right_id: " << right_id
-            << " use_label: " << use_label << " has_labels: " << has_labels
-            << std::endl;
+  std::cout << "S3SparseIterator::Creating S3SparseIterator" << std::endl;
+  std::cout << "ranges: ";
+  for (std::vector<std::pair<int, int>>::const_iterator i = ranges.begin();
+       i != ranges.end(); ++i) {
+    std::cout << (*i).first << "," << (*i).second << " ";
+  }
+  std::cout << std::endl;
+  std::cout << " use_label: " << use_label << std::endl;
 
   // initialize s3
   s3_client = std::make_shared<S3Client>();
@@ -54,7 +57,8 @@ S3SparseIterator::S3SparseIterator(uint64_t left_id,
   if (random_access) {
     srand(42 + worker_id);
   } else {
-    current = left_id;
+    current_range = 0;
+    current = ranges[current_range].first;
   }
 }
 
@@ -153,7 +157,6 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss) {
     for (uint64_t j = 0; j < minibatch_rows; ++j) {
       if (use_label) {
         FEATURE_TYPE label = load_value<FEATURE_TYPE>(s3_data); // read label
-        assert(label == 0.0 || label == 1.0);
       }
       int num_values = load_value<int>(s3_data); 
 #ifdef DEBUG
@@ -176,12 +179,16 @@ void S3SparseIterator::pushSamples(std::ostringstream* oss) {
   str_version++;
 }
 
-uint64_t S3SparseIterator::getObjId(uint64_t left, uint64_t right) {
+uint64_t S3SparseIterator::getObjId(std::vector<std::pair<int, int>> ranges) {
   if (random_access) {
     //std::random_device rd;
     //auto seed = rd();
     //std::default_random_engine re2(seed);
 
+    std::uniform_int_distribution<int> samples_index(0, ranges.size() - 1);
+    uint64_t range_index = samples_index(re);
+    uint64_t left = ranges[range_index].first;
+    uint64_t right = ranges[range_index].second;
     std::uniform_int_distribution<int> sampler(left, right - 1);
     uint64_t sampled = sampler(re);
     //uint64_t sampled = rand() % right;
@@ -189,8 +196,13 @@ uint64_t S3SparseIterator::getObjId(uint64_t left, uint64_t right) {
     return sampled;
   } else {
     auto ret = current++;
-    if (current == right_id)
-      current = left_id;
+    if (current == ranges[current_range].second) {
+      current_range++;
+      if (current_range == ranges.size()) {
+        current_range = 0;
+      }
+      current = ranges[current_range].first;
+    }
     return ret;
   }
 }
@@ -233,7 +245,7 @@ void S3SparseIterator::threadFunction(const Configuration& config) {
     std::cout << "Waiting for pref_sem" << std::endl;
     pref_sem.wait();
 
-    std::string obj_id_str = std::to_string(getObjId(left_id, right_id));
+    std::string obj_id_str = std::to_string(getObjId(ranges));
 
     std::ostringstream* s3_obj;
 try_start:
@@ -262,8 +274,8 @@ try_start:
                 << " obj_id_str: " << obj_id_str << std::endl;
       goto try_start;
     }
-    
-    uint64_t num_passes = (count / (right_id - left_id));
+
+    uint64_t num_passes = (count / (ranges[0].first - ranges[0].second));
     if (LIMIT_NUMBER_PASSES > 0 && num_passes == LIMIT_NUMBER_PASSES) {
       exit(0);
     }
